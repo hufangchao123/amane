@@ -29,7 +29,24 @@
   },
   "subtitles": {
     "title": "字幕补全",
-    "hint": "按番号从字幕来源取字幕, 放置走既有整理流程."
+    "hint": "按番号从字幕来源取字幕, 放置走既有整理流程.",
+    "statusLabel": "来源状态",
+    "enabled": "已启用",
+    "disabled": "未启用",
+    "disabledHint": "请启用字幕补全, 并至少配置一个可用来源 (assrt 需要 token).",
+    "missingLabel": "缺字幕",
+    "missingHint": "已刮削但没有外挂字幕的份数.",
+    "queuedLabel": "排队中",
+    "fetch": "补齐字幕",
+    "fetchScope": "全库按缺口挑, 已有外挂字幕的文件跳过.",
+    "fetchStarted": "已提交字幕补全任务",
+    "recentTitle": "最近补全",
+    "recentEmpty": "还没有补全记录.",
+    "recentStatus": "状态",
+    "recentResult": "结果",
+    "recentTime": "结束时间",
+    "recentCounts": "落位 {{fetched}} / 缺 {{missing}} / 失败 {{failed}}",
+    "justNow": "刚刚"
   },
   "wash": {
     "title": "洗版",

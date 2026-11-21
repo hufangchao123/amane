@@ -29,7 +29,24 @@
   },
   "subtitles": {
     "title": "Subtitles",
-    "hint": "Fetches subtitles by title number; placement reuses the organize pipeline."
+    "hint": "Fetches subtitles by title number; placement reuses the organize pipeline.",
+    "statusLabel": "Source status",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "disabledHint": "Enable subtitle fetching and configure at least one usable source (assrt needs a token).",
+    "missingLabel": "Missing",
+    "missingHint": "Scraped files without any external subtitle.",
+    "queuedLabel": "Queued",
+    "fetch": "Fetch subtitles",
+    "fetchScope": "Picks gaps across the whole library and skips files that already have a subtitle.",
+    "fetchStarted": "Subtitle fetch task submitted",
+    "recentTitle": "Recent runs",
+    "recentEmpty": "No runs yet.",
+    "recentStatus": "Status",
+    "recentResult": "Result",
+    "recentTime": "Finished",
+    "recentCounts": "Placed {{fetched}} / missing {{missing}} / failed {{failed}}",
+    "justNow": "just now"
   },
   "wash": {
     "title": "Wash",
