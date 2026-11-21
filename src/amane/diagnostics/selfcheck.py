@@ -141,9 +141,13 @@ class SelfCheck:
         return CheckItem(key="safe_dirs", ok=True)
 
     def _token_item(self) -> CheckItem:
-        """``off`` 是显式关闭鉴权, 只在该取值下报告; 空值表示自动生成, 属于正常状态."""
+        """鉴权状态只陈述事实, 不计入失败项.
+
+        ``off`` 是显式选择 (内网部署、由反向代理承担鉴权), 关闭本身不影响功能, 因此不让体检失败;
+        空值表示自动生成并持久化, 属于正常状态.
+        """
         if self._cold.token == "off":
-            return CheckItem(key="token", ok=False, detail="接口鉴权已关闭 (AMANE_TOKEN=off), 不应暴露到公网")
+            return CheckItem(key="token", ok=True, detail="接口鉴权已显式关闭 (AMANE_TOKEN=off)")
         return CheckItem(key="token", ok=True, detail="接口鉴权已启用")
 
     def _transfer_item(self) -> CheckItem:

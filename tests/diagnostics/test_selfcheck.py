@@ -19,7 +19,14 @@ if TYPE_CHECKING:
 
 
 def _cold(tmp_path: Path, **overrides: object) -> ColdSettings:
-    kwargs: dict[str, object] = {"data_dir": tmp_path, "_env_file": None}
+    """显式给出关键字段, 不继承其它测试留在进程环境里的 ``AMANE_*`` 变量."""
+    kwargs: dict[str, object] = {
+        "data_dir": tmp_path,
+        "_env_file": None,
+        "token": None,
+        "image_token": None,
+        "safe_dirs": None,
+    }
     kwargs.update(overrides)
     return ColdSettings(**kwargs)  # type: ignore[arg-type]
 
@@ -50,12 +57,15 @@ async def test_missing_data_dir_fails(tmp_path: Path, repo: Repository) -> None:
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_token_off_fails(tmp_path: Path, repo: Repository) -> None:
-    """``off`` 是显式关闭鉴权, 属于需要报告的安全状态; 空值只是自动生成, 不算故障."""
-    assert (await _keys(tmp_path, repo))["token"] is True
+async def test_token_state_is_informational(tmp_path: Path, repo: Repository) -> None:
+    """显式关闭鉴权是部署选择, 不影响功能, 因此只陈述状态而不计入失败项."""
+    report = await (await _report(tmp_path, repo)).run()
+    assert next(item for item in report.items if item.key == "token").detail == "接口鉴权已启用"
 
-    state = await _keys(tmp_path, repo, token="off")
-    assert state["token"] is False
+    report = await (await _report(tmp_path, repo, token="off")).run()
+    token = next(item for item in report.items if item.key == "token")
+    assert token.ok is True
+    assert "已显式关闭" in token.detail
 
 
 @pytest.mark.asyncio(loop_scope="function")
