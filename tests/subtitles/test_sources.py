@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from amane.config.manager import SubtitleProvider
 from amane.net import FailureKind, RequestError, RequestFailure
 from amane.subtitles import SubtitleSourceError, fetch_subtitle
 from amane.subtitles.assrt import AssrtCandidate, parse_detail, parse_search, rank_candidates
@@ -190,7 +191,7 @@ class TestFetchSubtitleOrdering:
         assert len(web.calls) == 1
 
 
-def _config(*, providers: list[str], assrt_token: str | None = None, max_attempts: int = 1):
+def _config(*, providers: list[SubtitleProvider], assrt_token: str | None = None, max_attempts: int = 1):
     from amane.config.manager import SubtitleFetchConfig
 
     return SubtitleFetchConfig(

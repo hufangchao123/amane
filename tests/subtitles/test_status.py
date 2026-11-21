@@ -25,6 +25,7 @@ class TestSummary:
         await seed_media(repo, tmp_path / "lib" / "B", number="AD-2", library=library)
         # 已有外挂字幕的不算缺口
         _, covered = await seed_media(repo, tmp_path / "lib" / "C", number="AD-3", library=library)
+        assert covered.id is not None
         await repo.update_media_file(covered.id, has_external_subtitle=True)
         # 未刮削的不算: 连番号都未必有, 抓也抓不到
         await seed_media(repo, tmp_path / "lib" / "D", number="AD-4", library=library, scraped=False)

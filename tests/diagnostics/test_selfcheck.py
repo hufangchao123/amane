@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -31,11 +31,11 @@ def _cold(tmp_path: Path, **overrides: object) -> ColdSettings:
     return ColdSettings(**kwargs)  # type: ignore[arg-type]
 
 
-async def _report(tmp_path: Path, repo: Repository, hot: HotSettings | None = None, **cold: object) -> SelfCheck:
+async def _report(tmp_path: Path, repo: Repository, hot: HotSettings | None = None, **cold: Any) -> SelfCheck:
     return SelfCheck(_cold(tmp_path, **cold), hot or HotSettings(), repo)
 
 
-async def _keys(tmp_path: Path, repo: Repository, **cold: object) -> dict[str, bool]:
+async def _keys(tmp_path: Path, repo: Repository, **cold: Any) -> dict[str, bool]:
     report = await (await _report(tmp_path, repo, **cold)).run()
     return {item.key: item.ok for item in report.items}
 

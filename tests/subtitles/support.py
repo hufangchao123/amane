@@ -126,6 +126,7 @@ async def seed_media(
         metadata = await repo.get_metadata_by_number(number)
         assert metadata is not None
         metadata_id = metadata.id
+    assert library.id is not None
     media = await repo.create_media_file(
         library.id,
         path=str(video),

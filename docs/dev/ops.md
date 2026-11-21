@@ -10,7 +10,7 @@
 |----|------|--------|
 | `transfer` | 网盘侧增量搬移与逐文件状态 | 只读网盘、只写 STRM 根目录; 不生成 STRM 内容 (`organize/strm_content.py` 负责) |
 | `subtitles` | 从字幕来源取回字幕文件 | 放置一律经 `organize.subtitles`; 不直接改库内路径 |
-| `library/wash` | 同组多份文件择一保留, 其余入回收站 | 移动必须持 `LibraryTaskLocks`; 删除只进 `.amane_trash`, 不 `os.remove` |
+| `library/wash` | 同组多份文件择一保留, 其余入回收站 | 移动必须持 `LibraryTaskLocks`; 落选只搬进 `.amane_wash`, 不 `os.remove`; 真删只发生在到期的清理 |
 | `diagnostics` | 只读探针 | 不写库、不改文件; 超时长的深检走任务 |
 | `backup` | 数据库在线备份与配置打包 | 备份库用 SQLite 在线备份接口, 不复制正在写入的文件 |
 
@@ -20,6 +20,8 @@
 
 `transfer_115` / `subtitle_fetch` / `wash_scan` / `wash_apply` / `backup` 五类经 `AsyncWorker` 消费, 由 `app/runtime.py::build_handlers` 注册。
 `wash_scan` 与 `wash_apply` 是**两个** handler (`WashScanHandler` / `WashApplyHandler`) 与两套 payload: 扫描只读出候选, 执行按候选移动; 前者不取 `LibraryTaskLocks`, 后者必须取。
+
+`WashApplyPayload` 的三组入口可以同时给: `restore_ids` 与 `purge_ids` 来自回收站列表, `group_keys` 来自候选列表, 执行顺序固定为还原 → 清理 → 洗版; 三者全空表示按当前策略重算后执行全部候选, 只带还原或清理时不顺手洗全库。
 
 - 长循环、批量搬移、批量下载、批量移动一律在这些 handler 里, 不进请求线程。
 - 同步 I/O (网盘列表、字幕下载、文件移动、打包) 走 `utils/threads.py` 的 `@in_thread`, 遵守 5 ms 事件循环预算。
@@ -32,11 +34,23 @@
 
 备份产物按时间戳命名, 份数按时间戳分组计算 (`keep_db` 管一次数据库备份的两个文件, `keep_assets` 管资源归档), 修剪只删除本类前缀。自动化只覆盖生成与列举, 恢复是手工操作: 停服后覆盖 `data_dir` 内的库文件与 `resources` 目录。
 
+## 洗版的分组与回收站
+
+分组键含库 id、番号、CD 与有无码, 本地文件与 STRM 各成一组, 跨库不合并。本地择一依次比较清晰度档位、码率 (`size/duration`, 时长缺失时跳过该项而不拿体积冒充)、体积、容器、路径; STRM 的 `size` 恒为 0, 只比同目录、容器与路径, 绝不进体积比较。
+
+回收站落在库根的**父目录**: `<库根父目录>/.amane_wash/<库根名>/<local|strm>/<库内相对路径>`, 与库同盘因此多为改名; 目标已存在时计入 `skipped`, 不覆盖。扫描、清点与空目录判定把 `.amane_wash` 与 `.amane_trash` 一并忽略 (`library/rules.py::is_in_trash`)。还原靠 `group_key` 里的库 id 与上述布局反推原位: 库被删除或重建后 id 变化, 还原会失败, 文件留在回收站可手工取回。
+
 ## 数据
 
 `transfer_items` 以网盘文件 ID 为唯一键, 记录逐文件状态; `wash_records` 一行对应一次「留一个、移一个」, 指向回收站内的实际位置。二者只由所属任务写入, 路由只读。
 
 面板时代的 `115-transfer-state.json` 等状态文件**不再读写**; 迁移期允许一次性导入, 之后以库为准。
+
+## 字幕补全的目标
+
+只挑 `status=scraped` 且没有外挂字幕的媒体文件; 落位要按番号找到元数据条目, 缺条目记为失败而不是缺口。同一目录已有一份字幕后, 后续文件按「已有外挂字幕」跳过, 因此一次任务通常只落一份。
+
+外部站点地址 (115 webapi、字幕来源) 的连接都经 `net/egress.py` 判定: 默认拒绝内网地址, 这是防 SSRF 的硬约束, 本地联调要连伪造站点时只能在测试侧放行回环地址。
 
 ## 配置
 

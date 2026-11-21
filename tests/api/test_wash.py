@@ -13,12 +13,10 @@ from typing import TYPE_CHECKING
 import pytest
 import pytest_asyncio
 from httpx2 import ASGITransport, AsyncClient
-from sqlalchemy import create_engine
-from sqlmodel import SQLModel
 
 from amane.api.routes import API_PREFIX
 from amane.config.manager import HotSettings, WashConfig
-from amane.db.models import WashRecord, WashRecordKind, WashRecordState
+from amane.db.models import WashRecordKind, WashRecordState
 from tests.api.conftest import _SilentFeedHttp, make_app
 
 if TYPE_CHECKING:
@@ -31,22 +29,10 @@ if TYPE_CHECKING:
 LOCAL = WashRecordKind.LOCAL
 
 
-def create_wash_table(db_path: Path) -> None:
-    """``wash_records`` 的迁移还在整合会话那边, 这里按模型直接补建表.
-
-    真实的 ``upgrade_sqlite_database`` 里没有这张表, 不补建就只能验到「表缺失」降级分支.
-    """
-    engine = create_engine(f"sqlite:///{db_path}")
-    SQLModel.metadata.create_all(engine, tables=[WashRecord.__table__])
-    engine.dispose()
-
-
 @pytest.fixture
 def wash_db(app: FastAPI, tmp_path: Path) -> Path:
-    """默认 (关闭洗版) 应用上的库, 已补建 ``wash_records``."""
-    db_path = tmp_path / "data" / "amane.db"
-    create_wash_table(db_path)
-    return db_path
+    """默认 (关闭洗版) 应用上的库; 表由 alembic 迁移建立, 夹具只做转手."""
+    return tmp_path / "data" / "amane.db"
 
 
 @pytest.fixture
@@ -58,9 +44,8 @@ def wash_app(tmp_path: Path) -> FastAPI:
 
 @pytest.fixture
 def wash_open_db(wash_app: FastAPI, tmp_path: Path) -> Path:
-    db_path = tmp_path / "wash-data" / "amane.db"
-    create_wash_table(db_path)
-    return db_path
+    """洗版开启的应用库; 表由 alembic 迁移建立, 夹具只做转手."""
+    return tmp_path / "wash-data" / "amane.db"
 
 
 @pytest_asyncio.fixture
@@ -180,7 +165,7 @@ async def test_bad_query_is_422(
     client: AsyncClient,
     wash_db: Path,
     url: str,
-    params: dict[str, object],
+    params: dict[str, str | int],
 ) -> None:
     """查询参数非法时给 422, 不是 409."""
     resp = await client.get(url, params=params)

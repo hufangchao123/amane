@@ -36,6 +36,7 @@ class TestTargets:
         _, media = await seed_media(repo, root, number="AD-1", suffix=".strm")
 
         web = FakeHttp(texts=subtitlecat_pages)
+        assert media.id is not None
         result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
 
         assert result.success is True
@@ -57,6 +58,7 @@ class TestTargets:
         _, media = await seed_media(repo, root, number="AD-1", subtitle="AD-1.zh.srt")
 
         web = FakeHttp(texts=subtitlecat_pages)
+        assert media.id is not None
         result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
 
         assert result.success is True
@@ -80,6 +82,7 @@ class TestTargets:
         _, media = await seed_media(repo, root, number="AD-1", subtitle_extensions=[])
 
         web = FakeHttp()
+        assert media.id is not None
         result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
 
         assert result.success is True
@@ -222,6 +225,7 @@ class TestFailures:
         _, media = await seed_media(repo, root, number="AD-9")
         web = FakeHttp(texts={"https://www.subtitlecat.com/index.php?search=AD-9": "<html></html>"})
 
+        assert media.id is not None
         result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
 
         assert result.success is True

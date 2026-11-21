@@ -54,9 +54,12 @@ class WashRepoMixin(RepositoryMixinBase):
         kept_path: str,
         removed_path: str,
         size_bytes: int,
-        expires_at: datetime,
+        expires_at: datetime | None,
     ) -> int:
-        """登记一条「留一个、移一个」; 返回记录 id (真删与还原都按 id 找到落点)."""
+        """登记一条「留一个、移一个」; 返回记录 id (真删与还原都按 id 找到落点).
+
+        ``expires_at`` 为空表示这条记录不会因到期被清理, 只能手工还原或清理.
+        """
         record = WashRecord(
             kind=kind,
             group_key=group_key,
