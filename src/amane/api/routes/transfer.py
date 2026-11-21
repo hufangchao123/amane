@@ -20,7 +20,8 @@ router = APIRouter(prefix="/transfer", tags=["transfer"])
 async def transfer_status(config: ConfigDep, repo: RepoDep) -> TransferStatusResponse:
     service = TransferService(config.hot.transfer)
     summary = TransferSummary.from_counts(await repo.transfer_state_counts())
-    return TransferStatusResponse(enabled=service.enabled, **summary.model_dump())
+    reason = None if service.enabled else service.unavailable_reason()
+    return TransferStatusResponse(enabled=service.enabled, reason=reason, **summary.model_dump())
 
 
 @router.get("/items")

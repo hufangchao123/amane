@@ -26,7 +26,15 @@ async def test_status_reports_config_and_counts(ops_client: AsyncClient, api_rep
     response = await ops_client.get("transfer/status")
 
     assert response.status_code == 200
-    assert response.json() == {"enabled": False, "pending": 1, "moved": 1, "skipped": 1, "failed": 0}
+    body = response.json()
+    assert body["enabled"] is False
+    assert "未启用" in body["reason"], "未启用时要说清缺什么"
+    assert {k: body[k] for k in ("pending", "moved", "skipped", "failed")} == {
+        "pending": 1,
+        "moved": 1,
+        "skipped": 1,
+        "failed": 0,
+    }
 
 
 async def test_items_lists_newest_first(ops_client: AsyncClient, api_repo: Repository) -> None:

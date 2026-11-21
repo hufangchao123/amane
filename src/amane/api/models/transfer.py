@@ -7,6 +7,8 @@ from ...db.models import TransferItemState
 
 class TransferStatusResponse(BaseModel):
     enabled: bool
+    reason: str | None
+    """未启用时缺什么; 已启用时为 ``None``, 页面据此给出可操作的那一句."""
     pending: int
     moved: int
     skipped: int

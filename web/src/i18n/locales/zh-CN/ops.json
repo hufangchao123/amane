@@ -1,7 +1,31 @@
 {
   "transfer": {
     "title": "115 中转",
-    "hint": "网盘增量搬进 STRM 目录; 搬移由任务执行, 本页只读状态."
+    "hint": "网盘增量搬进 STRM 目录; 搬移由任务执行, 本页只读状态.",
+    "statusTitle": "中转状态",
+    "serviceLabel": "中转服务",
+    "enabledOn": "已启用",
+    "enabledOff": "未启用",
+    "runNow": "立即中转",
+    "runQueued": "已提交中转任务",
+    "state": {
+      "pending": "待搬",
+      "moved": "已搬",
+      "skipped": "跳过",
+      "failed": "失败"
+    },
+    "columns": {
+      "name": "文件",
+      "state": "状态",
+      "attempts": "尝试",
+      "detail": "说明",
+      "updated": "更新时间"
+    },
+    "recent": {
+      "title": "最近记录",
+      "empty": "还没有记录",
+      "total": "共 {{total}} 条"
+    }
   },
   "subtitles": {
     "title": "字幕补全",
