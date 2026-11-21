@@ -9,12 +9,23 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy import func, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import OperationalError
 from sqlmodel import col, select
 
 from ..models import TransferItem, TransferItemState
 from .base import RepositoryMixinBase, chunks
+
+logger = structlog.get_logger()
+
+_MISSING_TABLE = f"no such table: {TransferItem.__tablename__}"
+"""建表还没进迁移时 SQLite 的原话; 只读端点据此按"还没有条目"报, 而不是把状态卡打成 500."""
+
+
+def _is_missing_table(exc: OperationalError) -> bool:
+    return _MISSING_TABLE in str(exc)
 
 
 class TransferRepoMixin(RepositoryMixinBase):
@@ -22,10 +33,16 @@ class TransferRepoMixin(RepositoryMixinBase):
 
     async def transfer_state_counts(self) -> dict[TransferItemState, int]:
         """按状态分组计数; 还没出现过的状态不出现在结果里, 由调用方按 0 处理."""
-        async with self._session() as session:
-            rows = (
-                await session.exec(select(col(TransferItem.state), func.count()).group_by(col(TransferItem.state)))
-            ).all()
+        try:
+            async with self._session() as session:
+                rows = (
+                    await session.exec(select(col(TransferItem.state), func.count()).group_by(col(TransferItem.state)))
+                ).all()
+        except OperationalError as exc:
+            if not _is_missing_table(exc):
+                raise
+            logger.debug("transfer_items 缺表, 状态按空处理")
+            return {}
         return {state: int(count) for state, count in rows}
 
     async def list_transfer_items(
@@ -38,9 +55,15 @@ class TransferRepoMixin(RepositoryMixinBase):
             stmt = stmt.where(col(TransferItem.state) == state)
             total_stmt = total_stmt.where(col(TransferItem.state) == state)
         stmt = stmt.order_by(col(TransferItem.updated_at).desc(), col(TransferItem.id).desc())
-        async with self._session() as session:
-            total = int((await session.exec(total_stmt)).one())
-            rows = list((await session.exec(stmt.offset(offset).limit(limit))).all())
+        try:
+            async with self._session() as session:
+                total = int((await session.exec(total_stmt)).one())
+                rows = list((await session.exec(stmt.offset(offset).limit(limit))).all())
+        except OperationalError as exc:
+            if not _is_missing_table(exc):
+                raise
+            logger.debug("transfer_items 缺表, 按空列表处理")
+            return [], 0
         return rows, total
 
     async def transfer_snapshots(self, ids: Sequence[str]) -> dict[str, TransferItem]:

@@ -197,7 +197,6 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
             except TransferError as exc:
                 await self._repo.mark_transfer_failed(entry.key, entry.name, str(exc))
                 return _Outcome.FAILED
-            await self._repo.mark_transfer_skipped(ad_fid, media[ad_fid], AD_TRASHED)
         if run.budget <= 0:
             return _Outcome.SKIPPED
         return await self._move(run, entry.key, entry.name)
