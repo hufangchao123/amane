@@ -11059,8 +11059,8 @@
             "$ref": "#/components/schemas/TransferConfig",
             "default": {
               "enabled": false,
-              "source_dir": "",
-              "target_dir": "",
+              "source_cid": "",
+              "target_cid": "",
               "ad_keywords": [],
               "ad_action": "skip",
               "interval_minutes": 10
@@ -18128,16 +18128,16 @@
             "title": "Cookies",
             "description": "115 Cookie 串"
           },
-          "source_dir": {
+          "source_cid": {
             "type": "string",
-            "title": "Source Dir",
-            "description": "网盘侧源目录",
+            "title": "Source Cid",
+            "description": "网盘源目录 ID",
             "default": ""
           },
-          "target_dir": {
+          "target_cid": {
             "type": "string",
-            "title": "Target Dir",
-            "description": "本地 STRM 根目录 (容器内路径)",
+            "title": "Target Cid",
+            "description": "网盘目标目录 ID",
             "default": ""
           },
           "ad_keywords": {
@@ -18168,7 +18168,7 @@
         },
         "type": "object",
         "title": "TransferConfig",
-        "description": "115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作."
+        "description": "115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.\n\n``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,\n本地出现文件靠 STRM 生成流程接续."
       },
       "TransferItemListResponse": {
         "properties": {

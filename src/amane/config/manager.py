@@ -833,13 +833,17 @@ class SemanticConfig(BaseModel):
 
 
 class TransferConfig(BaseModel):
-    """115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作."""
+    """115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.
+
+    ``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,
+    本地出现文件靠 STRM 生成流程接续.
+    """
 
     enabled: bool = False
 
     cookies: str | None = Field(default=None, description="115 Cookie 串")
-    source_dir: str = Field(default="", description="网盘侧源目录")
-    target_dir: str = Field(default="", description="本地 STRM 根目录 (容器内路径)")
+    source_cid: str = Field(default="", description="网盘源目录 ID")
+    target_cid: str = Field(default="", description="网盘目标目录 ID")
     ad_keywords: list[str] = Field(default_factory=list, description="命中即视为广告文件")
     ad_action: Literal["skip", "trash"] = Field(default="skip", description="广告文件处理方式")
     interval_minutes: int = Field(default=10, ge=1, le=1440)

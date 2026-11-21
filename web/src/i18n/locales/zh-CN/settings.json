@@ -886,15 +886,15 @@
       },
       "cookies": {
         "label": "115 Cookie",
-        "description": "115 网盘 Cookie 串; 与目录同时填齐才启用"
+        "description": "115 网盘 Cookie 串; 与两个目录 ID 同时填齐才启用"
       },
-      "source_dir": {
-        "label": "源目录",
-        "description": "115 网盘侧待搬运目录"
+      "source_cid": {
+        "label": "源目录 ID",
+        "description": "115 网盘侧待搬运目录的目录 ID"
       },
-      "target_dir": {
-        "label": "目标目录",
-        "description": "本地 STRM 根目录, 容器内路径"
+      "target_cid": {
+        "label": "目标目录 ID",
+        "description": "搬运到的 115 网盘目录 ID"
       },
       "ad_keywords": {
         "label": "广告关键词",

@@ -158,8 +158,8 @@ class SelfCheck:
             name
             for name, value in (
                 ("cookies", config.cookies),
-                ("source_dir", config.source_dir),
-                ("target_dir", config.target_dir),
+                ("source_cid", config.source_cid),
+                ("target_cid", config.target_cid),
             )
             if not value
         ]

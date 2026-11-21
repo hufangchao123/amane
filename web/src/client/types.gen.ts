@@ -5892,6 +5892,9 @@ export type Transfer115Submission = {
  * TransferConfig
  *
  * 115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.
+ *
+ * ``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,
+ * 本地出现文件靠 STRM 生成流程接续.
  */
 export type TransferConfig = {
     /**
@@ -5905,17 +5908,17 @@ export type TransferConfig = {
      */
     cookies?: string | null;
     /**
-     * Source Dir
+     * Source Cid
      *
-     * 网盘侧源目录
+     * 网盘源目录 ID
      */
-    source_dir?: string;
+    source_cid?: string;
     /**
-     * Target Dir
+     * Target Cid
      *
-     * 本地 STRM 根目录 (容器内路径)
+     * 网盘目标目录 ID
      */
-    target_dir?: string;
+    target_cid?: string;
     /**
      * Ad Keywords
      *

@@ -84,10 +84,10 @@ async def test_transfer_requires_paths_and_cookies(tmp_path: Path, repo: Reposit
     item = next(entry for entry in report.items if entry.key == "transfer")
 
     assert item.ok is False
-    assert "source_dir" in item.detail
+    assert "source_cid" in item.detail
 
     complete = HotSettings.model_validate(
-        {"transfer": {"enabled": True, "cookies": "c=1", "source_dir": "/a", "target_dir": "/b"}}
+        {"transfer": {"enabled": True, "cookies": "c=1", "source_cid": "100", "target_cid": "5000"}}
     )
     report = await (await _report(tmp_path, repo, complete)).run()
     assert next(entry for entry in report.items if entry.key == "transfer").ok is True

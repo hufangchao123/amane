@@ -97,8 +97,8 @@ def _handler(
         transfer=TransferConfig(
             enabled=enabled,
             cookies=COOKIE,
-            source_dir=SOURCE,
-            target_dir=TARGET,
+            source_cid=SOURCE,
+            target_cid=TARGET,
             ad_keywords=KEYWORDS,
             ad_action=ad_action,
         )
@@ -129,7 +129,7 @@ async def test_disabled_config_finishes_without_touching_cloud(transfer_repo: Re
 
 async def test_missing_cookie_is_unavailable_not_a_crash(transfer_repo: Repository) -> None:
     """缺凭据只报未启用; 抛异常会让任务以失败告终, 调度器还会反复重排."""
-    hot = HotSettings(transfer=TransferConfig(enabled=True, cookies=None, source_dir=SOURCE, target_dir=TARGET))
+    hot = HotSettings(transfer=TransferConfig(enabled=True, cookies=None, source_cid=SOURCE, target_cid=TARGET))
     handler = Transfer115Handler(transfer_repo, hot, client_factory=Transfer115Client)
 
     result = await handler.handle(Transfer115Payload())

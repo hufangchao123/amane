@@ -886,15 +886,15 @@
       },
       "cookies": {
         "label": "115 cookie",
-        "description": "115 cookie string; needs a directory pair to activate"
+        "description": "115 cookie string; needs both folder IDs to activate"
       },
-      "source_dir": {
-        "label": "Source directory",
-        "description": "Directory on the 115 side to pull from"
+      "source_cid": {
+        "label": "Source folder ID",
+        "description": "115 folder ID to pull files from"
       },
-      "target_dir": {
-        "label": "Target directory",
-        "description": "Local STRM root, path inside the container"
+      "target_cid": {
+        "label": "Target folder ID",
+        "description": "115 folder ID to move files into"
       },
       "ad_keywords": {
         "label": "Ad keywords",

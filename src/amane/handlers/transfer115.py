@@ -111,13 +111,13 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
         self, payload: Transfer115Payload, *, config: TransferConfig, client: TransferClientLike
     ) -> TaskResult[Transfer115Result]:
         try:
-            entries = await asyncio.to_thread(client.list_dir, config.source_dir)
+            entries = await asyncio.to_thread(client.list_dir, config.source_cid)
         except TransferError as exc:
             return TaskResult(success=False, error=str(exc))
 
         candidates = [entry for entry in entries if entry.key and (entry.is_dir or is_media_name(entry.name))]
         if not candidates:
-            logger.info("115 transfer source empty", source=config.source_dir)
+            logger.info("115 transfer source empty", source=config.source_cid)
             return TaskResult(True, result=Transfer115Result())
 
         snapshots = await self._repo.transfer_snapshots([entry.key for entry in candidates])
@@ -215,7 +215,7 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
 
     async def _move(self, run: _Run, key: str, name: str) -> _Outcome:
         try:
-            await asyncio.to_thread(run.client.move, key, run.config.target_dir)
+            await asyncio.to_thread(run.client.move, key, run.config.target_cid)
         except TransferError as exc:
             await self._repo.mark_transfer_failed(key, name, str(exc))
             return _Outcome.FAILED

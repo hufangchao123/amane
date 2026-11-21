@@ -35,7 +35,7 @@ class TransferService:
     def enabled(self) -> bool:
         """配置齐全才算启用: 缺 cookie 或目录时任务会立刻失败, 不如直接显示未启用."""
         return bool(
-            self._config.enabled and self._config.cookies and self._config.source_dir and self._config.target_dir
+            self._config.enabled and self._config.cookies and self._config.source_cid and self._config.target_cid
         )
 
     def unavailable_reason(self) -> str:
@@ -45,8 +45,8 @@ class TransferService:
             for label, ok in (
                 ("enabled 开关", self._config.enabled),
                 ("Cookie", self._config.cookies),
-                ("源目录", self._config.source_dir),
-                ("目标目录", self._config.target_dir),
+                ("源目录 ID", self._config.source_cid),
+                ("目标目录 ID", self._config.target_cid),
             )
             if not ok
         ]
