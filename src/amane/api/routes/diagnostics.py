@@ -11,7 +11,7 @@ router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
 @router.get("/status", response_model=DiagnosticsResponse)
 async def diagnostics_status(runtime: RuntimeDep) -> DiagnosticsResponse:
-    report = await SelfCheck(runtime.config.hot, runtime.config.cold.data_dir).run()
+    report = await SelfCheck(runtime.config.cold, runtime.config.hot, runtime.repo).run()
     return DiagnosticsResponse(
         items=[CheckItemResponse(key=item.key, ok=item.ok, detail=item.detail) for item in report.items],
         failed=len(report.failed),

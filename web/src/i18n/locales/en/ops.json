@@ -54,10 +54,52 @@
   },
   "diagnostics": {
     "title": "Diagnostics",
-    "hint": "Read-only probes; deep checks and dry runs execute as tasks."
+    "hint": "Read-only probes; deep checks and dry runs execute as tasks, this page lists the checks for the current configuration.",
+    "refresh": "Run again",
+    "allPassed": "All checks passed",
+    "summary": "{{failed}} of {{total}} checks failed",
+    "passed": "Passed",
+    "failed": "Failed",
+    "loadFailed": "Failed to load diagnostics",
+    "columns": {
+      "check": "Check",
+      "state": "State",
+      "detail": "Detail"
+    },
+    "checks": {
+      "data_dir": "Data directory",
+      "disk": "Free space",
+      "db": "Database",
+      "libraries": "Library paths",
+      "safe_dirs": "Safe directories",
+      "token": "API token",
+      "transfer": "115 transfer",
+      "subtitles": "Subtitle sources",
+      "wash": "Wash",
+      "backup": "Backup",
+      "queue": "Task queue"
+    }
   },
   "backup": {
     "title": "Backup",
-    "hint": "Online database backup plus config bundle; no media or resource cache."
+    "hint": "Online database backup and resource archive; media files are not included.",
+    "refresh": "Refresh",
+    "run": "Back up now",
+    "queued": "Backup task queued",
+    "runFailed": "Failed to queue the backup task",
+    "loadFailed": "Failed to load backups",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "empty": "No backup artifacts yet",
+    "columns": {
+      "name": "File",
+      "kind": "Kind",
+      "size": "Size",
+      "created": "Created"
+    },
+    "kinds": {
+      "db": "Database",
+      "assets": "Resources"
+    }
   }
 }
