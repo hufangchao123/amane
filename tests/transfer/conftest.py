@@ -1,4 +1,4 @@
-"""115 中转的夹具: 补建了 ``transfer_items`` 的仓储, 以及带生命周期的测试 app."""
+"""115 中转的夹具: 带生命周期的测试 app."""
 
 from __future__ import annotations
 
@@ -23,11 +23,7 @@ if TYPE_CHECKING:
 
 @pytest_asyncio.fixture
 async def transfer_repo(repo: Repository) -> Repository:
-    """根 ``repo`` 只跑 alembic 迁移, 而 ``transfer_items`` 还没有对应的 revision.
-
-    应用启动时靠 ``Repository.initialize`` 的 ``create_all`` 补建缺表, 用例走同一条路.
-    """
-    await repo.initialize()
+    """``transfer_items`` 已由 alembic 迁移建表, 夹具只做转手."""
     return repo
 
 
@@ -36,9 +32,6 @@ async def ops_app(tmp_path: Path) -> AsyncGenerator[FastAPI]:
     """带 lifespan 的 app: 仓储与运行时要在启动时就位, 用例才能直接写数据."""
     app = make_app(HotSettings(), tmp_path / "data", tmp_path / "logs", tmp_path / "files")
     async with app.router.lifespan_context(app):
-        # schema 模板只跑迁移, 而 `transfer_items` 还没有 revision; 补建这一步由仓储的
-        # create_all 负责, 与生产启动走同一条路.
-        await app.state.runtime.repo.initialize()
         yield app
 
 

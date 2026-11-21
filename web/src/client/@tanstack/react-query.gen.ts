@@ -2818,6 +2818,11 @@ export const subtitleStatusQueryKey = (options?: Options<SubtitleStatusData>) =>
 
 /**
  * Subtitle Status
+ *
+ * 只读: 是否可用、缺口数与排队数.
+ *
+ * 缺口统计是两条 count 查询; 前端每次进页面都会问一次, 因此这里不做任何磁盘遍历 ——
+ * "哪些文件真的没字幕"由任务自己按库扫描时判断.
  */
 export const subtitleStatusOptions = (options?: Options<SubtitleStatusData>) => queryOptions<SubtitleStatusResponse2, DefaultError, SubtitleStatusResponse2, ReturnType<typeof subtitleStatusQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

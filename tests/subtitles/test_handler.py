@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def _handler(repo: Repository, web: FakeHttp, config: SubtitleFetchConfig) -> SubtitleFetchHandler:
-    return SubtitleFetchHandler(repo, HotSettings(subtitles=config), web)
+    return SubtitleFetchHandler(repo, HotSettings(subtitles=config), web=web)
 
 
 class TestTargets:

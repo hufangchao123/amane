@@ -29,7 +29,7 @@ from ..subtitles import (
     staging_dir,
     usable_providers,
 )
-from ._common import refresh_external_subtitle
+from ._common import LibraryTaskLocks, refresh_external_subtitle
 from .models import SubtitleFetchPayload, SubtitleFetchResult
 from .protocol import TaskHandler, TaskResult
 
@@ -69,10 +69,18 @@ class _TargetError(Exception):
 class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult]):
     """按番号向字幕来源取字幕, 放置交给 ``organize.subtitles``; 已有外挂字幕的文件跳过."""
 
-    def __init__(self, repo: Repository, hot: HotSettings, web: SubtitleHttp | None = None) -> None:
+    def __init__(
+        self,
+        repo: Repository,
+        hot: HotSettings,
+        library_locks: LibraryTaskLocks | None = None,
+        web: SubtitleHttp | None = None,
+    ) -> None:
         super().__init__(payload_t=SubtitleFetchPayload, result_t=SubtitleFetchResult)
         self._repo = repo
         self._hot = hot
+        self._library_locks = library_locks if library_locks is not None else LibraryTaskLocks()
+        """落位要写库目录, 与 ORGANIZE / DELETE / 洗版共用同库锁, 否则会与移动重命名并发."""
         self._web = web
         """构造函数注入的通道只为用例与将来的复用; 生产走 ``build_web_client``."""
 
@@ -206,6 +214,20 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         的 stem 会直接成为成品名的主干, 语言标记只能在这一步加进去.
         """
         path = Path(media.path)
+        if library.id is None:
+            return _TargetOutcome(_Outcome.FAILED, "媒体库尚未落库")
+        lock = await self._library_locks.get(library.id)
+        async with lock:
+            return await self._place_locked(media, library, metadata, download, path)
+
+    async def _place_locked(
+        self,
+        media: MediaFile,
+        library: Library,
+        metadata: Metadata,
+        download: SubtitleDownload,
+        path: Path,
+    ) -> _TargetOutcome:
         directory = await asyncio.to_thread(staging_dir)
         try:
             staged = directory / staged_name(path.stem, download.suffix)
