@@ -1,3 +1,10 @@
-from .service import WashCandidate, WashService, WashSummary
+from .service import WashCandidate, WashCandidateSortField, WashScope, WashService, WashSummary, parse_kind
 
-__all__ = ["WashCandidate", "WashService", "WashSummary"]
+__all__ = [
+    "WashCandidate",
+    "WashCandidateSortField",
+    "WashScope",
+    "WashService",
+    "WashSummary",
+    "parse_kind",
+]
