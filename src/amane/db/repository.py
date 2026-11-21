@@ -27,6 +27,8 @@ class Repository(
     repos.MetadataRepoMixin,
     repos.SchedulesRepoMixin,
     repos.TasksRepoMixin,
+    repos.TransferRepoMixin,
+    repos.WashRepoMixin,
 ):
     def __init__(self, engine: AsyncEngine, *, embeddings: EmbeddingStore | None = None):
         self._engine = engine
