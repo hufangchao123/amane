@@ -1,7 +1,31 @@
 {
   "transfer": {
     "title": "115 transfer",
-    "hint": "Moves new cloud files into the STRM root; the work runs as a task, this page is read-only."
+    "hint": "Moves new cloud files into the STRM root; the work runs as a task, this page is read-only.",
+    "statusTitle": "Transfer status",
+    "serviceLabel": "Service",
+    "enabledOn": "Enabled",
+    "enabledOff": "Disabled",
+    "runNow": "Transfer now",
+    "runQueued": "Transfer task submitted",
+    "state": {
+      "pending": "Pending",
+      "moved": "Moved",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "columns": {
+      "name": "File",
+      "state": "State",
+      "attempts": "Tries",
+      "detail": "Detail",
+      "updated": "Updated"
+    },
+    "recent": {
+      "title": "Recent records",
+      "empty": "No records yet",
+      "total": "{{total}} total"
+    }
   },
   "subtitles": {
     "title": "Subtitles",

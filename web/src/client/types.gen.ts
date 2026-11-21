@@ -5935,6 +5935,62 @@ export type TransferConfig = {
 };
 
 /**
+ * TransferItemListResponse
+ */
+export type TransferItemListResponse = {
+    /**
+     * Items
+     */
+    items: Array<TransferItemResponse>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * TransferItemResponse
+ *
+ * 一条逐文件状态; ``error`` 在跳过时承载原因, 在失败时承载错误.
+ */
+export type TransferItemResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Fid
+     */
+    fid: string;
+    /**
+     * File Name
+     */
+    file_name: string;
+    state: TransferItemState;
+    /**
+     * Attempts
+     */
+    attempts: number;
+    /**
+     * Error
+     */
+    error: string | null;
+    /**
+     * Moved At
+     */
+    moved_at: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * TransferItemState
+ */
+export type TransferItemState = 'pending' | 'moved' | 'skipped' | 'failed';
+
+/**
  * TransferStatusResponse
  */
 export type TransferStatusResponse = {
@@ -5942,6 +5998,10 @@ export type TransferStatusResponse = {
      * Enabled
      */
     enabled: boolean;
+    /**
+     * Reason
+     */
+    reason: string | null;
     /**
      * Pending
      */
@@ -10426,6 +10486,48 @@ export type TransferStatusResponses = {
 };
 
 export type TransferStatusResponse2 = TransferStatusResponses[keyof TransferStatusResponses];
+
+export type ListTransferItemsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * State
+         *
+         * 仅该状态的条目
+         */
+        state?: TransferItemState | null;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         *
+         * 每页条数
+         */
+        limit?: number;
+    };
+    url: '/api/transfer/items';
+};
+
+export type ListTransferItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListTransferItemsError = ListTransferItemsErrors[keyof ListTransferItemsErrors];
+
+export type ListTransferItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TransferItemListResponse;
+};
+
+export type ListTransferItemsResponse = ListTransferItemsResponses[keyof ListTransferItemsResponses];
 
 export type SubtitleStatusData = {
     body?: never;

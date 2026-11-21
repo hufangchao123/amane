@@ -11127,11 +11127,120 @@ export const TransferConfigSchema = {
     description: '115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.'
 } as const;
 
+export const TransferItemListResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/TransferItemResponse'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'total'
+    ],
+    title: 'TransferItemListResponse'
+} as const;
+
+export const TransferItemResponseSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        fid: {
+            type: 'string',
+            title: 'Fid'
+        },
+        file_name: {
+            type: 'string',
+            title: 'File Name'
+        },
+        state: {
+            $ref: '#/components/schemas/TransferItemState'
+        },
+        attempts: {
+            type: 'integer',
+            title: 'Attempts'
+        },
+        error: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Error'
+        },
+        moved_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Moved At'
+        },
+        updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updated At'
+        }
+    },
+    type: 'object',
+    required: [
+        'id',
+        'fid',
+        'file_name',
+        'state',
+        'attempts',
+        'error',
+        'moved_at',
+        'updated_at'
+    ],
+    title: 'TransferItemResponse',
+    description: '一条逐文件状态; ``error`` 在跳过时承载原因, 在失败时承载错误.'
+} as const;
+
+export const TransferItemStateSchema = {
+    type: 'string',
+    enum: [
+        'pending',
+        'moved',
+        'skipped',
+        'failed'
+    ],
+    title: 'TransferItemState'
+} as const;
+
 export const TransferStatusResponseSchema = {
     properties: {
         enabled: {
             type: 'boolean',
             title: 'Enabled'
+        },
+        reason: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Reason'
         },
         pending: {
             type: 'integer',
@@ -11153,6 +11262,7 @@ export const TransferStatusResponseSchema = {
     type: 'object',
     required: [
         'enabled',
+        'reason',
         'pending',
         'moved',
         'skipped',
