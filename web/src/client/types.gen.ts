@@ -6295,9 +6295,21 @@ export type WashApplyResult = {
      */
     trashed?: number;
     /**
+     * Restored
+     */
+    restored?: number;
+    /**
+     * Purged
+     */
+    purged?: number;
+    /**
      * Bytes Freed
      */
     bytes_freed?: number;
+    /**
+     * Bytes Restored
+     */
+    bytes_restored?: number;
     /**
      * Skipped
      */
@@ -6318,6 +6330,14 @@ export type WashApplySubmission = {
      * Group Keys
      */
     group_keys?: Array<string>;
+    /**
+     * Restore Ids
+     */
+    restore_ids?: Array<number>;
+    /**
+     * Purge Ids
+     */
+    purge_ids?: Array<number>;
     /**
      * Kind
      */

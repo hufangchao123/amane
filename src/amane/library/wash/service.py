@@ -16,7 +16,6 @@ import structlog
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy import select as sa_select
-from sqlalchemy.exc import OperationalError
 from sqlmodel import col, select
 
 from ...config.manager import WashConfig
@@ -108,14 +107,7 @@ class WashService:
         ``min_size_mb``」. 这是估算: 索引里没有分段 (CD) 与磁盘实况, 权威数字来自 ``wash_scan``
         任务. 状态卡要便宜, 不能在每次打开页面时跑一遍文件遍历.
         """
-        try:
-            trashed, restorable_bytes = await self._repo.count_wash_records(WashRecordState.TRASHED)
-        except OperationalError as exc:
-            if not _missing_records_table(exc):
-                raise
-            # 回收站表随迁移落地; 迁移还没跑到这一版的库上状态卡显示 0 而不是整个接口 500.
-            logger.warning("wash records table absent", error=str(exc))
-            trashed, restorable_bytes = 0, 0
+        trashed, restorable_bytes = await self._repo.count_wash_records(WashRecordState.TRASHED)
         groups = await self._estimate_groups() if self.enabled else 0
         return WashSummary(groups=groups, trashed=trashed, restorable_bytes=restorable_bytes)
 
@@ -210,8 +202,3 @@ __all__ = [
     "WashSummary",
     "parse_kind",
 ]
-
-
-def _missing_records_table(error: OperationalError) -> bool:
-    """区分「表还没建」与真正的数据库故障: 只有前者可以当作空回收站处理."""
-    return "no such table: wash_records" in str(error).lower()

@@ -11672,9 +11672,24 @@ export const WashApplyResultSchema = {
             title: 'Trashed',
             default: 0
         },
+        restored: {
+            type: 'integer',
+            title: 'Restored',
+            default: 0
+        },
+        purged: {
+            type: 'integer',
+            title: 'Purged',
+            default: 0
+        },
         bytes_freed: {
             type: 'integer',
             title: 'Bytes Freed',
+            default: 0
+        },
+        bytes_restored: {
+            type: 'integer',
+            title: 'Bytes Restored',
             default: 0
         },
         skipped: {
@@ -11700,6 +11715,22 @@ export const WashApplySubmissionSchema = {
             },
             type: 'array',
             title: 'Group Keys',
+            default: []
+        },
+        restore_ids: {
+            items: {
+                type: 'integer'
+            },
+            type: 'array',
+            title: 'Restore Ids',
+            default: []
+        },
+        purge_ids: {
+            items: {
+                type: 'integer'
+            },
+            type: 'array',
+            title: 'Purge Ids',
             default: []
         },
         kind: {

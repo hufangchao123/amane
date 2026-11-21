@@ -22,7 +22,7 @@ import structlog
 
 from ...utils.path import is_name_surrogate, path_key
 from ...utils.threads import in_thread
-from ..rules import TRASH_DIRNAME
+from ..rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME
 from ..scan import LibraryFileKind, LibraryHit, LibraryScan, UnwantedKind
 from .orphan import (
     ORPHAN_COOLDOWN_SECONDS,
@@ -412,7 +412,7 @@ def _walk(
     for child in children:
         total += 1
         path = Path(child.path)
-        if child.name == TRASH_DIRNAME:
+        if child.name in {TRASH_DIRNAME, WASH_TRASH_DIRNAME}:
             # 回收目录: 不进清单, 也不计作会消失的子项.
             undeletable = True
             continue

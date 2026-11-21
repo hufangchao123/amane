@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 #: 回收站根名. 与 ``library.rules.TRASH_DIRNAME`` (``.amane_trash``) 刻意不同: 两者语义不同.
+#: 扫描与清理侧按 ``library.rules.WASH_TRASH_DIRNAME`` 同名忽略.
 TRASH_DIRNAME = ".amane_wash"
 
 MoveStatus = Literal["moved", "occupied", "missing", "failed"]

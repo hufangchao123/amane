@@ -60,7 +60,9 @@ _JUNK_PREFIXES = ("._",)
 _JUNK_EXTENSIONS = frozenset({".tmp"})
 
 # 不可删除的子项: 命中即否决该目录. 目录名与文件扩展名分开, 效力与 kind 无关.
-_VETO_DIRNAMES = frozenset({".amane_trash", "#recycle", ".stversions", ".stfolder", "@eadir", ".appledouble"})
+_VETO_DIRNAMES = frozenset(
+    {".amane_trash", ".amane_wash", "#recycle", ".stversions", ".stfolder", "@eadir", ".appledouble"}
+)
 # 暂停或排队中的下载进度: 冷却期只保护正在写入的那一个, 删掉不可恢复.
 _VETO_EXTENSIONS = frozenset({".part", ".crdownload"})
 

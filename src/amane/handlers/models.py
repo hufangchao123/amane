@@ -484,9 +484,14 @@ class WashScanResult(BaseModel):
 
 
 class WashApplyPayload(BaseModel):
-    """按扫描挑出的分组执行洗版; 空列表表示按当前策略重算一遍再执行."""
+    """回收站动作与洗版的执行请求; 三类可同时带, 执行顺序是 还原 → 清理 → 洗版."""
 
     group_keys: list[str] = []
+    """要洗的分组键; 三类都空表示按当前策略重算后执行全部候选."""
+    restore_ids: list[int] = []
+    """要搬回原位的回收站记录 id."""
+    purge_ids: list[int] = []
+    """要真删的回收站记录 id; 未到期的由任务跳过."""
     kind: Literal["local", "strm", "all"] = "all"
     library_id: int | None = None
 
@@ -494,7 +499,15 @@ class WashApplyPayload(BaseModel):
 class WashApplyResult(BaseModel):
     type: Literal[TaskType.WASH_APPLY] = TaskType.WASH_APPLY
     trashed: int = 0
+    """移入回收站的文件数."""
+    restored: int = 0
+    """搬回库内的回收站记录数."""
+    purged: int = 0
+    """真删的回收站记录数."""
     bytes_freed: int = 0
+    """移入回收站与真删合计释放的体积."""
+    bytes_restored: int = 0
+    """还原写回库内占用的体积, 与释放量分开计."""
     skipped: int = 0
     failed: int = 0
 

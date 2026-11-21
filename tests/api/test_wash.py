@@ -223,7 +223,7 @@ async def test_restore_enqueues_task(
     assert resp.status_code == 202
     body = resp.json()
     assert body["type"] == "wash_apply"
-    assert body["payload"]["group_keys"] == [f"@restore:{record_id}"]
+    assert body["payload"]["restore_ids"] == [record_id]
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -239,7 +239,7 @@ async def test_purge_enqueues_task(
     resp = await client.post("wash/records/purge", json={"ids": [record_id]})
 
     assert resp.status_code == 202
-    assert resp.json()["payload"]["group_keys"] == [f"@purge:{record_id}"]
+    assert resp.json()["payload"]["purge_ids"] == [record_id]
 
 
 BAD_ACTION_CASES = [

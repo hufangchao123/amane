@@ -15,7 +15,6 @@ from fastapi import APIRouter, HTTPException, Query
 from ...db.models import SortOrder, TaskType, WashRecordKind, WashRecordState
 from ...db.repos.ops_wash import WashRecordSortField
 from ...handlers.models import WashApplyPayload
-from ...handlers.wash import PURGE_PREFIX, RESTORE_PREFIX
 from ...library.wash import WashCandidateSortField, WashService
 from ...library.wash.service import WashScope, parse_kind
 from ...utils.model import to_resp
@@ -88,14 +87,14 @@ async def wash_records(
 async def restore_wash_records(req: WashRecordActionRequest, repo: RepoDep) -> TaskResponse:
     """把选中的回收站记录搬回原位; 入队 ``WASH_APPLY``, 由任务持库锁后执行."""
     await _require_records(repo, req.ids, WashRecordState.TRASHED)
-    return await _enqueue(repo, [f"{RESTORE_PREFIX}{record_id}" for record_id in req.ids])
+    return await _enqueue(repo, WashApplyPayload(restore_ids=list(req.ids)))
 
 
 @router.post("/records/purge", status_code=202)
 async def purge_wash_records(req: WashRecordActionRequest, repo: RepoDep) -> TaskResponse:
     """真删已经到期的回收站记录; 没到期的一律跳过, 由任务判定并计入 ``skipped``."""
     await _require_records(repo, req.ids, WashRecordState.TRASHED)
-    return await _enqueue(repo, [f"{PURGE_PREFIX}{record_id}" for record_id in req.ids])
+    return await _enqueue(repo, WashApplyPayload(purge_ids=list(req.ids)))
 
 
 async def _require_records(repo: Repository, ids: list[int], state: WashRecordState) -> None:
@@ -107,6 +106,6 @@ async def _require_records(repo: Repository, ids: list[int], state: WashRecordSt
         raise HTTPException(status_code=422, detail=f"回收站记录不存在或状态不符: {missing}")
 
 
-async def _enqueue(repo: Repository, keys: list[str]) -> TaskResponse:
-    task = await repo.create_task(task_type=TaskType.WASH_APPLY, payload=WashApplyPayload(group_keys=keys))
+async def _enqueue(repo: Repository, payload: WashApplyPayload) -> TaskResponse:
+    task = await repo.create_task(task_type=TaskType.WASH_APPLY, payload=payload)
     return to_resp(TaskResponse, task)

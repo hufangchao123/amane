@@ -118,7 +118,11 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.WASH_SCAN, WashScanPayload(kind=req.kind, library_id=req.library_id)
         case WashApplySubmission():
             return TaskType.WASH_APPLY, WashApplyPayload(
-                group_keys=req.group_keys, kind=req.kind, library_id=req.library_id
+                group_keys=req.group_keys,
+                restore_ids=req.restore_ids,
+                purge_ids=req.purge_ids,
+                kind=req.kind,
+                library_id=req.library_id,
             )
         case BackupSubmission():
             return TaskType.BACKUP, BackupPayload(kind=req.kind)

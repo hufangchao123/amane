@@ -14,7 +14,7 @@ import pytest
 from amane.config.manager import HotSettings, WashConfig
 from amane.db.models import WashRecordKind, WashRecordState
 from amane.handlers.models import WashApplyPayload, WashScanPayload
-from amane.handlers.wash import PURGE_PREFIX, RESTORE_PREFIX, WashApplyHandler, WashScanHandler
+from amane.handlers.wash import WashApplyHandler, WashScanHandler
 
 if TYPE_CHECKING:
     from amane.db.models import WashRecord
@@ -159,19 +159,20 @@ async def washed(wash_lib: WashLibrary, locks: LibraryTaskLocks) -> list[WashRec
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_apply_restore_prefix_puts_files_back(
+async def test_apply_restore_ids_puts_files_back(
     wash_lib: WashLibrary,
     locks: LibraryTaskLocks,
 ) -> None:
-    """``@restore:<id>`` 前缀把请求分流到还原, 并把记录推进到 restored."""
+    """带 ``restore_ids`` 的请求走还原, 并把记录推进到 restored."""
     records = await washed(wash_lib, locks)
     target = next(record for record in records if record.kind is LOCAL)
     assert target.id is not None
 
-    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(group_keys=[f"{RESTORE_PREFIX}{target.id}"]))
+    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(restore_ids=[target.id]))
 
     assert result.success is True
-    assert result.result is not None and result.result.trashed == 1
+    assert result.result is not None and result.result.restored == 1
+    assert result.result.trashed == 0
     assert (wash_lib.root / "2024/ABC-123/ABC-123-720p.mp4").exists()
     (stored,) = await wash_lib.repo.get_wash_records([target.id])
     assert stored.state is WashRecordState.RESTORED
@@ -183,7 +184,7 @@ async def test_apply_unknown_record_id_is_failure(
     locks: LibraryTaskLocks,
 ) -> None:
     """记录不存在时整条任务判失败, 错误信息说清少了几条."""
-    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(group_keys=[f"{RESTORE_PREFIX}4242"]))
+    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(restore_ids=[4242]))
 
     assert result.success is False
     assert result.error is not None and "不存在" in result.error
@@ -204,7 +205,7 @@ async def test_apply_purge_prefix_respects_expiry(
     expires_in: timedelta,
     expected_purged: bool,
 ) -> None:
-    """``@purge:<id>`` 只对到期的记录真删; 未到期的原样留在回收站."""
+    """``purge_ids`` 只对到期的记录真删; 未到期的原样留在回收站."""
     await seed_library(wash_lib)
     source = wash_lib.root / "extra" / "ABC-777-1080p.mkv"
     source.parent.mkdir(parents=True)
@@ -221,7 +222,7 @@ async def test_apply_purge_prefix_respects_expiry(
         expires_at=datetime.now(UTC) + expires_in,
     )
 
-    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(group_keys=[f"{PURGE_PREFIX}{record_id}"]))
+    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(purge_ids=[record_id]))
 
     assert result.success is True
     assert target.exists() is not expected_purged

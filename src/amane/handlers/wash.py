@@ -12,34 +12,6 @@ if TYPE_CHECKING:
     from ..db.repository import Repository
     from ._common import LibraryTaskLocks
 
-#: 还原 / 清理的请求编码在 ``group_keys`` 里: 任务类型封闭 (没有 WASH_RESTORE / WASH_PURGE), 而
-#: ``WashApplyPayload`` 在共享文件里. 保留前缀的来龙去脉见 ``amane-merge/notes/wash.md``.
-RESTORE_PREFIX = "@restore:"
-PURGE_PREFIX = "@purge:"
-
-
-def _split_keys(keys: list[str]) -> tuple[list[int], list[int], list[str]]:
-    """把 ``group_keys`` 拆成 还原 id / 清理 id / 待洗分组键.
-
-    认不出的键静默丢弃: 它们既不是记录 id 也不是本库的分组键, 说明请求由旧版本或手写产生,
-    当成「没有要洗的组」比抛异常更合适 —— 非法 id 会在查表后计入 ``failed``.
-    """
-    restore_ids: list[int] = []
-    purge_ids: list[int] = []
-    group_keys: list[str] = []
-    for key in keys:
-        if key.startswith(RESTORE_PREFIX):
-            tail = key[len(RESTORE_PREFIX) :]
-            if tail.isdigit():
-                restore_ids.append(int(tail))
-        elif key.startswith(PURGE_PREFIX):
-            tail = key[len(PURGE_PREFIX) :]
-            if tail.isdigit():
-                purge_ids.append(int(tail))
-        elif key:
-            group_keys.append(key)
-    return restore_ids, purge_ids, group_keys
-
 
 class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
     """扫描同番号多份文件, 产出候选分组与可回收体积.
@@ -93,28 +65,39 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
         if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
             return TaskResult(success=False, error=f"媒体库 {payload.library_id} 不存在")
 
-        restore_ids, purge_ids, group_keys = _split_keys(payload.group_keys)
+        # 计数按动作分开: 还原往库里写文件, 与洗版释放的字节数不能加在一起.
         report = wash_apply.ApplyReport()
+        restored = wash_apply.ApplyReport()
+        purged = wash_apply.ApplyReport()
+        trashed = wash_apply.ApplyReport()
 
-        if restore_ids:
-            report.absorb(
+        if payload.restore_ids:
+            restored.absorb(
                 await wash_apply.restore_records(
-                    self._repo, await self._fetch(restore_ids, report), lock_for=self._library_locks.get
+                    self._repo,
+                    await self._fetch(payload.restore_ids, report),
+                    lock_for=self._library_locks.get,
+                    progress=self.report_progress,
                 )
             )
-        if purge_ids:
-            report.absorb(await wash_apply.purge_records(self._repo, await self._fetch(purge_ids, report)))
+        if payload.purge_ids:
+            purged.absorb(
+                await wash_apply.purge_records(
+                    self._repo,
+                    await self._fetch(payload.purge_ids, report),
+                    progress=self.report_progress,
+                )
+            )
 
-        # 只有「一个键都没给」才等于全部候选; 只给了还原 / 清理键时不能顺手把整个库洗一遍.
         groups = await self._select_groups(
             service,
             kind=parse_kind(payload.kind),
             library_id=payload.library_id,
-            keys=group_keys if payload.group_keys else None,
+            keys=self._wash_keys(payload),
             report=report,
         )
         if groups:
-            report.absorb(
+            trashed.absorb(
                 await wash_apply.wash_groups(
                     self._repo,
                     groups,
@@ -124,16 +107,33 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
                 )
             )
 
+        reports = (report, restored, purged, trashed)
+        failed = sum(item.failed for item in reports)
         return TaskResult(
-            success=report.failed == 0,
+            success=failed == 0,
             result=WashApplyResult(
-                trashed=report.done,
-                bytes_freed=report.bytes,
-                skipped=report.skipped,
-                failed=report.failed,
+                trashed=trashed.done,
+                restored=restored.done,
+                purged=purged.done,
+                bytes_freed=trashed.bytes + purged.bytes,
+                bytes_restored=restored.bytes,
+                skipped=sum(item.skipped for item in reports),
+                failed=failed,
             ),
-            error="; ".join(report.errors) if report.errors else None,
+            error="; ".join(error for item in reports for error in item.errors) or None,
         )
+
+    @staticmethod
+    def _wash_keys(payload: WashApplyPayload) -> list[str] | None:
+        """``None`` 表示重算全部候选; 空列表表示本次不洗任何组.
+
+        只带还原 / 清理 id 时不能顺手把整个库洗一遍, 因此必须区分「没给键」与「不给键」.
+        """
+        if payload.group_keys:
+            return payload.group_keys
+        if payload.restore_ids or payload.purge_ids:
+            return []
+        return None
 
     async def _fetch(self, ids: list[int], report: wash_apply.ApplyReport) -> list[WashRecord]:
         """按 id 取记录; 不存在的 id 记一条失败, 不抛异常."""

@@ -38,6 +38,11 @@ _SUBTITLE_EXT_RE = re.compile(r"^\.[a-z0-9]+$")
 # 固定保留名. 路径任一深度含此目录名则不入库.
 TRASH_DIRNAME = ".amane_trash"
 
+WASH_TRASH_DIRNAME = ".amane_wash"
+"""洗版回收站. 常态落在库根的父目录, 库建在父目录层面时会被扫描到, 因此与 ``TRASH_DIRNAME`` 同等忽略."""
+
+_IGNORED_DIRNAMES = frozenset({TRASH_DIRNAME, WASH_TRASH_DIRNAME})
+
 # .strm 在扫描扩展名里 (当正片入口), 但是路径指针不是视频字节; 大小过滤不把它当视频字节.
 _POINTER_EXTENSIONS = frozenset({".strm"})
 
@@ -148,8 +153,8 @@ def is_skipped_media(path: Path, pattern: str | None) -> bool:
 
 
 def is_in_trash(path: Path) -> bool:
-    """路径任一深度组件为 `.amane_trash` 则视为回收目录内容: 不入库、不触发监控事件."""
-    return any(part == TRASH_DIRNAME for part in path.parts)
+    """路径任一深度组件为 `.amane_trash` 或 `.amane_wash` 则视为回收目录内容: 不入库、不触发监控事件."""
+    return any(part in _IGNORED_DIRNAMES for part in path.parts)
 
 
 @in_thread

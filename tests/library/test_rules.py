@@ -82,8 +82,11 @@ TRASH_CASES = [
     ("/lib/.amane_trash/ad.mp4", True),
     ("/lib/sub/.amane_trash/other/ad.mp4", True),
     ("/lib/.amane_trash", True),
+    ("/lib/.amane_wash/lib/ABC-123/ABC-123.mp4", True),
+    ("/media/.amane_wash", True),
     ("/lib/ad.mp4", False),
     ("/lib/not-trash/ad.mp4", False),
+    ("/lib/amane_wash/ad.mp4", False),
 ]
 
 

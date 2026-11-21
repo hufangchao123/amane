@@ -474,6 +474,14 @@
       "library_id": {
         "label": "媒体库",
         "description": "只处理这个库"
+      },
+      "restore_ids": {
+        "label": "还原记录标识",
+        "description": "要搬回原位的回收站记录"
+      },
+      "purge_ids": {
+        "label": "清理记录标识",
+        "description": "要真删的回收站记录, 未到期由任务跳过"
       }
     },
     "backup": {
