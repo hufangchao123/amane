@@ -13,10 +13,52 @@
   },
   "diagnostics": {
     "title": "体检",
-    "hint": "只读探针; 深度自检与模拟运行在任务里执行."
+    "hint": "只读探针; 深度自检与模拟运行在任务执行, 本页只列当前配置下的判据.",
+    "refresh": "重新体检",
+    "allPassed": "全部通过",
+    "summary": "{{failed}} 项失败 / 共 {{total}} 项",
+    "passed": "通过",
+    "failed": "失败",
+    "loadFailed": "读取体检结果失败",
+    "columns": {
+      "check": "检查项",
+      "state": "状态",
+      "detail": "说明"
+    },
+    "checks": {
+      "data_dir": "数据目录",
+      "disk": "磁盘余量",
+      "db": "数据库",
+      "libraries": "库路径",
+      "safe_dirs": "安全目录",
+      "token": "接口鉴权",
+      "transfer": "115 中转",
+      "subtitles": "字幕来源",
+      "wash": "洗版",
+      "backup": "备份",
+      "queue": "任务队列"
+    }
   },
   "backup": {
     "title": "备份",
-    "hint": "数据库在线备份与配置打包; 不含媒体与资源缓存."
+    "hint": "数据库在线备份与资源归档; 不包含媒体文件.",
+    "refresh": "刷新列表",
+    "run": "立即备份",
+    "queued": "备份任务已入队",
+    "runFailed": "提交备份任务失败",
+    "loadFailed": "读取备份列表失败",
+    "enabled": "已启用",
+    "disabled": "未启用",
+    "empty": "还没有备份产物",
+    "columns": {
+      "name": "文件",
+      "kind": "类型",
+      "size": "大小",
+      "created": "生成时间"
+    },
+    "kinds": {
+      "db": "数据库",
+      "assets": "资源"
+    }
   }
 }
