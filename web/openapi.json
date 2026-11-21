@@ -6837,6 +6837,7 @@
           "wash"
         ],
         "summary": "Wash Status",
+        "description": "状态卡: 只读, 既不取库锁也不扫盘, 因此可以随手刷新.",
         "operationId": "wash_status",
         "responses": {
           "200": {
@@ -6845,6 +6846,319 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WashStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wash/candidates": {
+      "get": {
+        "tags": [
+          "wash"
+        ],
+        "summary": "Wash Candidates",
+        "description": "候选分组: 与执行任务同一套算法, 列表里看到的就是任务会搬走的东西.\n\n停用时返回空页而不是报错: 面板照旧能打开, 只是没有候选.",
+        "operationId": "wash_candidates",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "local",
+                "strm",
+                "all"
+              ],
+              "type": "string",
+              "description": "Which side to inspect",
+              "default": "all",
+              "title": "Kind"
+            },
+            "description": "Which side to inspect"
+          },
+          {
+            "name": "library_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by owning library",
+              "title": "Library Id"
+            },
+            "description": "Filter by owning library"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WashCandidateSortField",
+              "description": "Sort field",
+              "default": "bytes_freed"
+            },
+            "description": "Sort field"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "description": "Sort order",
+              "default": "desc"
+            },
+            "description": "Sort order"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WashCandidateListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wash/records": {
+      "get": {
+        "tags": [
+          "wash"
+        ],
+        "summary": "Wash Records",
+        "description": "回收站的一页; 只读数据库, 不看磁盘 —— 文件是否还在, 由清理任务负责核对.",
+        "operationId": "wash_records",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WashRecordState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by record state",
+              "title": "State"
+            },
+            "description": "Filter by record state"
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WashRecordKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by record kind",
+              "title": "Kind"
+            },
+            "description": "Filter by record kind"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WashRecordSortField",
+              "description": "Sort field",
+              "default": "created_at"
+            },
+            "description": "Sort field"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "description": "Sort order",
+              "default": "desc"
+            },
+            "description": "Sort order"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WashRecordListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wash/records/restore": {
+      "post": {
+        "tags": [
+          "wash"
+        ],
+        "summary": "Restore Wash Records",
+        "description": "把选中的回收站记录搬回原位; 入队 ``WASH_APPLY``, 由任务持库锁后执行.",
+        "operationId": "restore_wash_records",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WashRecordActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wash/records/purge": {
+      "post": {
+        "tags": [
+          "wash"
+        ],
+        "summary": "Purge Wash Records",
+        "description": "真删已经到期的回收站记录; 没到期的一律跳过, 由任务判定并计入 ``skipped``.",
+        "operationId": "purge_wash_records",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WashRecordActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -18265,6 +18579,84 @@
         "title": "WashApplySubmission",
         "description": "洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行."
       },
+      "WashCandidate": {
+        "properties": {
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WashRecordKind"
+          },
+          "library_id": {
+            "type": "integer",
+            "title": "Library Id"
+          },
+          "keep_path": {
+            "type": "string",
+            "title": "Keep Path"
+          },
+          "keep_size": {
+            "type": "integer",
+            "title": "Keep Size",
+            "default": 0
+          },
+          "drop_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Drop Paths",
+            "default": []
+          },
+          "bytes_freed": {
+            "type": "integer",
+            "title": "Bytes Freed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_key",
+          "kind",
+          "library_id",
+          "keep_path"
+        ],
+        "title": "WashCandidate",
+        "description": "一组同番号文件的洗版候选: 留一份, 其余是落选者."
+      },
+      "WashCandidateListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WashCandidate"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "WashCandidateListResponse",
+        "description": "候选分组的一页."
+      },
+      "WashCandidateSortField": {
+        "type": "string",
+        "enum": [
+          "bytes_freed",
+          "group_key",
+          "keep_path"
+        ],
+        "title": "WashCandidateSortField",
+        "description": "候选列表的排序字段."
+      },
       "WashConfig": {
         "properties": {
           "enabled": {
@@ -18299,6 +18691,135 @@
         "type": "object",
         "title": "WashConfig",
         "description": "洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站."
+      },
+      "WashRecordActionRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "WashRecordActionRequest",
+        "description": "还原 / 清理的请求体: 一次一批记录 id.\n\n上限与列表页大小一致: 单批过大时任务里的进度回调与错误汇总会失去意义."
+      },
+      "WashRecordItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WashRecordKind"
+          },
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "kept_path": {
+            "type": "string",
+            "title": "Kept Path"
+          },
+          "removed_path": {
+            "type": "string",
+            "title": "Removed Path"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "state": {
+            "$ref": "#/components/schemas/WashRecordState"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "group_key",
+          "kept_path",
+          "removed_path",
+          "size_bytes",
+          "state",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "WashRecordItem",
+        "description": "回收站的一行."
+      },
+      "WashRecordKind": {
+        "type": "string",
+        "enum": [
+          "local",
+          "strm"
+        ],
+        "title": "WashRecordKind"
+      },
+      "WashRecordListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WashRecordItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "WashRecordListResponse"
+      },
+      "WashRecordSortField": {
+        "type": "string",
+        "enum": [
+          "created_at",
+          "expires_at",
+          "size_bytes",
+          "group_key"
+        ],
+        "title": "WashRecordSortField",
+        "description": "回收站列表的排序字段."
+      },
+      "WashRecordState": {
+        "type": "string",
+        "enum": [
+          "trashed",
+          "restored",
+          "purged"
+        ],
+        "title": "WashRecordState"
       },
       "WashScanResult": {
         "properties": {
@@ -18389,7 +18910,8 @@
           "trashed",
           "restorable_bytes"
         ],
-        "title": "WashStatusResponse"
+        "title": "WashStatusResponse",
+        "description": "状态卡: 待处理组数 (估算)、回收站条数、可还原体积."
       },
       "WatcherConfig": {
         "properties": {

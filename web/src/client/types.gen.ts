@@ -6273,6 +6273,62 @@ export type WashApplySubmission = {
 };
 
 /**
+ * WashCandidate
+ *
+ * 一组同番号文件的洗版候选: 留一份, 其余是落选者.
+ */
+export type WashCandidate = {
+    /**
+     * Group Key
+     */
+    group_key: string;
+    kind: WashRecordKind;
+    /**
+     * Library Id
+     */
+    library_id: number;
+    /**
+     * Keep Path
+     */
+    keep_path: string;
+    /**
+     * Keep Size
+     */
+    keep_size?: number;
+    /**
+     * Drop Paths
+     */
+    drop_paths?: Array<string>;
+    /**
+     * Bytes Freed
+     */
+    bytes_freed?: number;
+};
+
+/**
+ * WashCandidateListResponse
+ *
+ * 候选分组的一页.
+ */
+export type WashCandidateListResponse = {
+    /**
+     * Items
+     */
+    items: Array<WashCandidate>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * WashCandidateSortField
+ *
+ * 候选列表的排序字段.
+ */
+export type WashCandidateSortField = 'bytes_freed' | 'group_key' | 'keep_path';
+
+/**
  * WashConfig
  *
  * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
@@ -6299,6 +6355,89 @@ export type WashConfig = {
      */
     keep_days?: number;
 };
+
+/**
+ * WashRecordActionRequest
+ *
+ * 还原 / 清理的请求体: 一次一批记录 id.
+ *
+ * 上限与列表页大小一致: 单批过大时任务里的进度回调与错误汇总会失去意义.
+ */
+export type WashRecordActionRequest = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+};
+
+/**
+ * WashRecordItem
+ *
+ * 回收站的一行.
+ */
+export type WashRecordItem = {
+    /**
+     * Id
+     */
+    id: number;
+    kind: WashRecordKind;
+    /**
+     * Group Key
+     */
+    group_key: string;
+    /**
+     * Kept Path
+     */
+    kept_path: string;
+    /**
+     * Removed Path
+     */
+    removed_path: string;
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+    state: WashRecordState;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+};
+
+/**
+ * WashRecordKind
+ */
+export type WashRecordKind = 'local' | 'strm';
+
+/**
+ * WashRecordListResponse
+ */
+export type WashRecordListResponse = {
+    /**
+     * Items
+     */
+    items: Array<WashRecordItem>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * WashRecordSortField
+ *
+ * 回收站列表的排序字段.
+ */
+export type WashRecordSortField = 'created_at' | 'expires_at' | 'size_bytes' | 'group_key';
+
+/**
+ * WashRecordState
+ */
+export type WashRecordState = 'trashed' | 'restored' | 'purged';
 
 /**
  * WashScanResult
@@ -6344,6 +6483,8 @@ export type WashScanSubmission = {
 
 /**
  * WashStatusResponse
+ *
+ * 状态卡: 待处理组数 (估算)、回收站条数、可还原体积.
  */
 export type WashStatusResponse = {
     /**
@@ -10458,6 +10599,164 @@ export type WashStatusResponses = {
 };
 
 export type WashStatusResponse2 = WashStatusResponses[keyof WashStatusResponses];
+
+export type WashCandidatesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Kind
+         *
+         * Which side to inspect
+         */
+        kind?: 'local' | 'strm' | 'all';
+        /**
+         * Library Id
+         *
+         * Filter by owning library
+         */
+        library_id?: number | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Sort field
+         */
+        sort_by?: WashCandidateSortField;
+        /**
+         * Sort order
+         */
+        order?: SortOrder;
+    };
+    url: '/api/wash/candidates';
+};
+
+export type WashCandidatesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WashCandidatesError = WashCandidatesErrors[keyof WashCandidatesErrors];
+
+export type WashCandidatesResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashCandidateListResponse;
+};
+
+export type WashCandidatesResponse = WashCandidatesResponses[keyof WashCandidatesResponses];
+
+export type WashRecordsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * State
+         *
+         * Filter by record state
+         */
+        state?: WashRecordState | null;
+        /**
+         * Kind
+         *
+         * Filter by record kind
+         */
+        kind?: WashRecordKind | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Sort field
+         */
+        sort_by?: WashRecordSortField;
+        /**
+         * Sort order
+         */
+        order?: SortOrder;
+    };
+    url: '/api/wash/records';
+};
+
+export type WashRecordsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WashRecordsError = WashRecordsErrors[keyof WashRecordsErrors];
+
+export type WashRecordsResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashRecordListResponse;
+};
+
+export type WashRecordsResponse = WashRecordsResponses[keyof WashRecordsResponses];
+
+export type RestoreWashRecordsData = {
+    body: WashRecordActionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/wash/records/restore';
+};
+
+export type RestoreWashRecordsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RestoreWashRecordsError = RestoreWashRecordsErrors[keyof RestoreWashRecordsErrors];
+
+export type RestoreWashRecordsResponses = {
+    /**
+     * Successful Response
+     */
+    202: TaskResponse;
+};
+
+export type RestoreWashRecordsResponse = RestoreWashRecordsResponses[keyof RestoreWashRecordsResponses];
+
+export type PurgeWashRecordsData = {
+    body: WashRecordActionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/wash/records/purge';
+};
+
+export type PurgeWashRecordsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PurgeWashRecordsError = PurgeWashRecordsErrors[keyof PurgeWashRecordsErrors];
+
+export type PurgeWashRecordsResponses = {
+    /**
+     * Successful Response
+     */
+    202: TaskResponse;
+};
+
+export type PurgeWashRecordsResponse = PurgeWashRecordsResponses[keyof PurgeWashRecordsResponses];
 
 export type DiagnosticsStatusData = {
     body?: never;
