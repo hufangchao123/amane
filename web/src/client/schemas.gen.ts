@@ -11737,6 +11737,87 @@ export const WashApplySubmissionSchema = {
     description: '洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行.'
 } as const;
 
+export const WashCandidateSchema = {
+    properties: {
+        group_key: {
+            type: 'string',
+            title: 'Group Key'
+        },
+        kind: {
+            $ref: '#/components/schemas/WashRecordKind'
+        },
+        library_id: {
+            type: 'integer',
+            title: 'Library Id'
+        },
+        keep_path: {
+            type: 'string',
+            title: 'Keep Path'
+        },
+        keep_size: {
+            type: 'integer',
+            title: 'Keep Size',
+            default: 0
+        },
+        drop_paths: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Drop Paths',
+            default: []
+        },
+        bytes_freed: {
+            type: 'integer',
+            title: 'Bytes Freed',
+            default: 0
+        }
+    },
+    type: 'object',
+    required: [
+        'group_key',
+        'kind',
+        'library_id',
+        'keep_path'
+    ],
+    title: 'WashCandidate',
+    description: '一组同番号文件的洗版候选: 留一份, 其余是落选者.'
+} as const;
+
+export const WashCandidateListResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/WashCandidate'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'total'
+    ],
+    title: 'WashCandidateListResponse',
+    description: '候选分组的一页.'
+} as const;
+
+export const WashCandidateSortFieldSchema = {
+    type: 'string',
+    enum: [
+        'bytes_freed',
+        'group_key',
+        'keep_path'
+    ],
+    title: 'WashCandidateSortField',
+    description: '候选列表的排序字段.'
+} as const;
+
 export const WashConfigSchema = {
     properties: {
         enabled: {
@@ -11771,6 +11852,141 @@ export const WashConfigSchema = {
     type: 'object',
     title: 'WashConfig',
     description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.'
+} as const;
+
+export const WashRecordActionRequestSchema = {
+    properties: {
+        ids: {
+            items: {
+                type: 'integer'
+            },
+            type: 'array',
+            maxItems: 200,
+            minItems: 1,
+            title: 'Ids'
+        }
+    },
+    type: 'object',
+    required: [
+        'ids'
+    ],
+    title: 'WashRecordActionRequest',
+    description: '还原 / 清理的请求体: 一次一批记录 id.\n\n上限与列表页大小一致: 单批过大时任务里的进度回调与错误汇总会失去意义.'
+} as const;
+
+export const WashRecordItemSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        kind: {
+            $ref: '#/components/schemas/WashRecordKind'
+        },
+        group_key: {
+            type: 'string',
+            title: 'Group Key'
+        },
+        kept_path: {
+            type: 'string',
+            title: 'Kept Path'
+        },
+        removed_path: {
+            type: 'string',
+            title: 'Removed Path'
+        },
+        size_bytes: {
+            type: 'integer',
+            title: 'Size Bytes'
+        },
+        state: {
+            $ref: '#/components/schemas/WashRecordState'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        expires_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Expires At'
+        }
+    },
+    type: 'object',
+    required: [
+        'id',
+        'kind',
+        'group_key',
+        'kept_path',
+        'removed_path',
+        'size_bytes',
+        'state',
+        'created_at',
+        'expires_at'
+    ],
+    title: 'WashRecordItem',
+    description: '回收站的一行.'
+} as const;
+
+export const WashRecordKindSchema = {
+    type: 'string',
+    enum: [
+        'local',
+        'strm'
+    ],
+    title: 'WashRecordKind'
+} as const;
+
+export const WashRecordListResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/WashRecordItem'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'total'
+    ],
+    title: 'WashRecordListResponse'
+} as const;
+
+export const WashRecordSortFieldSchema = {
+    type: 'string',
+    enum: [
+        'created_at',
+        'expires_at',
+        'size_bytes',
+        'group_key'
+    ],
+    title: 'WashRecordSortField',
+    description: '回收站列表的排序字段.'
+} as const;
+
+export const WashRecordStateSchema = {
+    type: 'string',
+    enum: [
+        'trashed',
+        'restored',
+        'purged'
+    ],
+    title: 'WashRecordState'
 } as const;
 
 export const WashScanResultSchema = {
@@ -11864,7 +12080,8 @@ export const WashStatusResponseSchema = {
         'trashed',
         'restorable_bytes'
     ],
-    title: 'WashStatusResponse'
+    title: 'WashStatusResponse',
+    description: '状态卡: 待处理组数 (估算)、回收站条数、可还原体积.'
 } as const;
 
 export const WatcherConfigSchema = {

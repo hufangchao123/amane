@@ -50,7 +50,52 @@
   },
   "wash": {
     "title": "洗版",
-    "hint": "同番号多份文件留最优的一份, 其余进回收站, 可还原."
+    "hint": "同番号多份文件留最优的一份, 其余进回收站, 可还原.",
+    "statGroups": "待处理组数",
+    "statRestorable": "可回收体积",
+    "statTrashed": "回收站条数",
+    "disabled": "洗版未启用, 先在设置里打开才会扫描候选.",
+    "scan": "扫描",
+    "apply": "执行",
+    "restore": "还原",
+    "purge": "清理",
+    "refresh": "刷新",
+    "candidateTitle": "候选分组",
+    "candidateEmpty": "没有可回收的分组.",
+    "recordTitle": "回收站",
+    "recordEmpty": "回收站是空的.",
+    "column": {
+      "group": "分组",
+      "kind": "类型",
+      "keep": "保留",
+      "drops": "落选",
+      "bytes": "可释放",
+      "path": "文件",
+      "size": "体积",
+      "state": "状态",
+      "created": "入站",
+      "expires": "到期"
+    },
+    "kind": {
+      "local": "本地",
+      "strm": "STRM"
+    },
+    "state": {
+      "trashed": "在回收站",
+      "restored": "已还原",
+      "purged": "已清理"
+    },
+    "justNow": "刚刚",
+    "never": "不过期",
+    "scanStarted": "已提交扫描任务",
+    "applyStarted": "已提交执行任务",
+    "restoreStarted": "已提交还原任务",
+    "purgeStarted": "已提交清理任务",
+    "confirmApplyTitle": "执行洗版",
+    "confirmApplyMessage": "落选文件会被移进回收站, 到期后可清理; 保留的一份不受影响. 继续?",
+    "confirmPurgeTitle": "清理回收站",
+    "confirmPurgeMessage": "只有已到期的记录会被真正删除, 未到期的继续留着. 继续?",
+    "selected": "已选 {{count}} 条"
   },
   "diagnostics": {
     "title": "体检",

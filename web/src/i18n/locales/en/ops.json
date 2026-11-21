@@ -50,7 +50,53 @@
   },
   "wash": {
     "title": "Wash",
-    "hint": "Keeps the best copy per title number and moves the rest to trash, restorable."
+    "hint": "Keeps the best copy per title number and moves the rest to trash, restorable.",
+    "statGroups": "Groups to wash",
+    "statRestorable": "Restorable size",
+    "statTrashed": "Items in trash",
+    "disabled": "Wash is off; enable it in settings to scan candidates.",
+    "scan": "Scan",
+    "apply": "Apply",
+    "restore": "Restore",
+    "purge": "Purge",
+    "refresh": "Refresh",
+    "candidateTitle": "Candidate groups",
+    "candidateEmpty": "No group can be washed.",
+    "recordTitle": "Trash",
+    "recordEmpty": "The trash is empty.",
+    "column": {
+      "group": "Group",
+      "kind": "Kind",
+      "keep": "Keep",
+      "drops": "Drop",
+      "bytes": "Freed",
+      "path": "File",
+      "size": "Size",
+      "state": "State",
+      "created": "Trashed",
+      "expires": "Expires"
+    },
+    "kind": {
+      "local": "Local",
+      "strm": "STRM"
+    },
+    "state": {
+      "trashed": "In trash",
+      "restored": "Restored",
+      "purged": "Purged"
+    },
+    "justNow": "just now",
+    "never": "Never",
+    "scanStarted": "Scan task submitted",
+    "applyStarted": "Apply task submitted",
+    "restoreStarted": "Restore task submitted",
+    "purgeStarted": "Purge task submitted",
+    "confirmApplyTitle": "Apply wash",
+    "confirmApplyMessage": "Losing copies move into the trash and can be purged after expiry; the kept copy is untouched. Continue?",
+    "confirmPurgeTitle": "Purge trash",
+    "confirmPurgeMessage": "Only expired records are really deleted; the rest stay. Continue?",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected"
   },
   "diagnostics": {
     "title": "Diagnostics",
