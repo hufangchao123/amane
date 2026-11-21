@@ -1,6 +1,9 @@
 import {
   type Icon,
+  IconArchive,
   IconArrowsDiagonal,
+  IconArrowsExchange,
+  IconCloudDownload,
   IconCloudUpload,
   IconDatabase,
   IconEraser,
@@ -10,6 +13,7 @@ import {
   IconRepeat,
   IconSearch,
   IconSparkles,
+  IconSubtitles,
   IconTrashX,
   IconUser,
   IconZoomExclamation,
@@ -41,6 +45,11 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   semantic_index: IconSparkles,
   semantic_benchmark: IconGauge,
   actor_push: IconCloudUpload,
+  transfer_115: IconCloudDownload,
+  subtitle_fetch: IconSubtitles,
+  wash_scan: IconArrowsExchange,
+  wash_apply: IconArrowsExchange,
+  backup: IconArchive,
 });
 
 const EMPTY_CHILD_STATUS: Required<TaskChildStatusCounts> = {

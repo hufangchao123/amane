@@ -71,7 +71,12 @@
     "delete": "删除",
     "semantic_index": "语义索引",
     "semantic_benchmark": "性能测试",
-    "actor_push": "推送演员"
+    "actor_push": "推送演员",
+    "transfer_115": "115 中转",
+    "subtitle_fetch": "字幕下载",
+    "wash_scan": "洗版扫描",
+    "wash_apply": "洗版执行",
+    "backup": "备份"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -421,6 +426,64 @@
       "force": {
         "label": "强制覆盖",
         "description": "覆盖媒体服务器上已有的头像与人物字段"
+      }
+    },
+    "transfer_115": {
+      "full": {
+        "label": "全量重扫",
+        "description": "忽略已搬过的记录, 重新判定源目录全部文件"
+      }
+    },
+    "subtitle_fetch": {
+      "media_file_id": {
+        "label": "文件 ID",
+        "description": "只补这一个文件"
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "范围内全库挑缺字幕的文件"
+      }
+    },
+    "wash_scan": {
+      "kind": {
+        "label": "范围",
+        "options": {
+          "local": "仅本地",
+          "strm": "仅 STRM",
+          "all": "全部"
+        }
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "只扫这个库"
+      }
+    },
+    "wash_apply": {
+      "group_keys": {
+        "label": "分组标识",
+        "description": "留空则按当前策略重算后执行"
+      },
+      "kind": {
+        "label": "范围",
+        "options": {
+          "local": "仅本地",
+          "strm": "仅 STRM",
+          "all": "全部"
+        }
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "只处理这个库"
+      }
+    },
+    "backup": {
+      "kind": {
+        "label": "范围",
+        "options": {
+          "db": "仅数据库",
+          "assets": "仅资源",
+          "all": "全部"
+        }
       }
     }
   },

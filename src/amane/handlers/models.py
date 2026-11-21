@@ -433,3 +433,80 @@ class RescrapeResult(BaseModel):
     submitted: int
     metadata: int = 0
     actors: int = 0
+
+
+# --- 媒体运维 (115 中转 / 字幕下载 / 洗版 / 备份) ---
+
+
+class Transfer115Payload(BaseModel):
+    """115 中转范围; ``full`` 忽略 ``transfer_items`` 里的既往结果重扫一遍."""
+
+    full: bool = False
+
+
+class Transfer115Result(BaseModel):
+    type: Literal[TaskType.TRANSFER_115] = TaskType.TRANSFER_115
+    scanned: int = 0
+    moved: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+
+class SubtitleFetchPayload(BaseModel):
+    """字幕下载范围; 两者都空表示全库按覆盖缺口挑."""
+
+    media_file_id: int | None = None
+    library_id: int | None = None
+
+
+class SubtitleFetchResult(BaseModel):
+    type: Literal[TaskType.SUBTITLE_FETCH] = TaskType.SUBTITLE_FETCH
+    fetched: int = 0
+    missing: int = 0
+    failed: int = 0
+
+
+class WashScanPayload(BaseModel):
+    """洗版扫描范围; 只出候选清单, 一律不移动文件."""
+
+    kind: Literal["local", "strm", "all"] = "all"
+    library_id: int | None = None
+
+
+class WashScanResult(BaseModel):
+    type: Literal[TaskType.WASH_SCAN] = TaskType.WASH_SCAN
+    groups: int = 0
+    """同番号存在多份文件的分组数."""
+    droppable: int = 0
+    """可移走的文件数; 每个分组至少留一份."""
+    bytes_freed: int = 0
+    """全部移走后可释放的体积."""
+
+
+class WashApplyPayload(BaseModel):
+    """按扫描挑出的分组执行洗版; 空列表表示按当前策略重算一遍再执行."""
+
+    group_keys: list[str] = []
+    kind: Literal["local", "strm", "all"] = "all"
+    library_id: int | None = None
+
+
+class WashApplyResult(BaseModel):
+    type: Literal[TaskType.WASH_APPLY] = TaskType.WASH_APPLY
+    trashed: int = 0
+    bytes_freed: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+
+class BackupPayload(BaseModel):
+    """备份范围; 保留份数由 ``BackupConfig.keep_db`` / ``keep_assets`` 决定."""
+
+    kind: Literal["db", "assets", "all"] = "all"
+
+
+class BackupResult(BaseModel):
+    type: Literal[TaskType.BACKUP] = TaskType.BACKUP
+    files: list[str] = []
+    bytes_written: int = 0
+    pruned: int = 0

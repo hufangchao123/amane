@@ -15,11 +15,14 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconArchive,
+  IconArrowsExchange,
   IconBook,
   IconBookmark,
   IconBrandGithub,
   IconCategory,
   IconClock,
+  IconCloudDownload,
   IconDeviceMobile,
   IconFileText,
   IconFolders,
@@ -35,6 +38,8 @@ import {
   IconRss,
   IconSearch,
   IconSettings,
+  IconStethoscope,
+  IconSubtitles,
   IconSun,
   IconSunMoon,
   IconUsers,
@@ -100,6 +105,17 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/schedules", labelKey: "nav.schedules", icon: IconClock },
       { to: "/logs", labelKey: "nav.logs", icon: IconFileText },
       { to: "/network", labelKey: "nav.networkCheck", icon: IconWorldSearch },
+    ],
+  },
+  {
+    key: "mediaOps",
+    labelKey: "nav.groups.mediaOps",
+    items: [
+      { to: "/transfer", labelKey: "nav.transfer", icon: IconCloudDownload },
+      { to: "/subtitles", labelKey: "nav.subtitles", icon: IconSubtitles },
+      { to: "/wash", labelKey: "nav.wash", icon: IconArrowsExchange },
+      { to: "/diagnostics", labelKey: "nav.diagnostics", icon: IconStethoscope },
+      { to: "/backup", labelKey: "nav.backup", icon: IconArchive },
     ],
   },
 ];

@@ -32,6 +32,349 @@
     "exitApp": "Exit app"
   },
   "fields": {
+    "actor_scraping": {
+      "profile_sites": {
+        "label": "Actor Profile Priority",
+        "options": {
+          "avbase": "avbase",
+          "javdb": "javdb",
+          "minnano": "minnano",
+          "theporndb": "theporndb",
+          "wikipedia": "wikipedia"
+        },
+        "$": {
+          "options": {
+            "avbase": "avbase",
+            "javdb": "javdb",
+            "minnano": "minnano",
+            "theporndb": "theporndb",
+            "wikipedia": "wikipedia"
+          }
+        }
+      },
+      "image_sites": {
+        "label": "Avatar Source Priority",
+        "options": {
+          "gfriends": "gfriends"
+        },
+        "$": {
+          "options": {
+            "gfriends": "gfriends"
+          }
+        }
+      },
+      "download_images": {
+        "label": "Download Avatars"
+      },
+      "auto_scrape": {
+        "label": "Auto-scrape",
+        "description": "Automatically scrape actors when scraping movies"
+      },
+      "gfriends_repo": {
+        "label": "gFriends Repository",
+        "description": "gFriends GitHub repository URL"
+      },
+      "auto_push": {
+        "label": "Auto-push",
+        "description": "Push each actor to the media server after a successful scrape"
+      }
+    },
+    "agent": {
+      "api_type": {
+        "label": "API Type",
+        "description": "Prefer Responses or Anthropic when the provider supports them",
+        "options": {
+          "chat": "Chat",
+          "response": "Responses",
+          "anthropic": "Anthropic"
+        }
+      },
+      "api_key": {
+        "label": "API Key"
+      },
+      "base_url": {
+        "label": "API Endpoint"
+      },
+      "model": {
+        "label": "Model"
+      },
+      "thinking": {
+        "label": "Default Thinking Level",
+        "description": "Can be changed in chat",
+        "options": {
+          "off": "Off",
+          "minimal": "Minimal",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High",
+          "xhigh": "Max"
+        }
+      },
+      "max_tokens": {
+        "label": "Max output tokens",
+        "description": "Per-reply output cap. The provider rejects values above the model's limit"
+      },
+      "rate_limit": {
+        "label": "Max requests per second",
+        "description": "See the provider's docs; too high may trigger rate limiting"
+      },
+      "sql_timeout_ms": {
+        "label": "Query timeout (ms)",
+        "description": "Default timeout for queries that run without approval; queries that exceed it need user approval"
+      },
+      "result_cache_ttl_s": {
+        "label": "Result cache duration (s)",
+        "description": "In-memory lifetime of delivered results; expired entries are re-run"
+      },
+      "result_cache_max_entries": {
+        "label": "Result Cache Capacity",
+        "description": "Max in-memory result entries (LRU)"
+      },
+      "history_ttl_s": {
+        "label": "Session history memory duration (s)",
+        "description": "In-memory lifetime of session history; reloaded from disk on demand after eviction"
+      },
+      "history_max_sessions": {
+        "label": "Session History Capacity",
+        "description": "Max sessions kept in the history hot cache (LRU)"
+      }
+    },
+    "backup": {
+      "label": "Backup",
+      "description": "Periodically back up the database and resources",
+      "enabled": {
+        "label": "Enabled",
+        "description": "Skip backup tasks while off"
+      },
+      "dir": {
+        "label": "Backup directory",
+        "description": "Empty means data_dir/backups"
+      },
+      "keep_db": {
+        "label": "Kept database copies",
+        "description": "Older copies beyond this count are removed"
+      },
+      "keep_assets": {
+        "label": "Kept resource copies",
+        "description": "Older copies beyond this count are removed"
+      }
+    },
+    "llm": {
+      "enabled": {
+        "label": "Enable LLM Translation",
+        "description": "Translate text fields during scrape"
+      },
+      "api_key": {
+        "label": "API Key",
+        "description": "Upstream service key; stored in the local config only"
+      },
+      "api_type": {
+        "label": "API Type",
+        "options": {
+          "chat": "Chat",
+          "response": "Responses",
+          "anthropic": "Anthropic"
+        }
+      },
+      "base_url": {
+        "label": "API Endpoint",
+        "description": "OpenAI-compatible API base URL"
+      },
+      "model": {
+        "label": "Model"
+      },
+      "rate_limit": {
+        "label": "Max requests per second"
+      },
+      "translate_fields": {
+        "label": "Fields to Translate",
+        "description": "Currently only title and plot are supported",
+        "$": {
+          "options": {
+            "title": "Title",
+            "actors": "Actors",
+            "tags": "Tags",
+            "release": "Release Date",
+            "runtime": "Runtime",
+            "directors": "Directors",
+            "series": "Series",
+            "studio": "Studio",
+            "publisher": "Publisher",
+            "plot": "Plot",
+            "poster_urls": "Poster",
+            "thumb_urls": "Cover",
+            "trailer_urls": "Trailer",
+            "extrafanart": "Stills",
+            "score": "Score"
+          }
+        }
+      },
+      "system_prompt": {
+        "label": "System Prompt"
+      },
+      "field_prompts": {
+        "label": "Field Prompts",
+        "$": {
+          "label": "Prompt"
+        },
+        "options": {
+          "title": "Title",
+          "actors": "Actors",
+          "tags": "Tags",
+          "release": "Release Date",
+          "runtime": "Runtime",
+          "directors": "Directors",
+          "series": "Series",
+          "studio": "Studio",
+          "publisher": "Publisher",
+          "plot": "Plot",
+          "poster_urls": "Poster",
+          "thumb_urls": "Cover",
+          "trailer_urls": "Trailer",
+          "extrafanart": "Stills",
+          "score": "Score"
+        }
+      }
+    },
+    "logging": {
+      "level": {
+        "label": "Level",
+        "options": {
+          "DEBUG": "Debug",
+          "INFO": "Info",
+          "WARNING": "Warning",
+          "ERROR": "Error",
+          "CRITICAL": "Critical"
+        }
+      },
+      "debug_capture": {
+        "label": "Debug Capture",
+        "description": "When on, record raw responses for every task; otherwise only failed ones"
+      }
+    },
+    "media_server": {
+      "label": "Media server",
+      "kind": {
+        "label": "Type",
+        "options": {
+          "emby": "Emby",
+          "jellyfin": "Jellyfin"
+        }
+      },
+      "url": {
+        "label": "URL",
+        "description": "Server address including scheme, port and optional subpath"
+      },
+      "api_key": {
+        "label": "API key",
+        "description": "Administrator API key"
+      },
+      "verify_tls": {
+        "label": "Verify certificate",
+        "description": "Verify HTTPS certificates; disable for self-signed"
+      }
+    },
+    "network": {
+      "proxy": {
+        "label": "Proxy",
+        "description": "HTTP/SOCKS5 proxy address (e.g. socks5://127.0.0.1:1080)"
+      },
+      "timeout": {
+        "label": "Request Timeout",
+        "description": "Default HTTP request timeout (seconds)"
+      },
+      "max_retries": {
+        "label": "Max Retries",
+        "description": "Retry limit on request failure, excluding the first attempt; 0 sends a single request"
+      },
+      "max_clients": {
+        "label": "Max Connections",
+        "description": "Connection pool maximum size"
+      },
+      "browser": {
+        "label": "Browser Rendering",
+        "bsk_path": {
+          "label": "bsk Path",
+          "description": "BrowserSkill CLI; leave empty to look up PATH; the desktop app needs an absolute path"
+        },
+        "backend": {
+          "label": "Browser backend",
+          "options": {
+            "off": "Off",
+            "patchright": "Patchright",
+            "camoufox": "Camoufox",
+            "bsk": "BrowserSkill",
+            "solver": "Solver"
+          }
+        },
+        "timeout": {
+          "label": "Page Request Timeout",
+          "description": "Browser timeout (milliseconds)"
+        },
+        "solver_url": {
+          "label": "Solver URL",
+          "description": "FlareSolverr-compatible service URL; used by the solver backend only"
+        }
+      },
+      "chunked_threshold": {
+        "label": "Chunked Threshold",
+        "description": "Use chunked download above this size (bytes)"
+      },
+      "chunk_size": {
+        "label": "Chunk Size",
+        "description": "Size of each chunk (bytes)"
+      },
+      "concurrency": {
+        "label": "Download Concurrency",
+        "description": "Maximum parallel chunk downloads"
+      },
+      "rate_limits": {
+        "label": "Rate Limits",
+        "description": "Limit request rate by host (e.g. javdb.com). Takes priority over per-site settings"
+      },
+      "default_rate_limit": {
+        "label": "Default Rate Limit",
+        "description": "Default request rate for sites without an override"
+      }
+    },
+    "plugins": {
+      "enabled": {
+        "label": "Enable plugin",
+        "description": "Allow this plugin to participate in scrape routes"
+      },
+      "config": {
+        "label": "Plugin configuration",
+        "description": "Configuration fields provided by the plugin"
+      }
+    },
+    "r18": {
+      "dsn": {
+        "label": "PostgreSQL DSN",
+        "description": "Superuser connection string (postgresql://user:pass@host:port) with CREATEDB/CREATEROLE"
+      },
+      "db_name": {
+        "label": "Database Name",
+        "description": "Database name used on import. Created by the importer"
+      },
+      "read_user": {
+        "label": "Read-only Role",
+        "description": "Read-only account for queries. Created and granted by the importer"
+      },
+      "read_password": {
+        "label": "Read-only Password"
+      },
+      "read_timeout": {
+        "label": "Query Timeout (s)",
+        "description": "Timeout in seconds for a single query"
+      },
+      "download_url": {
+        "label": "Data package URL",
+        "description": "r18.dev data package download URL"
+      },
+      "psql_path": {
+        "label": "psql Path"
+      }
+    },
     "scraping": {
       "download_resources": {
         "label": "Download on scrape",
@@ -463,117 +806,10 @@
         }
       }
     },
-    "media_server": {
-      "label": "Media server",
-      "kind": {
-        "label": "Type",
-        "options": {
-          "emby": "Emby",
-          "jellyfin": "Jellyfin"
-        }
-      },
-      "url": {
-        "label": "URL",
-        "description": "Server address including scheme, port and optional subpath"
-      },
-      "api_key": {
-        "label": "API key",
-        "description": "Administrator API key"
-      },
-      "verify_tls": {
-        "label": "Verify certificate",
-        "description": "Verify HTTPS certificates; disable for self-signed"
-      }
-    },
-    "network": {
-      "proxy": {
-        "label": "Proxy",
-        "description": "HTTP/SOCKS5 proxy address (e.g. socks5://127.0.0.1:1080)"
-      },
-      "timeout": {
-        "label": "Request Timeout",
-        "description": "Default HTTP request timeout (seconds)"
-      },
-      "max_retries": {
-        "label": "Max Retries",
-        "description": "Retry limit on request failure, excluding the first attempt; 0 sends a single request"
-      },
-      "max_clients": {
-        "label": "Max Connections",
-        "description": "Connection pool maximum size"
-      },
-      "browser": {
-        "label": "Browser Rendering",
-        "bsk_path": {
-          "label": "bsk Path",
-          "description": "BrowserSkill CLI; leave empty to look up PATH; the desktop app needs an absolute path"
-        },
-        "backend": {
-          "label": "Browser backend",
-          "options": {
-            "off": "Off",
-            "patchright": "Patchright",
-            "camoufox": "Camoufox",
-            "bsk": "BrowserSkill",
-            "solver": "Solver"
-          }
-        },
-        "timeout": {
-          "label": "Page Request Timeout",
-          "description": "Browser timeout (milliseconds)"
-        },
-        "solver_url": {
-          "label": "Solver URL",
-          "description": "FlareSolverr-compatible service URL; used by the solver backend only"
-        }
-      },
-      "chunked_threshold": {
-        "label": "Chunked Threshold",
-        "description": "Use chunked download above this size (bytes)"
-      },
-      "chunk_size": {
-        "label": "Chunk Size",
-        "description": "Size of each chunk (bytes)"
-      },
-      "concurrency": {
-        "label": "Download Concurrency",
-        "description": "Maximum parallel chunk downloads"
-      },
-      "rate_limits": {
-        "label": "Rate Limits",
-        "description": "Limit request rate by host (e.g. javdb.com). Takes priority over per-site settings"
-      },
-      "default_rate_limit": {
-        "label": "Default Rate Limit",
-        "description": "Default request rate for sites without an override"
-      }
-    },
-    "worker": {
-      "concurrency": {
-        "label": "Concurrency",
-        "description": "Maximum number of tasks to run at once"
-      },
-      "poll_interval": {
-        "label": "Poll Interval",
-        "description": "Task queue check interval (seconds)"
-      },
-      "shutdown_timeout": {
-        "label": "Shutdown Timeout",
-        "description": "Maximum time to wait for active tasks on shutdown (seconds)"
-      }
-    },
-    "watcher": {
-      "use_polling": {
-        "label": "Polling Mode",
-        "description": "Use polling instead of system events (for network filesystems)"
-      },
-      "debounce_seconds": {
-        "label": "Debounce Window",
-        "description": "Wait time after a file change before processing (seconds)"
-      },
-      "media_extensions": {
-        "label": "Media Extensions",
-        "description": "Media file extensions to watch and scan, comma-separated"
+    "semantic": {
+      "auto_maintain": {
+        "label": "Auto-maintain",
+        "description": "Recompute an entry's vectors as soon as its images change; keeps the model resident"
       }
     },
     "sr": {
@@ -611,185 +847,108 @@
         "description": "Slightly better quality but 8x slower"
       }
     },
-    "logging": {
-      "level": {
-        "label": "Level",
-        "options": {
-          "DEBUG": "Debug",
-          "INFO": "Info",
-          "WARNING": "Warning",
-          "ERROR": "Error",
-          "CRITICAL": "Critical"
-        }
-      },
-      "debug_capture": {
-        "label": "Debug Capture",
-        "description": "When on, record raw responses for every task; otherwise only failed ones"
-      }
-    },
-    "llm": {
+    "subtitles": {
+      "label": "Subtitle fetch",
+      "description": "Fetch Chinese subtitles for videos missing them",
       "enabled": {
-        "label": "Enable LLM Translation",
-        "description": "Translate text fields during scrape"
+        "label": "Enabled",
+        "description": "Skip subtitle tasks while off"
       },
-      "api_key": {
-        "label": "API Key",
-        "description": "Upstream service key; stored in the local config only"
+      "assrt_token": {
+        "label": "Assrt token",
+        "description": "Assrt API token; leave empty to use unauthenticated sources only"
       },
-      "api_type": {
-        "label": "API Type",
-        "options": {
-          "chat": "Chat",
-          "response": "Responses",
-          "anthropic": "Anthropic"
-        }
-      },
-      "base_url": {
-        "label": "API Endpoint",
-        "description": "OpenAI-compatible API base URL"
-      },
-      "model": {
-        "label": "Model"
-      },
-      "rate_limit": {
-        "label": "Max requests per second"
-      },
-      "translate_fields": {
-        "label": "Fields to Translate",
-        "description": "Currently only title and plot are supported",
+      "providers": {
+        "label": "Providers",
+        "description": "Subtitle sites tried in order",
         "$": {
           "options": {
-            "title": "Title",
-            "actors": "Actors",
-            "tags": "Tags",
-            "release": "Release Date",
-            "runtime": "Runtime",
-            "directors": "Directors",
-            "series": "Series",
-            "studio": "Studio",
-            "publisher": "Publisher",
-            "plot": "Plot",
-            "poster_urls": "Poster",
-            "thumb_urls": "Cover",
-            "trailer_urls": "Trailer",
-            "extrafanart": "Stills",
-            "score": "Score"
+            "assrt": "Assrt",
+            "subtitlecat": "SubtitleCat"
           }
         }
       },
-      "system_prompt": {
-        "label": "System Prompt"
+      "languages": {
+        "label": "Languages",
+        "description": "Preferred subtitle languages, matched in order"
       },
-      "field_prompts": {
-        "label": "Field Prompts",
-        "$": {
-          "label": "Prompt"
-        },
-        "options": {
-          "title": "Title",
-          "actors": "Actors",
-          "tags": "Tags",
-          "release": "Release Date",
-          "runtime": "Runtime",
-          "directors": "Directors",
-          "series": "Series",
-          "studio": "Studio",
-          "publisher": "Publisher",
-          "plot": "Plot",
-          "poster_urls": "Poster",
-          "thumb_urls": "Cover",
-          "trailer_urls": "Trailer",
-          "extrafanart": "Stills",
-          "score": "Score"
-        }
+      "max_attempts": {
+        "label": "Max attempts",
+        "description": "Attempts per file"
       }
     },
-    "agent": {
-      "api_type": {
-        "label": "API Type",
-        "description": "Prefer Responses or Anthropic when the provider supports them",
+    "transfer": {
+      "label": "115 transfer",
+      "description": "Move files out of a 115 cloud directory into the local STRM root",
+      "enabled": {
+        "label": "Enabled",
+        "description": "Skip transfer tasks while off"
+      },
+      "cookies": {
+        "label": "115 cookie",
+        "description": "115 cookie string; needs a directory pair to activate"
+      },
+      "source_dir": {
+        "label": "Source directory",
+        "description": "Directory on the 115 side to pull from"
+      },
+      "target_dir": {
+        "label": "Target directory",
+        "description": "Local STRM root, path inside the container"
+      },
+      "ad_keywords": {
+        "label": "Ad keywords",
+        "description": "File names matching any keyword are treated as ads"
+      },
+      "ad_action": {
+        "label": "Ad handling",
+        "description": "What to do with matched ad files",
         "options": {
-          "chat": "Chat",
-          "response": "Responses",
-          "anthropic": "Anthropic"
+          "skip": "Skip",
+          "trash": "Move to trash"
         }
       },
-      "api_key": {
-        "label": "API Key"
-      },
-      "base_url": {
-        "label": "API Endpoint"
-      },
-      "model": {
-        "label": "Model"
-      },
-      "thinking": {
-        "label": "Default Thinking Level",
-        "description": "Can be changed in chat",
-        "options": {
-          "off": "Off",
-          "minimal": "Minimal",
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "xhigh": "Max"
-        }
-      },
-      "max_tokens": {
-        "label": "Max output tokens",
-        "description": "Per-reply output cap. The provider rejects values above the model's limit"
-      },
-      "rate_limit": {
-        "label": "Max requests per second",
-        "description": "See the provider's docs; too high may trigger rate limiting"
-      },
-      "sql_timeout_ms": {
-        "label": "Query timeout (ms)",
-        "description": "Default timeout for queries that run without approval; queries that exceed it need user approval"
-      },
-      "result_cache_ttl_s": {
-        "label": "Result cache duration (s)",
-        "description": "In-memory lifetime of delivered results; expired entries are re-run"
-      },
-      "result_cache_max_entries": {
-        "label": "Result Cache Capacity",
-        "description": "Max in-memory result entries (LRU)"
-      },
-      "history_ttl_s": {
-        "label": "Session history memory duration (s)",
-        "description": "In-memory lifetime of session history; reloaded from disk on demand after eviction"
-      },
-      "history_max_sessions": {
-        "label": "Session History Capacity",
-        "description": "Max sessions kept in the history hot cache (LRU)"
+      "interval_minutes": {
+        "label": "Interval (minutes)",
+        "description": "How often the scheduled transfer runs"
       }
     },
-    "r18": {
-      "dsn": {
-        "label": "PostgreSQL DSN",
-        "description": "Superuser connection string (postgresql://user:pass@host:port) with CREATEDB/CREATEROLE"
+    "wash": {
+      "label": "Wash",
+      "description": "Keep the best copy when a number has several files",
+      "enabled": {
+        "label": "Enabled",
+        "description": "Skip wash tasks while off"
       },
-      "db_name": {
-        "label": "Database Name",
-        "description": "Database name used on import. Created by the importer"
+      "local": {
+        "label": "Local files",
+        "description": "Include local video files"
       },
-      "read_user": {
-        "label": "Read-only Role",
-        "description": "Read-only account for queries. Created and granted by the importer"
+      "strm": {
+        "label": "STRM files",
+        "description": "Include STRM files"
       },
-      "read_password": {
-        "label": "Read-only Password"
+      "min_size_mb": {
+        "label": "Min size (MB)",
+        "description": "Smaller files are ignored so samples survive"
       },
-      "read_timeout": {
-        "label": "Query Timeout (s)",
-        "description": "Timeout in seconds for a single query"
+      "keep_days": {
+        "label": "Keep days",
+        "description": "How long moved files stay before cleanup"
+      }
+    },
+    "watcher": {
+      "use_polling": {
+        "label": "Polling Mode",
+        "description": "Use polling instead of system events (for network filesystems)"
       },
-      "download_url": {
-        "label": "Data package URL",
-        "description": "r18.dev data package download URL"
+      "debounce_seconds": {
+        "label": "Debounce Window",
+        "description": "Wait time after a file change before processing (seconds)"
       },
-      "psql_path": {
-        "label": "psql Path"
+      "media_extensions": {
+        "label": "Media Extensions",
+        "description": "Media file extensions to watch and scan, comma-separated"
       }
     },
     "watermark": {
@@ -820,67 +979,18 @@
         }
       }
     },
-    "actor_scraping": {
-      "profile_sites": {
-        "label": "Actor Profile Priority",
-        "options": {
-          "avbase": "avbase",
-          "javdb": "javdb",
-          "minnano": "minnano",
-          "theporndb": "theporndb",
-          "wikipedia": "wikipedia"
-        },
-        "$": {
-          "options": {
-            "avbase": "avbase",
-            "javdb": "javdb",
-            "minnano": "minnano",
-            "theporndb": "theporndb",
-            "wikipedia": "wikipedia"
-          }
-        }
+    "worker": {
+      "concurrency": {
+        "label": "Concurrency",
+        "description": "Maximum number of tasks to run at once"
       },
-      "image_sites": {
-        "label": "Avatar Source Priority",
-        "options": {
-          "gfriends": "gfriends"
-        },
-        "$": {
-          "options": {
-            "gfriends": "gfriends"
-          }
-        }
+      "poll_interval": {
+        "label": "Poll Interval",
+        "description": "Task queue check interval (seconds)"
       },
-      "download_images": {
-        "label": "Download Avatars"
-      },
-      "auto_scrape": {
-        "label": "Auto-scrape",
-        "description": "Automatically scrape actors when scraping movies"
-      },
-      "gfriends_repo": {
-        "label": "gFriends Repository",
-        "description": "gFriends GitHub repository URL"
-      },
-      "auto_push": {
-        "label": "Auto-push",
-        "description": "Push each actor to the media server after a successful scrape"
-      }
-    },
-    "plugins": {
-      "enabled": {
-        "label": "Enable plugin",
-        "description": "Allow this plugin to participate in scrape routes"
-      },
-      "config": {
-        "label": "Plugin configuration",
-        "description": "Configuration fields provided by the plugin"
-      }
-    },
-    "semantic": {
-      "auto_maintain": {
-        "label": "Auto-maintain",
-        "description": "Recompute an entry's vectors as soon as its images change; keeps the model resident"
+      "shutdown_timeout": {
+        "label": "Shutdown Timeout",
+        "description": "Maximum time to wait for active tasks on shutdown (seconds)"
       }
     }
   }

@@ -700,6 +700,110 @@ export type ApprovalsRow = {
 };
 
 /**
+ * BackupConfig
+ *
+ * 备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.
+ */
+export type BackupConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Dir
+     *
+     * 备份根目录; 空则用 data_dir/backups
+     */
+    dir?: string;
+    /**
+     * Keep Db
+     */
+    keep_db?: number;
+    /**
+     * Keep Assets
+     */
+    keep_assets?: number;
+};
+
+/**
+ * BackupEntryResponse
+ */
+export type BackupEntryResponse = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Kind
+     */
+    kind: 'db' | 'assets';
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * BackupResult
+ */
+export type BackupResult = {
+    /**
+     * Type
+     */
+    type?: 'backup';
+    /**
+     * Files
+     */
+    files?: Array<string>;
+    /**
+     * Bytes Written
+     */
+    bytes_written?: number;
+    /**
+     * Pruned
+     */
+    pruned?: number;
+};
+
+/**
+ * BackupStatusResponse
+ */
+export type BackupStatusResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Root
+     */
+    root: string;
+    /**
+     * Entries
+     */
+    entries: Array<BackupEntryResponse>;
+};
+
+/**
+ * BackupSubmission
+ *
+ * 备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数.
+ */
+export type BackupSubmission = {
+    /**
+     * Kind
+     */
+    kind?: 'db' | 'assets' | 'all';
+    /**
+     * Type
+     */
+    type: 'backup';
+};
+
+/**
  * Body_install_plugin
  */
 export type BodyInstallPlugin = {
@@ -836,6 +940,24 @@ export type CancelledRow = {
      * Type
      */
     type: 'cancelled';
+};
+
+/**
+ * CheckItemResponse
+ */
+export type CheckItemResponse = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Detail
+     */
+    detail: string;
 };
 
 /**
@@ -1209,6 +1331,20 @@ export type DesktopResponse = {
      * Supervised
      */
     supervised?: boolean;
+};
+
+/**
+ * DiagnosticsResponse
+ */
+export type DiagnosticsResponse = {
+    /**
+     * Items
+     */
+    items: Array<CheckItemResponse>;
+    /**
+     * Failed
+     */
+    failed: number;
 };
 
 /**
@@ -1849,6 +1985,10 @@ export type HotSettings = {
     llm?: LlmConfig;
     r18?: R18Config;
     watcher?: WatcherConfig;
+    transfer?: TransferConfig;
+    subtitles?: SubtitleFetchConfig;
+    wash?: WashConfig;
+    backup?: BackupConfig;
     worker?: WorkerConfig;
     logging?: LoggingConfig;
     /**
@@ -5047,6 +5187,96 @@ export type SrConfig = {
 export type SrPreset = 'realesr-photo-4x' | 'waifu-photo-2x';
 
 /**
+ * SubtitleFetchConfig
+ *
+ * 字幕批量下载: 缺凭据时只用免鉴权来源.
+ */
+export type SubtitleFetchConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Assrt Token
+     *
+     * Assrt API Token
+     */
+    assrt_token?: string | null;
+    /**
+     * Providers
+     */
+    providers?: Array<'assrt' | 'subtitlecat'>;
+    /**
+     * Languages
+     */
+    languages?: Array<string>;
+    /**
+     * Max Attempts
+     */
+    max_attempts?: number;
+};
+
+/**
+ * SubtitleFetchResult
+ */
+export type SubtitleFetchResult = {
+    /**
+     * Type
+     */
+    type?: 'subtitle_fetch';
+    /**
+     * Fetched
+     */
+    fetched?: number;
+    /**
+     * Missing
+     */
+    missing?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+};
+
+/**
+ * SubtitleFetchSubmission
+ *
+ * 字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑.
+ */
+export type SubtitleFetchSubmission = {
+    /**
+     * Media File Id
+     */
+    media_file_id?: number | null;
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Type
+     */
+    type: 'subtitle_fetch';
+};
+
+/**
+ * SubtitleStatusResponse
+ */
+export type SubtitleStatusResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Missing
+     */
+    missing: number;
+    /**
+     * Queued
+     */
+    queued: number;
+};
+
+/**
  * TaskBatchAction
  */
 export type TaskBatchAction = 'cancel' | 'delete' | 'retry';
@@ -5105,7 +5335,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission>;
 };
 
 /**
@@ -5416,7 +5646,17 @@ export type TaskResponse = {
         type: 'semantic_index';
     } & SemanticIndexResult) | ({
         type: 'semantic_benchmark';
-    } & SemanticBenchmarkResult) | null;
+    } & SemanticBenchmarkResult) | ({
+        type: 'transfer_115';
+    } & Transfer115Result) | ({
+        type: 'subtitle_fetch';
+    } & SubtitleFetchResult) | ({
+        type: 'wash_scan';
+    } & WashScanResult) | ({
+        type: 'wash_apply';
+    } & WashApplyResult) | ({
+        type: 'backup';
+    } & BackupResult) | null;
 };
 
 /**
@@ -5432,7 +5672,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'wash_scan' | 'wash_apply' | 'backup';
 
 /**
  * TaskWorkerResponse
@@ -5604,6 +5844,120 @@ export type ToolSummary = {
      * Signature
      */
     signature: string;
+};
+
+/**
+ * Transfer115Result
+ */
+export type Transfer115Result = {
+    /**
+     * Type
+     */
+    type?: 'transfer_115';
+    /**
+     * Scanned
+     */
+    scanned?: number;
+    /**
+     * Moved
+     */
+    moved?: number;
+    /**
+     * Skipped
+     */
+    skipped?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+};
+
+/**
+ * Transfer115Submission
+ *
+ * 115 中转: 由面板「立即中转」按钮发起.
+ */
+export type Transfer115Submission = {
+    /**
+     * Full
+     */
+    full?: boolean;
+    /**
+     * Type
+     */
+    type: 'transfer_115';
+};
+
+/**
+ * TransferConfig
+ *
+ * 115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.
+ */
+export type TransferConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Cookies
+     *
+     * 115 Cookie 串
+     */
+    cookies?: string | null;
+    /**
+     * Source Dir
+     *
+     * 网盘侧源目录
+     */
+    source_dir?: string;
+    /**
+     * Target Dir
+     *
+     * 本地 STRM 根目录 (容器内路径)
+     */
+    target_dir?: string;
+    /**
+     * Ad Keywords
+     *
+     * 命中即视为广告文件
+     */
+    ad_keywords?: Array<string>;
+    /**
+     * Ad Action
+     *
+     * 广告文件处理方式
+     */
+    ad_action?: 'skip' | 'trash';
+    /**
+     * Interval Minutes
+     */
+    interval_minutes?: number;
+};
+
+/**
+ * TransferStatusResponse
+ */
+export type TransferStatusResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Pending
+     */
+    pending: number;
+    /**
+     * Moved
+     */
+    moved: number;
+    /**
+     * Skipped
+     */
+    skipped: number;
+    /**
+     * Failed
+     */
+    failed: number;
 };
 
 /**
@@ -5866,6 +6220,148 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * WashApplyResult
+ */
+export type WashApplyResult = {
+    /**
+     * Type
+     */
+    type?: 'wash_apply';
+    /**
+     * Trashed
+     */
+    trashed?: number;
+    /**
+     * Bytes Freed
+     */
+    bytes_freed?: number;
+    /**
+     * Skipped
+     */
+    skipped?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+};
+
+/**
+ * WashApplySubmission
+ *
+ * 洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行.
+ */
+export type WashApplySubmission = {
+    /**
+     * Group Keys
+     */
+    group_keys?: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'local' | 'strm' | 'all';
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Type
+     */
+    type: 'wash_apply';
+};
+
+/**
+ * WashConfig
+ *
+ * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
+ */
+export type WashConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Local
+     */
+    local?: boolean;
+    /**
+     * Strm
+     */
+    strm?: boolean;
+    /**
+     * Min Size Mb
+     */
+    min_size_mb?: number;
+    /**
+     * Keep Days
+     */
+    keep_days?: number;
+};
+
+/**
+ * WashScanResult
+ */
+export type WashScanResult = {
+    /**
+     * Type
+     */
+    type?: 'wash_scan';
+    /**
+     * Groups
+     */
+    groups?: number;
+    /**
+     * Droppable
+     */
+    droppable?: number;
+    /**
+     * Bytes Freed
+     */
+    bytes_freed?: number;
+};
+
+/**
+ * WashScanSubmission
+ *
+ * 洗版扫描: 只出候选清单, 一律不移动文件.
+ */
+export type WashScanSubmission = {
+    /**
+     * Kind
+     */
+    kind?: 'local' | 'strm' | 'all';
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Type
+     */
+    type: 'wash_scan';
+};
+
+/**
+ * WashStatusResponse
+ */
+export type WashStatusResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Groups
+     */
+    groups: number;
+    /**
+     * Trashed
+     */
+    trashed: number;
+    /**
+     * Restorable Bytes
+     */
+    restorable_bytes: number;
 };
 
 /**
@@ -8864,7 +9360,17 @@ export type SubmitTaskData = {
         type: 'semantic_index';
     } & SemanticIndexSubmission) | ({
         type: 'semantic_benchmark';
-    } & SemanticBenchmarkSubmission);
+    } & SemanticBenchmarkSubmission) | ({
+        type: 'transfer_115';
+    } & Transfer115Submission) | ({
+        type: 'subtitle_fetch';
+    } & SubtitleFetchSubmission) | ({
+        type: 'wash_scan';
+    } & WashScanSubmission) | ({
+        type: 'wash_apply';
+    } & WashApplySubmission) | ({
+        type: 'backup';
+    } & BackupSubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';
@@ -9904,3 +10410,83 @@ export type ReleaseSemanticResponses = {
 };
 
 export type ReleaseSemanticResponse = ReleaseSemanticResponses[keyof ReleaseSemanticResponses];
+
+export type TransferStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/transfer/status';
+};
+
+export type TransferStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: TransferStatusResponse;
+};
+
+export type TransferStatusResponse2 = TransferStatusResponses[keyof TransferStatusResponses];
+
+export type SubtitleStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/subtitles/status';
+};
+
+export type SubtitleStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleStatusResponse;
+};
+
+export type SubtitleStatusResponse2 = SubtitleStatusResponses[keyof SubtitleStatusResponses];
+
+export type WashStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/wash/status';
+};
+
+export type WashStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashStatusResponse;
+};
+
+export type WashStatusResponse2 = WashStatusResponses[keyof WashStatusResponses];
+
+export type DiagnosticsStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/diagnostics/status';
+};
+
+export type DiagnosticsStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiagnosticsResponse;
+};
+
+export type DiagnosticsStatusResponse = DiagnosticsStatusResponses[keyof DiagnosticsStatusResponses];
+
+export type BackupStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/backup/status';
+};
+
+export type BackupStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: BackupStatusResponse;
+};
+
+export type BackupStatusResponse2 = BackupStatusResponses[keyof BackupStatusResponses];

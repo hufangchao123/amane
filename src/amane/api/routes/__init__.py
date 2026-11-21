@@ -3,10 +3,12 @@ from fastapi import APIRouter
 from .actors import router as actors_router
 from .agent import router as agent_router
 from .agent_agui import router as agent_agui_router
+from .backup import router as backup_router
 from .bootstrap import router as bootstrap_router
 from .cleanup import router as cleanup_router
 from .comments import router as comments_router
 from .config import router as config_router
+from .diagnostics import router as diagnostics_router
 from .facets import router as facets_router
 from .feeds import router as feeds_router
 from .files import router as files_router
@@ -21,9 +23,12 @@ from .resources import router as resources_router
 from .saved_queries import router as saved_queries_router
 from .schedules import router as schedules_router
 from .semantic import router as semantic_router
+from .subtitles import router as subtitles_router
 from .system import router as system_router
 from .tasks import router as tasks_router
 from .tools import router as tools_router
+from .transfer import router as transfer_router
+from .wash import router as wash_router
 from .webhooks import router as webhooks_router
 from .ws import router as ws_router
 
@@ -56,3 +61,8 @@ router.include_router(agent_agui_router)
 router.include_router(saved_queries_router)
 router.include_router(semantic_router)
 router.include_router(ws_router)
+router.include_router(transfer_router)
+router.include_router(subtitles_router)
+router.include_router(wash_router)
+router.include_router(diagnostics_router)
+router.include_router(backup_router)

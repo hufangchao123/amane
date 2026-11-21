@@ -83,7 +83,12 @@
     "delete": "Delete",
     "semantic_index": "Semantic index",
     "semantic_benchmark": "Benchmark",
-    "actor_push": "Push actors"
+    "actor_push": "Push actors",
+    "transfer_115": "115 transfer",
+    "subtitle_fetch": "Subtitle fetch",
+    "wash_scan": "Wash scan",
+    "wash_apply": "Wash apply",
+    "backup": "Backup"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -452,6 +457,64 @@
       "force": {
         "label": "Force overwrite",
         "description": "Overwrite existing images and person fields on the media server"
+      }
+    },
+    "transfer_115": {
+      "full": {
+        "label": "Full rescan",
+        "description": "Ignore previous records and re-check every source file"
+      }
+    },
+    "subtitle_fetch": {
+      "media_file_id": {
+        "label": "File ID",
+        "description": "Only this file"
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Pick files missing subtitles in that library"
+      }
+    },
+    "wash_scan": {
+      "kind": {
+        "label": "Scope",
+        "options": {
+          "local": "Local only",
+          "strm": "STRM only",
+          "all": "All"
+        }
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Only scan this library"
+      }
+    },
+    "wash_apply": {
+      "group_keys": {
+        "label": "Group keys",
+        "description": "Empty means rescan with current policy before applying"
+      },
+      "kind": {
+        "label": "Scope",
+        "options": {
+          "local": "Local only",
+          "strm": "STRM only",
+          "all": "All"
+        }
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Only touch this library"
+      }
+    },
+    "backup": {
+      "kind": {
+        "label": "Scope",
+        "options": {
+          "db": "Database only",
+          "assets": "Assets only",
+          "all": "All"
+        }
       }
     }
   },

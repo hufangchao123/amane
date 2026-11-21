@@ -56,8 +56,14 @@
     "groups": {
       "browse": "浏览",
       "manage": "管理",
-      "ops": "运行"
-    }
+      "ops": "运行",
+      "mediaOps": "媒体运维"
+    },
+    "transfer": "115 中转",
+    "subtitles": "字幕补全",
+    "wash": "洗版",
+    "diagnostics": "体检",
+    "backup": "备份"
   },
   "defaults": {
     "set": "设为默认",

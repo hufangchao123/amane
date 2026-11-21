@@ -11,8 +11,10 @@ from .actors import (
     ActorUserTagsRequest,
     CropAvatarRequest,
 )
+from .backup import BackupEntryResponse, BackupStatusResponse
 from .comments import CommentCreateRequest, CommentResponse, CommentUpdateRequest
 from .crop import CropBoxRequest
+from .diagnostics import CheckItemResponse, DiagnosticsResponse
 from .facets import (
     FacetBatchAction,
     FacetBatchRequest,
@@ -94,10 +96,12 @@ from .playback import (
 from .plugins import PluginConfigUpdate, PluginListResponse, PluginResponse
 from .schedules import ScheduleCreateRequest, ScheduleListResponse, ScheduleResponse, ScheduleUpdateRequest
 from .semantic import SemanticDiagnosticsResponse, SemanticModelCounts, SemanticStatusResponse
+from .subtitles import SubtitleStatusResponse
 from .system import DesktopResponse, ReleaseResponse
 from .tasks import (
     ActorPushSubmission,
     ActorScrapeSubmission,
+    BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
     OrganizeSubmission,
@@ -110,6 +114,7 @@ from .tasks import (
     ScrapeSubmission,
     SemanticBenchmarkSubmission,
     SemanticIndexSubmission,
+    SubtitleFetchSubmission,
     TaskBatchAction,
     TaskBatchRequest,
     TaskBatchResponse,
@@ -123,9 +128,14 @@ from .tasks import (
     TaskResponse,
     TaskSubmission,
     TaskWorkerResponse,
+    Transfer115Submission,
     UpscaleSubmission,
+    WashApplySubmission,
+    WashScanSubmission,
 )
+from .transfer import TransferStatusResponse
 from .user_tags import UserTagLinksResponse, UserTagResponse
+from .wash import WashStatusResponse
 
 __all__ = [
     "ActorClearPersonBatchRequest",
@@ -140,9 +150,13 @@ __all__ = [
     "ActorScrapeSubmission",
     "ActorUpdateRequest",
     "ActorUserTagsRequest",
+    "BackupEntryResponse",
+    "BackupStatusResponse",
+    "BackupSubmission",
     "BrowserBackendItemResponse",
     "BrowserBackendReportResponse",
     "BrowserInstanceResponse",
+    "CheckItemResponse",
     "CleanupSubmission",
     "CommentCreateRequest",
     "CommentResponse",
@@ -155,6 +169,7 @@ __all__ = [
     "CropPosterRequest",
     "DeleteSubmission",
     "DesktopResponse",
+    "DiagnosticsResponse",
     "FacetBatchAction",
     "FacetBatchRequest",
     "FacetBatchResponse",
@@ -225,6 +240,8 @@ __all__ = [
     "SemanticIndexSubmission",
     "SemanticModelCounts",
     "SemanticStatusResponse",
+    "SubtitleFetchSubmission",
+    "SubtitleStatusResponse",
     "TaskBatchAction",
     "TaskBatchRequest",
     "TaskBatchResponse",
@@ -238,11 +255,16 @@ __all__ = [
     "TaskResponse",
     "TaskSubmission",
     "TaskWorkerResponse",
+    "Transfer115Submission",
+    "TransferStatusResponse",
     "UpscaleSubmission",
     "UserTagLinksResponse",
     "UserTagResponse",
     "UserTagsCreateRequest",
     "UserTagsCreateResponse",
+    "WashApplySubmission",
+    "WashScanSubmission",
+    "WashStatusResponse",
     "normalize_feed_group",
     "path_template_schema",
     "to_media_file_response",

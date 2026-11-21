@@ -88,6 +88,11 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
     case "rescrape":
     case "scan_invalid":
     case "delete":
+    case "transfer_115":
+    case "subtitle_fetch":
+    case "wash_scan":
+    case "wash_apply":
+    case "backup":
       return <EmptyHint visible={!failed} />;
     default:
       return assertNever(result, "TaskResult");

@@ -5202,6 +5202,21 @@
                   },
                   {
                     "$ref": "#/components/schemas/SemanticBenchmarkSubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Transfer115Submission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SubtitleFetchSubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WashScanSubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WashApplySubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BackupSubmission"
                   }
                 ],
                 "discriminator": {
@@ -5219,7 +5234,12 @@
                     "actor_push": "#/components/schemas/ActorPushSubmission",
                     "rescrape": "#/components/schemas/RescrapeSubmission",
                     "semantic_index": "#/components/schemas/SemanticIndexSubmission",
-                    "semantic_benchmark": "#/components/schemas/SemanticBenchmarkSubmission"
+                    "semantic_benchmark": "#/components/schemas/SemanticBenchmarkSubmission",
+                    "transfer_115": "#/components/schemas/Transfer115Submission",
+                    "subtitle_fetch": "#/components/schemas/SubtitleFetchSubmission",
+                    "wash_scan": "#/components/schemas/WashScanSubmission",
+                    "wash_apply": "#/components/schemas/WashApplySubmission",
+                    "backup": "#/components/schemas/BackupSubmission"
                   }
                 },
                 "title": "Req"
@@ -6768,6 +6788,111 @@
           }
         }
       }
+    },
+    "/api/transfer/status": {
+      "get": {
+        "tags": [
+          "transfer"
+        ],
+        "summary": "Transfer Status",
+        "operationId": "transfer_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subtitles/status": {
+      "get": {
+        "tags": [
+          "subtitles"
+        ],
+        "summary": "Subtitle Status",
+        "operationId": "subtitle_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubtitleStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wash/status": {
+      "get": {
+        "tags": [
+          "wash"
+        ],
+        "summary": "Wash Status",
+        "operationId": "wash_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WashStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diagnostics/status": {
+      "get": {
+        "tags": [
+          "diagnostics"
+        ],
+        "summary": "Diagnostics Status",
+        "operationId": "diagnostics_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup/status": {
+      "get": {
+        "tags": [
+          "backup"
+        ],
+        "summary": "Backup Status",
+        "operationId": "backup_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7980,6 +8105,152 @@
         "title": "ApprovalsRow",
         "description": "未决审批快照. 每个回合结束发一条, **空列表表示已无未决**, 后者覆盖前者.\n\n原样携带 AG-UI 中断: 前端既用它渲染审批入口, 也把它交给 runtime 完成 `resume`."
       },
+      "BackupConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "dir": {
+            "type": "string",
+            "title": "Dir",
+            "description": "备份根目录; 空则用 data_dir/backups",
+            "default": ""
+          },
+          "keep_db": {
+            "type": "integer",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Keep Db",
+            "default": 7
+          },
+          "keep_assets": {
+            "type": "integer",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Keep Assets",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "title": "BackupConfig",
+        "description": "备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存."
+      },
+      "BackupEntryResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "db",
+              "assets"
+            ],
+            "title": "Kind"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "BackupEntryResponse"
+      },
+      "BackupResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "backup",
+            "title": "Type",
+            "default": "backup"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files",
+            "default": []
+          },
+          "bytes_written": {
+            "type": "integer",
+            "title": "Bytes Written",
+            "default": 0
+          },
+          "pruned": {
+            "type": "integer",
+            "title": "Pruned",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "BackupResult"
+      },
+      "BackupStatusResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "root": {
+            "type": "string",
+            "title": "Root"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/BackupEntryResponse"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "root",
+          "entries"
+        ],
+        "title": "BackupStatusResponse"
+      },
+      "BackupSubmission": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "db",
+              "assets",
+              "all"
+            ],
+            "title": "Kind",
+            "default": "all"
+          },
+          "type": {
+            "type": "string",
+            "const": "backup",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "BackupSubmission",
+        "description": "备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数."
+      },
       "Body_install_plugin": {
         "properties": {
           "file": {
@@ -8211,6 +8482,29 @@
         ],
         "title": "CancelledRow",
         "description": "回合被显式终止."
+      },
+      "CheckItemResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "ok",
+          "detail"
+        ],
+        "title": "CheckItemResponse"
       },
       "CleanupResult": {
         "properties": {
@@ -8752,6 +9046,27 @@
           "data_dir"
         ],
         "title": "DesktopResponse"
+      },
+      "DiagnosticsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CheckItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "failed"
+        ],
+        "title": "DiagnosticsResponse"
       },
       "DownloadableResource": {
         "type": "string",
@@ -10347,6 +10662,51 @@
                 ".iso",
                 ".strm"
               ]
+            }
+          },
+          "transfer": {
+            "$ref": "#/components/schemas/TransferConfig",
+            "default": {
+              "enabled": false,
+              "source_dir": "",
+              "target_dir": "",
+              "ad_keywords": [],
+              "ad_action": "skip",
+              "interval_minutes": 10
+            }
+          },
+          "subtitles": {
+            "$ref": "#/components/schemas/SubtitleFetchConfig",
+            "default": {
+              "enabled": false,
+              "providers": [
+                "assrt",
+                "subtitlecat"
+              ],
+              "languages": [
+                "zh-CN",
+                "zh-TW"
+              ],
+              "max_attempts": 3
+            }
+          },
+          "wash": {
+            "$ref": "#/components/schemas/WashConfig",
+            "default": {
+              "enabled": false,
+              "local": true,
+              "strm": true,
+              "min_size_mb": 300,
+              "keep_days": 30
+            }
+          },
+          "backup": {
+            "$ref": "#/components/schemas/BackupConfig",
+            "default": {
+              "enabled": false,
+              "dir": "",
+              "keep_db": 7,
+              "keep_assets": 3
             }
           },
           "worker": {
@@ -16106,6 +16466,142 @@
         ],
         "title": "SrPreset"
       },
+      "SubtitleFetchConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "assrt_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assrt Token",
+            "description": "Assrt API Token"
+          },
+          "providers": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "assrt",
+                "subtitlecat"
+              ]
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "title": "SubtitleFetchConfig",
+        "description": "字幕批量下载: 缺凭据时只用免鉴权来源."
+      },
+      "SubtitleFetchResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "subtitle_fetch",
+            "title": "Type",
+            "default": "subtitle_fetch"
+          },
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched",
+            "default": 0
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "SubtitleFetchResult"
+      },
+      "SubtitleFetchSubmission": {
+        "properties": {
+          "media_file_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media File Id"
+          },
+          "library_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Library Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "subtitle_fetch",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "SubtitleFetchSubmission",
+        "description": "字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑."
+      },
+      "SubtitleStatusResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing"
+          },
+          "queued": {
+            "type": "integer",
+            "title": "Queued"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "missing",
+          "queued"
+        ],
+        "title": "SubtitleStatusResponse"
+      },
       "TaskBatchAction": {
         "type": "string",
         "enum": [
@@ -16249,6 +16745,21 @@
                 },
                 {
                   "$ref": "#/components/schemas/SemanticBenchmarkSubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/Transfer115Submission"
+                },
+                {
+                  "$ref": "#/components/schemas/SubtitleFetchSubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/WashScanSubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/WashApplySubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/BackupSubmission"
                 }
               ],
               "discriminator": {
@@ -16256,6 +16767,7 @@
                 "mapping": {
                   "actor_push": "#/components/schemas/ActorPushSubmission",
                   "actor_scrape": "#/components/schemas/ActorScrapeSubmission",
+                  "backup": "#/components/schemas/BackupSubmission",
                   "cleanup": "#/components/schemas/CleanupSubmission",
                   "delete": "#/components/schemas/DeleteSubmission",
                   "organize": "#/components/schemas/OrganizeSubmission",
@@ -16266,7 +16778,11 @@
                   "scrape": "#/components/schemas/ScrapeSubmission",
                   "semantic_benchmark": "#/components/schemas/SemanticBenchmarkSubmission",
                   "semantic_index": "#/components/schemas/SemanticIndexSubmission",
-                  "upscale": "#/components/schemas/UpscaleSubmission"
+                  "subtitle_fetch": "#/components/schemas/SubtitleFetchSubmission",
+                  "transfer_115": "#/components/schemas/Transfer115Submission",
+                  "upscale": "#/components/schemas/UpscaleSubmission",
+                  "wash_apply": "#/components/schemas/WashApplySubmission",
+                  "wash_scan": "#/components/schemas/WashScanSubmission"
                 }
               }
             },
@@ -16812,6 +17328,21 @@
                   },
                   {
                     "$ref": "#/components/schemas/SemanticBenchmarkResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Transfer115Result"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SubtitleFetchResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WashScanResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WashApplyResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BackupResult"
                   }
                 ],
                 "discriminator": {
@@ -16819,6 +17350,7 @@
                   "mapping": {
                     "actor_push": "#/components/schemas/ActorPushResult",
                     "actor_scrape": "#/components/schemas/ActorScrapeResult",
+                    "backup": "#/components/schemas/BackupResult",
                     "cleanup": "#/components/schemas/CleanupResult",
                     "delete": "#/components/schemas/DeleteResult",
                     "organize": "#/components/schemas/OrganizeResult",
@@ -16829,7 +17361,11 @@
                     "scrape": "#/components/schemas/ScrapeResult",
                     "semantic_benchmark": "#/components/schemas/SemanticBenchmarkResult",
                     "semantic_index": "#/components/schemas/SemanticIndexResult",
-                    "upscale": "#/components/schemas/UpscaleResult"
+                    "subtitle_fetch": "#/components/schemas/SubtitleFetchResult",
+                    "transfer_115": "#/components/schemas/Transfer115Result",
+                    "upscale": "#/components/schemas/UpscaleResult",
+                    "wash_apply": "#/components/schemas/WashApplyResult",
+                    "wash_scan": "#/components/schemas/WashScanResult"
                   }
                 }
               },
@@ -16886,7 +17422,12 @@
           "delete",
           "semantic_index",
           "semantic_benchmark",
-          "actor_push"
+          "actor_push",
+          "transfer_115",
+          "subtitle_fetch",
+          "wash_scan",
+          "wash_apply",
+          "backup"
         ],
         "title": "TaskType"
       },
@@ -17124,6 +17665,152 @@
         ],
         "title": "ToolSummary",
         "description": "目录索引里的一条: 够选工具, 不够直接构造复杂入参."
+      },
+      "Transfer115Result": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "transfer_115",
+            "title": "Type",
+            "default": "transfer_115"
+          },
+          "scanned": {
+            "type": "integer",
+            "title": "Scanned",
+            "default": 0
+          },
+          "moved": {
+            "type": "integer",
+            "title": "Moved",
+            "default": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "Transfer115Result"
+      },
+      "Transfer115Submission": {
+        "properties": {
+          "full": {
+            "type": "boolean",
+            "title": "Full",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "transfer_115",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Transfer115Submission",
+        "description": "115 中转: 由面板「立即中转」按钮发起."
+      },
+      "TransferConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "cookies": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cookies",
+            "description": "115 Cookie 串"
+          },
+          "source_dir": {
+            "type": "string",
+            "title": "Source Dir",
+            "description": "网盘侧源目录",
+            "default": ""
+          },
+          "target_dir": {
+            "type": "string",
+            "title": "Target Dir",
+            "description": "本地 STRM 根目录 (容器内路径)",
+            "default": ""
+          },
+          "ad_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ad Keywords",
+            "description": "命中即视为广告文件"
+          },
+          "ad_action": {
+            "type": "string",
+            "enum": [
+              "skip",
+              "trash"
+            ],
+            "title": "Ad Action",
+            "description": "广告文件处理方式",
+            "default": "skip"
+          },
+          "interval_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Interval Minutes",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "title": "TransferConfig",
+        "description": "115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作."
+      },
+      "TransferStatusResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "moved": {
+            "type": "integer",
+            "title": "Moved"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "pending",
+          "moved",
+          "skipped",
+          "failed"
+        ],
+        "title": "TransferStatusResponse"
       },
       "TrashSummaryResponse": {
         "properties": {
@@ -17501,6 +18188,208 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WashApplyResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "wash_apply",
+            "title": "Type",
+            "default": "wash_apply"
+          },
+          "trashed": {
+            "type": "integer",
+            "title": "Trashed",
+            "default": 0
+          },
+          "bytes_freed": {
+            "type": "integer",
+            "title": "Bytes Freed",
+            "default": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "WashApplyResult"
+      },
+      "WashApplySubmission": {
+        "properties": {
+          "group_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Group Keys",
+            "default": []
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "local",
+              "strm",
+              "all"
+            ],
+            "title": "Kind",
+            "default": "all"
+          },
+          "library_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Library Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "wash_apply",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "WashApplySubmission",
+        "description": "洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行."
+      },
+      "WashConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "local": {
+            "type": "boolean",
+            "title": "Local",
+            "default": true
+          },
+          "strm": {
+            "type": "boolean",
+            "title": "Strm",
+            "default": true
+          },
+          "min_size_mb": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Min Size Mb",
+            "default": 300
+          },
+          "keep_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Keep Days",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "title": "WashConfig",
+        "description": "洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站."
+      },
+      "WashScanResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "wash_scan",
+            "title": "Type",
+            "default": "wash_scan"
+          },
+          "groups": {
+            "type": "integer",
+            "title": "Groups",
+            "default": 0
+          },
+          "droppable": {
+            "type": "integer",
+            "title": "Droppable",
+            "default": 0
+          },
+          "bytes_freed": {
+            "type": "integer",
+            "title": "Bytes Freed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "WashScanResult"
+      },
+      "WashScanSubmission": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "local",
+              "strm",
+              "all"
+            ],
+            "title": "Kind",
+            "default": "all"
+          },
+          "library_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Library Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "wash_scan",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "WashScanSubmission",
+        "description": "洗版扫描: 只出候选清单, 一律不移动文件."
+      },
+      "WashStatusResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "groups": {
+            "type": "integer",
+            "title": "Groups"
+          },
+          "trashed": {
+            "type": "integer",
+            "title": "Trashed"
+          },
+          "restorable_bytes": {
+            "type": "integer",
+            "title": "Restorable Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "groups",
+          "trashed",
+          "restorable_bytes"
+        ],
+        "title": "WashStatusResponse"
       },
       "WatcherConfig": {
         "properties": {

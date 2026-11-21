@@ -1239,6 +1239,157 @@ export const ApprovalsRowSchema = {
     description: '未决审批快照. 每个回合结束发一条, **空列表表示已无未决**, 后者覆盖前者.\n\n原样携带 AG-UI 中断: 前端既用它渲染审批入口, 也把它交给 runtime 完成 `resume`.'
 } as const;
 
+export const BackupConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        dir: {
+            type: 'string',
+            title: 'Dir',
+            description: '备份根目录; 空则用 data_dir/backups',
+            default: ''
+        },
+        keep_db: {
+            type: 'integer',
+            maximum: 90,
+            minimum: 1,
+            title: 'Keep Db',
+            default: 7
+        },
+        keep_assets: {
+            type: 'integer',
+            maximum: 90,
+            minimum: 1,
+            title: 'Keep Assets',
+            default: 3
+        }
+    },
+    type: 'object',
+    title: 'BackupConfig',
+    description: '备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.'
+} as const;
+
+export const BackupEntryResponseSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'db',
+                'assets'
+            ],
+            title: 'Kind'
+        },
+        size_bytes: {
+            type: 'integer',
+            title: 'Size Bytes'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: [
+        'name',
+        'kind',
+        'size_bytes',
+        'created_at'
+    ],
+    title: 'BackupEntryResponse'
+} as const;
+
+export const BackupResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'backup',
+            title: 'Type',
+            default: 'backup'
+        },
+        files: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Files',
+            default: []
+        },
+        bytes_written: {
+            type: 'integer',
+            title: 'Bytes Written',
+            default: 0
+        },
+        pruned: {
+            type: 'integer',
+            title: 'Pruned',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'BackupResult'
+} as const;
+
+export const BackupStatusResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        root: {
+            type: 'string',
+            title: 'Root'
+        },
+        entries: {
+            items: {
+                $ref: '#/components/schemas/BackupEntryResponse'
+            },
+            type: 'array',
+            title: 'Entries'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'root',
+        'entries'
+    ],
+    title: 'BackupStatusResponse'
+} as const;
+
+export const BackupSubmissionSchema = {
+    properties: {
+        kind: {
+            type: 'string',
+            enum: [
+                'db',
+                'assets',
+                'all'
+            ],
+            title: 'Kind',
+            default: 'all'
+        },
+        type: {
+            type: 'string',
+            const: 'backup',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'BackupSubmission',
+    description: '备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数.'
+} as const;
+
 export const Body_install_pluginSchema = {
     properties: {
         file: {
@@ -1478,6 +1629,30 @@ export const CancelledRowSchema = {
     ],
     title: 'CancelledRow',
     description: '回合被显式终止.'
+} as const;
+
+export const CheckItemResponseSchema = {
+    properties: {
+        key: {
+            type: 'string',
+            title: 'Key'
+        },
+        ok: {
+            type: 'boolean',
+            title: 'Ok'
+        },
+        detail: {
+            type: 'string',
+            title: 'Detail'
+        }
+    },
+    type: 'object',
+    required: [
+        'key',
+        'ok',
+        'detail'
+    ],
+    title: 'CheckItemResponse'
 } as const;
 
 export const CleanupResultSchema = {
@@ -2036,6 +2211,28 @@ export const DesktopResponseSchema = {
         'data_dir'
     ],
     title: 'DesktopResponse'
+} as const;
+
+export const DiagnosticsResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/CheckItemResponse'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'failed'
+    ],
+    title: 'DiagnosticsResponse'
 } as const;
 
 export const DownloadableResourceSchema = {
@@ -3664,6 +3861,51 @@ export const HotSettingsSchema = {
                     '.iso',
                     '.strm'
                 ]
+            }
+        },
+        transfer: {
+            $ref: '#/components/schemas/TransferConfig',
+            default: {
+                enabled: false,
+                source_dir: '',
+                target_dir: '',
+                ad_keywords: [],
+                ad_action: 'skip',
+                interval_minutes: 10
+            }
+        },
+        subtitles: {
+            $ref: '#/components/schemas/SubtitleFetchConfig',
+            default: {
+                enabled: false,
+                providers: [
+                    'assrt',
+                    'subtitlecat'
+                ],
+                languages: [
+                    'zh-CN',
+                    'zh-TW'
+                ],
+                max_attempts: 3
+            }
+        },
+        wash: {
+            $ref: '#/components/schemas/WashConfig',
+            default: {
+                enabled: false,
+                local: true,
+                strm: true,
+                min_size_mb: 300,
+                keep_days: 30
+            }
+        },
+        backup: {
+            $ref: '#/components/schemas/BackupConfig',
+            default: {
+                enabled: false,
+                dir: '',
+                keep_db: 7,
+                keep_assets: 3
             }
         },
         worker: {
@@ -9541,6 +9783,146 @@ export const SrPresetSchema = {
     title: 'SrPreset'
 } as const;
 
+export const SubtitleFetchConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        assrt_token: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Assrt Token',
+            description: 'Assrt API Token'
+        },
+        providers: {
+            items: {
+                type: 'string',
+                enum: [
+                    'assrt',
+                    'subtitlecat'
+                ]
+            },
+            type: 'array',
+            title: 'Providers'
+        },
+        languages: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Languages'
+        },
+        max_attempts: {
+            type: 'integer',
+            maximum: 10,
+            minimum: 1,
+            title: 'Max Attempts',
+            default: 3
+        }
+    },
+    type: 'object',
+    title: 'SubtitleFetchConfig',
+    description: '字幕批量下载: 缺凭据时只用免鉴权来源.'
+} as const;
+
+export const SubtitleFetchResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'subtitle_fetch',
+            title: 'Type',
+            default: 'subtitle_fetch'
+        },
+        fetched: {
+            type: 'integer',
+            title: 'Fetched',
+            default: 0
+        },
+        missing: {
+            type: 'integer',
+            title: 'Missing',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'SubtitleFetchResult'
+} as const;
+
+export const SubtitleFetchSubmissionSchema = {
+    properties: {
+        media_file_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Media File Id'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        type: {
+            type: 'string',
+            const: 'subtitle_fetch',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'SubtitleFetchSubmission',
+    description: '字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑.'
+} as const;
+
+export const SubtitleStatusResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        missing: {
+            type: 'integer',
+            title: 'Missing'
+        },
+        queued: {
+            type: 'integer',
+            title: 'Queued'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'missing',
+        'queued'
+    ],
+    title: 'SubtitleStatusResponse'
+} as const;
+
 export const TaskBatchActionSchema = {
     type: 'string',
     enum: [
@@ -9687,6 +10069,21 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/SemanticBenchmarkSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/Transfer115Submission'
+                    },
+                    {
+                        $ref: '#/components/schemas/SubtitleFetchSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/WashScanSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/WashApplySubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/BackupSubmission'
                     }
                 ],
                 discriminator: {
@@ -9694,6 +10091,7 @@ export const TaskBatchSubmitRequestSchema = {
                     mapping: {
                         actor_push: '#/components/schemas/ActorPushSubmission',
                         actor_scrape: '#/components/schemas/ActorScrapeSubmission',
+                        backup: '#/components/schemas/BackupSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
                         organize: '#/components/schemas/OrganizeSubmission',
@@ -9704,7 +10102,11 @@ export const TaskBatchSubmitRequestSchema = {
                         scrape: '#/components/schemas/ScrapeSubmission',
                         semantic_benchmark: '#/components/schemas/SemanticBenchmarkSubmission',
                         semantic_index: '#/components/schemas/SemanticIndexSubmission',
-                        upscale: '#/components/schemas/UpscaleSubmission'
+                        subtitle_fetch: '#/components/schemas/SubtitleFetchSubmission',
+                        transfer_115: '#/components/schemas/Transfer115Submission',
+                        upscale: '#/components/schemas/UpscaleSubmission',
+                        wash_apply: '#/components/schemas/WashApplySubmission',
+                        wash_scan: '#/components/schemas/WashScanSubmission'
                     }
                 }
             },
@@ -10259,6 +10661,21 @@ export const TaskResponseSchema = {
                         },
                         {
                             $ref: '#/components/schemas/SemanticBenchmarkResult'
+                        },
+                        {
+                            $ref: '#/components/schemas/Transfer115Result'
+                        },
+                        {
+                            $ref: '#/components/schemas/SubtitleFetchResult'
+                        },
+                        {
+                            $ref: '#/components/schemas/WashScanResult'
+                        },
+                        {
+                            $ref: '#/components/schemas/WashApplyResult'
+                        },
+                        {
+                            $ref: '#/components/schemas/BackupResult'
                         }
                     ],
                     discriminator: {
@@ -10266,6 +10683,7 @@ export const TaskResponseSchema = {
                         mapping: {
                             actor_push: '#/components/schemas/ActorPushResult',
                             actor_scrape: '#/components/schemas/ActorScrapeResult',
+                            backup: '#/components/schemas/BackupResult',
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
                             organize: '#/components/schemas/OrganizeResult',
@@ -10276,7 +10694,11 @@ export const TaskResponseSchema = {
                             scrape: '#/components/schemas/ScrapeResult',
                             semantic_benchmark: '#/components/schemas/SemanticBenchmarkResult',
                             semantic_index: '#/components/schemas/SemanticIndexResult',
-                            upscale: '#/components/schemas/UpscaleResult'
+                            subtitle_fetch: '#/components/schemas/SubtitleFetchResult',
+                            transfer_115: '#/components/schemas/Transfer115Result',
+                            upscale: '#/components/schemas/UpscaleResult',
+                            wash_apply: '#/components/schemas/WashApplyResult',
+                            wash_scan: '#/components/schemas/WashScanResult'
                         }
                     }
                 },
@@ -10336,7 +10758,12 @@ export const TaskTypeSchema = {
         'delete',
         'semantic_index',
         'semantic_benchmark',
-        'actor_push'
+        'actor_push',
+        'transfer_115',
+        'subtitle_fetch',
+        'wash_scan',
+        'wash_apply',
+        'backup'
     ],
     title: 'TaskType'
 } as const;
@@ -10582,6 +11009,156 @@ export const ToolSummarySchema = {
     ],
     title: 'ToolSummary',
     description: '目录索引里的一条: 够选工具, 不够直接构造复杂入参.'
+} as const;
+
+export const Transfer115ResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'transfer_115',
+            title: 'Type',
+            default: 'transfer_115'
+        },
+        scanned: {
+            type: 'integer',
+            title: 'Scanned',
+            default: 0
+        },
+        moved: {
+            type: 'integer',
+            title: 'Moved',
+            default: 0
+        },
+        skipped: {
+            type: 'integer',
+            title: 'Skipped',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'Transfer115Result'
+} as const;
+
+export const Transfer115SubmissionSchema = {
+    properties: {
+        full: {
+            type: 'boolean',
+            title: 'Full',
+            default: false
+        },
+        type: {
+            type: 'string',
+            const: 'transfer_115',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'Transfer115Submission',
+    description: '115 中转: 由面板「立即中转」按钮发起.'
+} as const;
+
+export const TransferConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        cookies: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cookies',
+            description: '115 Cookie 串'
+        },
+        source_dir: {
+            type: 'string',
+            title: 'Source Dir',
+            description: '网盘侧源目录',
+            default: ''
+        },
+        target_dir: {
+            type: 'string',
+            title: 'Target Dir',
+            description: '本地 STRM 根目录 (容器内路径)',
+            default: ''
+        },
+        ad_keywords: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Ad Keywords',
+            description: '命中即视为广告文件'
+        },
+        ad_action: {
+            type: 'string',
+            enum: [
+                'skip',
+                'trash'
+            ],
+            title: 'Ad Action',
+            description: '广告文件处理方式',
+            default: 'skip'
+        },
+        interval_minutes: {
+            type: 'integer',
+            maximum: 1440,
+            minimum: 1,
+            title: 'Interval Minutes',
+            default: 10
+        }
+    },
+    type: 'object',
+    title: 'TransferConfig',
+    description: '115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.'
+} as const;
+
+export const TransferStatusResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        pending: {
+            type: 'integer',
+            title: 'Pending'
+        },
+        moved: {
+            type: 'integer',
+            title: 'Moved'
+        },
+        skipped: {
+            type: 'integer',
+            title: 'Skipped'
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'pending',
+        'moved',
+        'skipped',
+        'failed'
+    ],
+    title: 'TransferStatusResponse'
 } as const;
 
 export const TrashSummaryResponseSchema = {
@@ -10970,6 +11547,214 @@ export const ValidationErrorSchema = {
         'type'
     ],
     title: 'ValidationError'
+} as const;
+
+export const WashApplyResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'wash_apply',
+            title: 'Type',
+            default: 'wash_apply'
+        },
+        trashed: {
+            type: 'integer',
+            title: 'Trashed',
+            default: 0
+        },
+        bytes_freed: {
+            type: 'integer',
+            title: 'Bytes Freed',
+            default: 0
+        },
+        skipped: {
+            type: 'integer',
+            title: 'Skipped',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'WashApplyResult'
+} as const;
+
+export const WashApplySubmissionSchema = {
+    properties: {
+        group_keys: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Group Keys',
+            default: []
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'local',
+                'strm',
+                'all'
+            ],
+            title: 'Kind',
+            default: 'all'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        type: {
+            type: 'string',
+            const: 'wash_apply',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'WashApplySubmission',
+    description: '洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行.'
+} as const;
+
+export const WashConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        local: {
+            type: 'boolean',
+            title: 'Local',
+            default: true
+        },
+        strm: {
+            type: 'boolean',
+            title: 'Strm',
+            default: true
+        },
+        min_size_mb: {
+            type: 'integer',
+            minimum: 0,
+            title: 'Min Size Mb',
+            default: 300
+        },
+        keep_days: {
+            type: 'integer',
+            maximum: 365,
+            minimum: 1,
+            title: 'Keep Days',
+            default: 30
+        }
+    },
+    type: 'object',
+    title: 'WashConfig',
+    description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.'
+} as const;
+
+export const WashScanResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'wash_scan',
+            title: 'Type',
+            default: 'wash_scan'
+        },
+        groups: {
+            type: 'integer',
+            title: 'Groups',
+            default: 0
+        },
+        droppable: {
+            type: 'integer',
+            title: 'Droppable',
+            default: 0
+        },
+        bytes_freed: {
+            type: 'integer',
+            title: 'Bytes Freed',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'WashScanResult'
+} as const;
+
+export const WashScanSubmissionSchema = {
+    properties: {
+        kind: {
+            type: 'string',
+            enum: [
+                'local',
+                'strm',
+                'all'
+            ],
+            title: 'Kind',
+            default: 'all'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        type: {
+            type: 'string',
+            const: 'wash_scan',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'WashScanSubmission',
+    description: '洗版扫描: 只出候选清单, 一律不移动文件.'
+} as const;
+
+export const WashStatusResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        groups: {
+            type: 'integer',
+            title: 'Groups'
+        },
+        trashed: {
+            type: 'integer',
+            title: 'Trashed'
+        },
+        restorable_bytes: {
+            type: 'integer',
+            title: 'Restorable Bytes'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'groups',
+        'trashed',
+        'restorable_bytes'
+    ],
+    title: 'WashStatusResponse'
 } as const;
 
 export const WatcherConfigSchema = {

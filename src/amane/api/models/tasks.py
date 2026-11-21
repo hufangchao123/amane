@@ -11,6 +11,8 @@ from ...handlers import (
     ActorPushPayload,
     ActorPushResult,
     ActorScrapeResult,
+    BackupPayload,
+    BackupResult,
     CacheKind,
     CleanupPayload,
     CleanupResult,
@@ -30,8 +32,16 @@ from ...handlers import (
     ScrapeResult,
     SemanticBenchmarkResult,
     SemanticIndexResult,
+    SubtitleFetchPayload,
+    SubtitleFetchResult,
+    Transfer115Payload,
+    Transfer115Result,
     UpscalePayload,
     UpscaleResult,
+    WashApplyPayload,
+    WashApplyResult,
+    WashScanPayload,
+    WashScanResult,
 )
 from ...parsing import ContentType, infer_content_type, parse_file_info
 
@@ -58,7 +68,12 @@ TaskResultPayload = Annotated[
     | ActorPushResult
     | RescrapeResult
     | SemanticIndexResult
-    | SemanticBenchmarkResult,
+    | SemanticBenchmarkResult
+    | Transfer115Result
+    | SubtitleFetchResult
+    | WashScanResult
+    | WashApplyResult
+    | BackupResult,
     Field(discriminator="type"),
 ]
 """任务结果按任务类型判别; 各成员自带 `type` 字面量, 前端据此收窄."""
@@ -281,6 +296,36 @@ class ActorPushSubmission(ActorPushPayload):
     type: Literal["actor_push"]
 
 
+class Transfer115Submission(Transfer115Payload):
+    """115 中转: 由面板「立即中转」按钮发起."""
+
+    type: Literal["transfer_115"]
+
+
+class SubtitleFetchSubmission(SubtitleFetchPayload):
+    """字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑."""
+
+    type: Literal["subtitle_fetch"]
+
+
+class WashScanSubmission(WashScanPayload):
+    """洗版扫描: 只出候选清单, 一律不移动文件."""
+
+    type: Literal["wash_scan"]
+
+
+class WashApplySubmission(WashApplyPayload):
+    """洗版执行: 按扫描挑出的分组移动文件; 空 ``group_keys`` 表示重算后执行."""
+
+    type: Literal["wash_apply"]
+
+
+class BackupSubmission(BackupPayload):
+    """备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数."""
+
+    type: Literal["backup"]
+
+
 TaskSubmission = Annotated[
     RefreshSubmission
     | OrganizeSubmission
@@ -294,7 +339,12 @@ TaskSubmission = Annotated[
     | ActorPushSubmission
     | RescrapeSubmission
     | SemanticIndexSubmission
-    | SemanticBenchmarkSubmission,
+    | SemanticBenchmarkSubmission
+    | Transfer115Submission
+    | SubtitleFetchSubmission
+    | WashScanSubmission
+    | WashApplySubmission
+    | BackupSubmission,
     Field(discriminator="type"),
 ]
 

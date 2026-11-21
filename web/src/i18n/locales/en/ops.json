@@ -1,0 +1,22 @@
+{
+  "transfer": {
+    "title": "115 transfer",
+    "hint": "Moves new cloud files into the STRM root; the work runs as a task, this page is read-only."
+  },
+  "subtitles": {
+    "title": "Subtitles",
+    "hint": "Fetches subtitles by title number; placement reuses the organize pipeline."
+  },
+  "wash": {
+    "title": "Wash",
+    "hint": "Keeps the best copy per title number and moves the rest to trash, restorable."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "hint": "Read-only probes; deep checks and dry runs execute as tasks."
+  },
+  "backup": {
+    "title": "Backup",
+    "hint": "Online database backup plus config bundle; no media or resource cache."
+  }
+}

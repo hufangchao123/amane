@@ -13,6 +13,7 @@ import enAgent from "./locales/en/agent.json";
 import enCommon from "./locales/en/common.json";
 import enManual from "./locales/en/manual.json";
 import enNetworkCheck from "./locales/en/networkCheck.json";
+import enOps from "./locales/en/ops.json";
 import enFeeds from "./locales/en/feeds.json";
 import enFileBrowser from "./locales/en/fileBrowser.json";
 import enLibrary from "./locales/en/library.json";
@@ -28,6 +29,7 @@ import zhCNAgent from "./locales/zh-CN/agent.json";
 import zhCNCommon from "./locales/zh-CN/common.json";
 import zhCNManual from "./locales/zh-CN/manual.json";
 import zhCNNetworkCheck from "./locales/zh-CN/networkCheck.json";
+import zhCNOps from "./locales/zh-CN/ops.json";
 import zhCNFeeds from "./locales/zh-CN/feeds.json";
 import zhCNFileBrowser from "./locales/zh-CN/fileBrowser.json";
 import zhCNLibrary from "./locales/zh-CN/library.json";
@@ -57,6 +59,7 @@ export const resources = {
     schedules: zhCNSchedules,
     savedQueries: zhCNSavedQueries,
     logs: zhCNLogs,
+    ops: zhCNOps,
     agent: zhCNAgent,
   },
   en: {
@@ -73,6 +76,7 @@ export const resources = {
     schedules: enSchedules,
     savedQueries: enSavedQueries,
     logs: enLogs,
+    ops: enOps,
     agent: enAgent,
   },
 } as const;

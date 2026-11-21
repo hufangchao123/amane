@@ -45,6 +45,11 @@ class TaskType(StrEnum):
     SEMANTIC_INDEX = "semantic_index"
     SEMANTIC_BENCHMARK = "semantic_benchmark"
     ACTOR_PUSH = "actor_push"
+    TRANSFER_115 = "transfer_115"
+    SUBTITLE_FETCH = "subtitle_fetch"
+    WASH_SCAN = "wash_scan"
+    WASH_APPLY = "wash_apply"
+    BACKUP = "backup"
 
 
 class RoutineType(StrEnum):
@@ -779,3 +784,55 @@ class SavedQuery(SQLModel, table=True):
     persisted: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class TransferItemState(StrEnum):
+    PENDING = "pending"
+    MOVED = "moved"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+class TransferItem(SQLModel, table=True):
+    """115 中转的逐文件状态; 一个 ``fid`` 一行, 重扫时原地更新."""
+
+    __tablename__ = "transfer_items"  # type: ignore[assignment]
+
+    id: int | None = Field(default=None, primary_key=True)
+    fid: str = Field(unique=True, nullable=False, index=True)
+    """115 文件 ID, 按字符串比对, 避免 JS 侧大整数精度丢失."""
+    file_name: str = Field(nullable=False)
+    state: TransferItemState = Field(default=TransferItemState.PENDING, index=True)
+    attempts: int = Field(default=0)
+    error: str | None = Field(default=None, sa_column=Column(Text))
+    moved_at: datetime | None = Field(default=None)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class WashRecordKind(StrEnum):
+    LOCAL = "local"
+    STRM = "strm"
+
+
+class WashRecordState(StrEnum):
+    TRASHED = "trashed"
+    RESTORED = "restored"
+    PURGED = "purged"
+
+
+class WashRecord(SQLModel, table=True):
+    """洗版一条记录 = 一次「留一个、移一个」; ``removed_path`` 是回收站内的实际位置."""
+
+    __tablename__ = "wash_records"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_wash_records_group_key", "group_key", "kind"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    kind: WashRecordKind = Field(index=True)
+    group_key: str = Field(nullable=False)
+    """同组判定键 (番号 + 库), 洗版只在组内比较."""
+    kept_path: str = Field(nullable=False)
+    removed_path: str = Field(nullable=False)
+    size_bytes: int = Field(default=0)
+    state: WashRecordState = Field(default=WashRecordState.TRASHED, index=True)
+    created_at: datetime = Field(default_factory=_utcnow)
+    expires_at: datetime | None = Field(default=None)

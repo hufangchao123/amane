@@ -1,6 +1,7 @@
 from ._common import LibraryTaskLocks
 from .actor_push import *
 from .actor_scrape import *
+from .backup import *
 from .delete import *
 from .file import *
 from .models import *
@@ -11,4 +12,7 @@ from .rescrape import *
 from .scan_invalid import *
 from .scrape import *
 from .semantic import *
+from .subtitle_fetch import *
+from .transfer115 import *
 from .upscale import *
+from .wash import *

@@ -42,7 +42,14 @@ export type TaskPayload = SubmitTaskData["body"];
 export type SubmittableTaskType = TaskPayload["type"];
 
 /** 面板专用类型: 由页内面板发起, 不出现在手动提交入口. */
-export type PanelOnlyTaskType = "delete" | "semantic_benchmark";
+export type PanelOnlyTaskType =
+  | "delete"
+  | "semantic_benchmark"
+  | "transfer_115"
+  | "subtitle_fetch"
+  | "wash_scan"
+  | "wash_apply"
+  | "backup";
 
 export type ManualTaskType = Exclude<SubmittableTaskType, PanelOnlyTaskType>;
 
@@ -103,6 +110,11 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "semantic_index",
   "semantic_benchmark",
   "actor_push",
+  "transfer_115",
+  "subtitle_fetch",
+  "wash_scan",
+  "wash_apply",
+  "backup",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(

@@ -18,7 +18,7 @@
 | `SEMANTIC_BENCHMARK` | 抽样本地封面与剧照测嵌入吞吐与文本查询延迟, 不写索引 | 不动文件、不写 Metadata / 向量 |
 | `ACTOR_PUSH` | 读取演员与已落盘头像, 匹配媒体服务器的同名人物并写回字段 / 主图 | 创建人物、修改影片、补下载头像 |
 
-`CLEANUP` / `UPSCALE` 扫描 DB / Resource; `ACTOR_SCRAPE` 刮人物; `ACTOR_PUSH` 写媒体服务器; `R18_IMPORT` 导入 dump. 上述类型均不执行影片落盘.
+`TRANSFER_115` / `SUBTITLE_FETCH` / `WASH_SCAN` / `WASH_APPLY` / `BACKUP` 属媒体运维, 边界与库文件约束见 [ops.md](ops.md). `CLEANUP` / `UPSCALE` 扫描 DB / Resource; `ACTOR_SCRAPE` 刮人物; `ACTOR_PUSH` 写媒体服务器; `R18_IMPORT` 导入 dump. 上述类型均不执行影片落盘.
 
 ORGANIZE 的入队来源只有三处: API / Agent 提交, retry 重跑, 库开启自动整理后的链式后继; DELETE 同样只经 API / Agent 提交. Handler 内不许直接 `create_task`, 后继一律经 `TaskResult.followups` 进入完成事务. Watcher 只注册文件并按 `automation` 入队 SCRAPE, 完整的扫描与落盘仍须提交 REFRESH. 手动把 `priority=-1` 用在整理上**不**使它等待刮削完成: 当时尚未刮削完成的文件会被跳过, 须再次运行 ORGANIZE.
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2 as httpx
 import structlog
 
+from ..backup import BackupManager
 from ..config import R18Config
 from ..crawlers import actor_registry, registry
 from ..crawlers.base import CrawlerProfile
@@ -21,6 +22,7 @@ from ..enums import BrowserBackendName, BrowserMode, SiteName
 from ..handlers import (
     ActorPushHandler,
     ActorScrapeHandler,
+    BackupHandler,
     CleanupHandler,
     DeleteHandler,
     LibraryTaskLocks,
@@ -32,7 +34,11 @@ from ..handlers import (
     ScrapeHandler,
     SemanticBenchmarkHandler,
     SemanticIndexHandler,
+    SubtitleFetchHandler,
+    Transfer115Handler,
     UpscaleHandler,
+    WashApplyHandler,
+    WashScanHandler,
 )
 from ..library import InventoryStore
 from ..llm import TranslationCache, TranslationCoalescer, build_translator
@@ -602,6 +608,14 @@ def build_handlers(
         TaskType.SEMANTIC_INDEX: SemanticIndexHandler(semantic),
         TaskType.SEMANTIC_BENCHMARK: SemanticBenchmarkHandler(semantic),
     }
+    # 中转 / 字幕 / 洗版 / 备份: 二期实现, 此处先占位, 入队后立即失败而不是找不到 handler.
+    handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot)
+    handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot)
+    handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
+    handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
+    handlers[TaskType.BACKUP] = BackupHandler(
+        BackupManager(hot.backup, state_dir if state_dir is not None else Path("./data"))
+    )
     # state_dir 缺省回退 cwd/data (精简构造场景).
     handlers[TaskType.R18_IMPORT] = R18ImportHandler(
         config=hot.r18, web_client=web_client, state_dir=state_dir if state_dir is not None else Path("./data")

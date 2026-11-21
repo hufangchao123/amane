@@ -108,6 +108,14 @@ Worker 替换不取消运行中任务: `_rebuild()` 构建新 worker 后旧 work
 
 模型身份是代码常量 (`src/amane/semantic/models.py` 的 `DEFAULT_SPEC`), 不进配置: 换模型 = 换清单, 旧模型的向量按清单的 `(name, version)` 保留. 两个塔分别判断就绪 — 检索要 tokenizer + 文本塔, 索引要视觉塔, `/semantic/diagnostics` 的 `search_ready` / `index_ready` 各对应一个; 检索未就绪时 503. 只有 `SEMANTIC_INDEX` 任务会下载缺失文件到 `{data_dir}/models/` (断点续传 + SHA256 校验), 检索与增量维护只认本地文件. 后端按平台决定 (macOS Core ML, 其余 ONNX Runtime); 分发精度: 视觉塔只发 fp16 (量化后余弦明显掉点), 文本塔 Core ML 用 8bit palettization (p8)、ONNX 用 fp16. 文本塔空闲超时后释放.
 
+## 媒体运维 (Hot)
+
+`transfer` / `subtitles` / `wash` / `backup` 四个 section 各自对应一个功能包 (见 [ops.md](ops.md)), UI 由 schema 自动出表单.
+
+- `enabled` 只管派生入口: 服务层另外要求凭据与目录齐备, 缺项报未启用而不是让任务半途失败.
+- 密钥 (115 Cookie、Assrt Token) 是普通字符串字段, 进 secrets 脱敏, 不进日志与任务 payload.
+- 四项都不进 `_rebuild()` 链: 服务对象在请求内按当前 section 现构造, 配置改动对下一次任务立即生效.
+
 ## `watermark` (Hot)
 
 只在 ORGANIZE 落盘封面时绘制, 不修改 Resource; 片库 CSS overlay 不读 `enabled`. 角标高度 = 图高 × `scale` (不按宽、不按 PNG 原图像素); `corners` 是 `x-frozen-keys` 五类到四角的映射, 同角按中字 / 无码 / 破解 / 流出 / 分辨率向内叠. PNG 覆盖仍是 `{data_dir}/watermarks/{stem}.png`; `480p` / `720p` 在同一目录层内回退别名 `sd` / `hd`.

@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorsRouteImport } from './routes/actors'
+import { Route as BackupRouteImport } from './routes/backup'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ClientRouteImport } from './routes/client'
+import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as LibrariesRouteImport } from './routes/libraries'
 import { Route as LogsRouteImport } from './routes/logs'
@@ -23,7 +25,10 @@ import { Route as PluginsRouteImport } from './routes/plugins'
 import { Route as SavedQueriesRouteImport } from './routes/saved-queries'
 import { Route as SchedulesRouteImport } from './routes/schedules'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SubtitlesRouteImport } from './routes/subtitles'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TransferRouteImport } from './routes/transfer'
+import { Route as WashRouteImport } from './routes/wash'
 import { Route as ActorsIndexRouteImport } from './routes/actors.index'
 import { Route as ActorsActorIdRouteImport } from './routes/actors.$actorId'
 import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
@@ -48,6 +53,11 @@ const ActorsRoute = ActorsRouteImport.update({
   path: '/actors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BackupRoute = BackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
@@ -56,6 +66,11 @@ const CatalogRoute = CatalogRouteImport.update({
 const ClientRoute = ClientRouteImport.update({
   id: '/client',
   path: '/client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticsRoute = DiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedsRoute = FeedsRouteImport.update({
@@ -108,9 +123,24 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubtitlesRoute = SubtitlesRouteImport.update({
+  id: '/subtitles',
+  path: '/subtitles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransferRoute = TransferRouteImport.update({
+  id: '/transfer',
+  path: '/transfer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WashRoute = WashRouteImport.update({
+  id: '/wash',
+  path: '/wash',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActorsIndexRoute = ActorsIndexRouteImport.update({
@@ -182,8 +212,10 @@ const CatalogKindFacetIdRoute = CatalogKindFacetIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/actors': typeof ActorsRouteWithChildren
+  '/backup': typeof BackupRoute
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
@@ -194,7 +226,10 @@ export interface FileRoutesByFullPath {
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
   '/settings': typeof SettingsRoute
+  '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
+  '/transfer': typeof TransferRoute
+  '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
   '/feeds/sources': typeof FeedsSourcesRoute
@@ -211,14 +246,19 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/backup': typeof BackupRoute
   '/client': typeof ClientRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/logs': typeof LogsRoute
   '/manual': typeof ManualRoute
   '/network': typeof NetworkRoute
   '/plugins': typeof PluginsRoute
   '/schedules': typeof SchedulesRoute
   '/settings': typeof SettingsRoute
+  '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
+  '/transfer': typeof TransferRoute
+  '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
   '/feeds/sources': typeof FeedsSourcesRoute
@@ -237,8 +277,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/actors': typeof ActorsRouteWithChildren
+  '/backup': typeof BackupRoute
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
@@ -249,7 +291,10 @@ export interface FileRoutesById {
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
   '/settings': typeof SettingsRoute
+  '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
+  '/transfer': typeof TransferRoute
+  '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
   '/feeds/sources': typeof FeedsSourcesRoute
@@ -269,8 +314,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/actors'
+    | '/backup'
     | '/catalog'
     | '/client'
+    | '/diagnostics'
     | '/feeds'
     | '/libraries'
     | '/logs'
@@ -281,7 +328,10 @@ export interface FileRouteTypes {
     | '/saved-queries'
     | '/schedules'
     | '/settings'
+    | '/subtitles'
     | '/tasks'
+    | '/transfer'
+    | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
     | '/feeds/sources'
@@ -298,14 +348,19 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/backup'
     | '/client'
+    | '/diagnostics'
     | '/logs'
     | '/manual'
     | '/network'
     | '/plugins'
     | '/schedules'
     | '/settings'
+    | '/subtitles'
     | '/tasks'
+    | '/transfer'
+    | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
     | '/feeds/sources'
@@ -323,8 +378,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/actors'
+    | '/backup'
     | '/catalog'
     | '/client'
+    | '/diagnostics'
     | '/feeds'
     | '/libraries'
     | '/logs'
@@ -335,7 +392,10 @@ export interface FileRouteTypes {
     | '/saved-queries'
     | '/schedules'
     | '/settings'
+    | '/subtitles'
     | '/tasks'
+    | '/transfer'
+    | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
     | '/feeds/sources'
@@ -354,8 +414,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActorsRoute: typeof ActorsRouteWithChildren
+  BackupRoute: typeof BackupRoute
   CatalogRoute: typeof CatalogRouteWithChildren
   ClientRoute: typeof ClientRoute
+  DiagnosticsRoute: typeof DiagnosticsRoute
   FeedsRoute: typeof FeedsRouteWithChildren
   LibrariesRoute: typeof LibrariesRouteWithChildren
   LogsRoute: typeof LogsRoute
@@ -366,7 +428,10 @@ export interface RootRouteChildren {
   SavedQueriesRoute: typeof SavedQueriesRouteWithChildren
   SchedulesRoute: typeof SchedulesRoute
   SettingsRoute: typeof SettingsRoute
+  SubtitlesRoute: typeof SubtitlesRoute
   TasksRoute: typeof TasksRoute
+  TransferRoute: typeof TransferRoute
+  WashRoute: typeof WashRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -385,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/backup': {
+      id: '/backup'
+      path: '/backup'
+      fullPath: '/backup'
+      preLoaderRoute: typeof BackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalog': {
       id: '/catalog'
       path: '/catalog'
@@ -397,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/client'
       fullPath: '/client'
       preLoaderRoute: typeof ClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostics': {
+      id: '/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/diagnostics'
+      preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feeds': {
@@ -469,11 +548,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subtitles': {
+      id: '/subtitles'
+      path: '/subtitles'
+      fullPath: '/subtitles'
+      preLoaderRoute: typeof SubtitlesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tasks': {
       id: '/tasks'
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transfer': {
+      id: '/transfer'
+      path: '/transfer'
+      fullPath: '/transfer'
+      preLoaderRoute: typeof TransferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wash': {
+      id: '/wash'
+      path: '/wash'
+      fullPath: '/wash'
+      preLoaderRoute: typeof WashRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/actors/': {
@@ -653,8 +753,10 @@ const SavedQueriesRouteWithChildren = SavedQueriesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActorsRoute: ActorsRouteWithChildren,
+  BackupRoute: BackupRoute,
   CatalogRoute: CatalogRouteWithChildren,
   ClientRoute: ClientRoute,
+  DiagnosticsRoute: DiagnosticsRoute,
   FeedsRoute: FeedsRouteWithChildren,
   LibrariesRoute: LibrariesRouteWithChildren,
   LogsRoute: LogsRoute,
@@ -665,7 +767,10 @@ const rootRouteChildren: RootRouteChildren = {
   SavedQueriesRoute: SavedQueriesRouteWithChildren,
   SchedulesRoute: SchedulesRoute,
   SettingsRoute: SettingsRoute,
+  SubtitlesRoute: SubtitlesRoute,
   TasksRoute: TasksRoute,
+  TransferRoute: TransferRoute,
+  WashRoute: WashRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

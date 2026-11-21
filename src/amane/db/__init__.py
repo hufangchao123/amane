@@ -36,7 +36,12 @@ from .models import (
     TaskSortField,
     TaskStatus,
     TaskType,
+    TransferItem,
+    TransferItemState,
     UserTag,
+    WashRecord,
+    WashRecordKind,
+    WashRecordState,
 )
 from .repo_types import FacetItem
 from .repository import Repository
@@ -80,7 +85,12 @@ __all__ = [
     "TaskSortField",
     "TaskStatus",
     "TaskType",
+    "TransferItem",
+    "TransferItemState",
     "UserTag",
+    "WashRecord",
+    "WashRecordKind",
+    "WashRecordState",
     "create_async_engine_from_path",
     "get_session",
 ]

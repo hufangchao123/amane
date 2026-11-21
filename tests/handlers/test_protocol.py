@@ -16,6 +16,7 @@ from amane.handlers import models as handler_models
 from amane.handlers.models import (
     ActorPushResult,
     ActorScrapeResult,
+    BackupResult,
     CleanupResult,
     DeleteResult,
     OrganizeResult,
@@ -26,7 +27,11 @@ from amane.handlers.models import (
     ScrapeResult,
     SemanticBenchmarkResult,
     SemanticIndexResult,
+    SubtitleFetchResult,
+    Transfer115Result,
     UpscaleResult,
+    WashApplyResult,
+    WashScanResult,
 )
 from amane.handlers.protocol import TaskResult
 from amane.net.errors import FailureReason
@@ -141,6 +146,11 @@ RESULT_CASES = [
         ),
         id="semantic_benchmark",
     ),
+    pytest.param(Transfer115Result(scanned=12, moved=9, skipped=2, failed=1), id="transfer_115"),
+    pytest.param(SubtitleFetchResult(fetched=3, missing=2, failed=0), id="subtitle_fetch"),
+    pytest.param(WashScanResult(groups=4, droppable=6, bytes_freed=1024), id="wash_scan"),
+    pytest.param(WashApplyResult(trashed=6, bytes_freed=1024, skipped=1, failed=0), id="wash_apply"),
+    pytest.param(BackupResult(files=["db-1.sqlite"], bytes_written=2048, pruned=1), id="backup"),
 ]
 
 

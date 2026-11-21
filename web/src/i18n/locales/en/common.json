@@ -56,8 +56,14 @@
     "groups": {
       "browse": "Browse",
       "manage": "Manage",
-      "ops": "Run"
-    }
+      "ops": "Run",
+      "mediaOps": "Media ops"
+    },
+    "transfer": "115 transfer",
+    "subtitles": "Subtitles",
+    "wash": "Wash",
+    "diagnostics": "Diagnostics",
+    "backup": "Backup"
   },
   "defaults": {
     "set": "Set as default",

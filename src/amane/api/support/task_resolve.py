@@ -6,6 +6,7 @@ from ...db.models import TaskType
 from ...handlers import (
     ActorPushPayload,
     ActorScrapePayload,
+    BackupPayload,
     CleanupPayload,
     DeletePayload,
     OrganizePayload,
@@ -16,11 +17,16 @@ from ...handlers import (
     ScrapePayload,
     SemanticBenchmarkPayload,
     SemanticIndexPayload,
+    SubtitleFetchPayload,
+    Transfer115Payload,
     UpscalePayload,
+    WashApplyPayload,
+    WashScanPayload,
 )
 from ..models import (
     ActorPushSubmission,
     ActorScrapeSubmission,
+    BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
     OrganizeSubmission,
@@ -31,8 +37,12 @@ from ..models import (
     ScrapeSubmission,
     SemanticBenchmarkSubmission,
     SemanticIndexSubmission,
+    SubtitleFetchSubmission,
     TaskSubmission,
+    Transfer115Submission,
     UpscaleSubmission,
+    WashApplySubmission,
+    WashScanSubmission,
 )
 
 if TYPE_CHECKING:
@@ -52,6 +62,11 @@ ResolvedPayload = (
     | RescrapePayload
     | SemanticIndexPayload
     | SemanticBenchmarkPayload
+    | Transfer115Payload
+    | SubtitleFetchPayload
+    | WashScanPayload
+    | WashApplyPayload
+    | BackupPayload
 )
 
 
@@ -93,5 +108,19 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.SEMANTIC_INDEX, SemanticIndexPayload(limit=req.limit, force=req.force, kinds=req.kinds)
         case SemanticBenchmarkSubmission():
             return TaskType.SEMANTIC_BENCHMARK, SemanticBenchmarkPayload()
+        case Transfer115Submission():
+            return TaskType.TRANSFER_115, Transfer115Payload(full=req.full)
+        case SubtitleFetchSubmission():
+            return TaskType.SUBTITLE_FETCH, SubtitleFetchPayload(
+                media_file_id=req.media_file_id, library_id=req.library_id
+            )
+        case WashScanSubmission():
+            return TaskType.WASH_SCAN, WashScanPayload(kind=req.kind, library_id=req.library_id)
+        case WashApplySubmission():
+            return TaskType.WASH_APPLY, WashApplyPayload(
+                group_keys=req.group_keys, kind=req.kind, library_id=req.library_id
+            )
+        case BackupSubmission():
+            return TaskType.BACKUP, BackupPayload(kind=req.kind)
         case _:
             assert_never(req)

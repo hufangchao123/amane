@@ -832,6 +832,61 @@ class SemanticConfig(BaseModel):
     auto_maintain: bool = Field(default=False, description="条目图片变化后立即增量索引; 打开时视觉模型常驻")
 
 
+class TransferConfig(BaseModel):
+    """115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作."""
+
+    enabled: bool = False
+
+    cookies: str | None = Field(default=None, description="115 Cookie 串")
+    source_dir: str = Field(default="", description="网盘侧源目录")
+    target_dir: str = Field(default="", description="本地 STRM 根目录 (容器内路径)")
+    ad_keywords: list[str] = Field(default_factory=list, description="命中即视为广告文件")
+    ad_action: Literal["skip", "trash"] = Field(default="skip", description="广告文件处理方式")
+    interval_minutes: int = Field(default=10, ge=1, le=1440)
+
+
+SubtitleProvider = Literal["assrt", "subtitlecat"]
+"""字幕站: assrt 需 Token, subtitlecat 免鉴权."""
+
+DEFAULT_SUBTITLE_PROVIDERS: list[SubtitleProvider] = ["assrt", "subtitlecat"]
+
+
+class SubtitleFetchConfig(BaseModel):
+    """字幕批量下载: 缺凭据时只用免鉴权来源."""
+
+    enabled: bool = False
+
+    assrt_token: str | None = Field(default=None, description="Assrt API Token")
+    providers: list[SubtitleProvider] = Field(default_factory=lambda: list(DEFAULT_SUBTITLE_PROVIDERS))
+    languages: list[str] = Field(default_factory=lambda: ["zh-CN", "zh-TW"])
+    max_attempts: int = Field(default=3, ge=1, le=10)
+
+
+class WashConfig(BaseModel):
+    """洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站."""
+
+    enabled: bool = False
+
+    local: bool = True
+    """参与洗版的本地文件."""
+    strm: bool = True
+    """参与洗版的 STRM 文件."""
+    min_size_mb: int = Field(default=300, ge=0)
+    """小于此体积不参与, 避免误删样片."""
+    keep_days: int = Field(default=30, ge=1, le=365)
+    """回收站保留天数, 到期由清理任务删除."""
+
+
+class BackupConfig(BaseModel):
+    """备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存."""
+
+    enabled: bool = False
+
+    dir: str = Field(default="", description="备份根目录; 空则用 data_dir/backups")
+    keep_db: int = Field(default=7, ge=1, le=90)
+    keep_assets: int = Field(default=3, ge=1, le=90)
+
+
 class HotSettings(BaseModel):
     """运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败."""
 
@@ -890,6 +945,10 @@ class HotSettings(BaseModel):
     llm: LLMConfig = LLMConfig()
     r18: R18Config = R18Config()
     watcher: WatcherConfig = WatcherConfig()
+    transfer: TransferConfig = TransferConfig()
+    subtitles: SubtitleFetchConfig = SubtitleFetchConfig()
+    wash: WashConfig = WashConfig()
+    backup: BackupConfig = BackupConfig()
     worker: WorkerConfig = WorkerConfig()
     logging: LoggingConfig = LoggingConfig()
     plugins: dict[str, PluginConfig] = Field(default_factory=dict, json_schema_extra={"x-hidden": True})
