@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from amane.backup.manager import _stamp
+from amane.backup.manager import ROOT_MARKER, _stamp
 from amane.config.manager import ColdSettings, HotSettings
-from amane.diagnostics import SelfCheck
+from amane.db import TaskStatus, TaskType
+from amane.diagnostics import SelfCheck, selfcheck
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -119,3 +121,107 @@ async def test_backup_freshness(tmp_path: Path, repo: Repository) -> None:
     sqlite3.connect(stale).close()
     fresh.unlink()
     assert next(entry for entry in (await check.run()).items if entry.key == "backup").ok is False
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_disk_free_space_is_graded(tmp_path: Path, repo: Repository, monkeypatch: pytest.MonkeyPatch) -> None:
+    """三级水位: 告急判失败, 偏低只写在 detail 里, 够用什么都不提."""
+    item_by_free: dict[str, Any] = {"detail": ""}
+
+    def fake_usage(path: Path) -> SimpleNamespace:
+        return SimpleNamespace(total=0, used=0, free=item_by_free["free"])
+
+    monkeypatch.setattr(selfcheck.shutil, "disk_usage", fake_usage)
+
+    async def disk_item(free: int) -> Any:
+        item_by_free["free"] = free
+        report = await (await _report(tmp_path, repo)).run()
+        return next(item for item in report.items if item.key == "disk")
+
+    critical = await disk_item(512 << 20)
+    assert critical.ok is False
+    assert "告急" in critical.detail
+
+    low = await disk_item(4 << 30)
+    assert low.ok is True
+    assert "偏低" in low.detail
+
+    plenty = await disk_item(50 << 30)
+    assert plenty.ok is True
+    assert "偏低" not in plenty.detail and "告急" not in plenty.detail
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_backup_age_is_graded_and_assets_reported(tmp_path: Path, repo: Repository) -> None:
+    """备份偏旧不判失败但要提示; 资源归档的年龄单列, 缺了也只是说明一句."""
+    root = tmp_path / "backups"
+    root.mkdir()
+    sqlite3.connect(root / f"amane-db-{_stamp(datetime.now(UTC) - timedelta(days=5))}.sqlite").close()
+    hot = HotSettings.model_validate({"backup": {"enabled": True}})
+    check = await _report(tmp_path, repo, hot)
+
+    stale_but_ok = next(item for item in (await check.run()).items if item.key == "backup")
+    assert stale_but_ok.ok is True
+    assert "偏旧" in stale_but_ok.detail
+    assert "无资源归档" in stale_but_ok.detail
+
+    import tarfile
+
+    archive = root / f"assets-{_stamp(datetime.now(UTC))}.tar.gz"
+    with tarfile.open(archive, "w:gz"):
+        pass
+    with_assets = next(item for item in (await check.run()).items if item.key == "backup")
+    assert "资源归档 0 天前" in with_assets.detail
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_backup_root_outside_data_dir_needs_marker(tmp_path: Path, repo: Repository) -> None:
+    """备份根指到别人的目录: 体检直接说出「要标记文件」, 不等定时任务每轮失败."""
+    foreign = tmp_path.parent / "elsewhere"
+    foreign.mkdir()
+    (foreign / "movie.mkv").write_bytes(b"x")
+    hot = HotSettings.model_validate({"backup": {"enabled": True, "dir": str(foreign)}})
+    item = next(item for item in (await (await _report(tmp_path, repo, hot)).run()).items if item.key == "backup")
+
+    assert item.ok is False
+    assert ROOT_MARKER in item.detail
+
+    (foreign / ROOT_MARKER).write_text("", encoding="utf-8")
+    marked = next(item for item in (await (await _report(tmp_path, repo, hot)).run()).items if item.key == "backup")
+    assert "尚无数据库备份" in marked.detail
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_queue_reports_oldest_wait_and_stalled_worker(tmp_path: Path, repo: Repository) -> None:
+    """有任务排队却没人执行: 最久等待时长越过阈值就判失败, 否则只是把时长报出来."""
+    check = await _report(tmp_path, repo)
+
+    empty = next(item for item in (await check.run()).items if item.key == "queue")
+    assert empty.ok is True
+    assert "最久一条" not in empty.detail
+
+    task = await repo.create_task(TaskType.CLEANUP, {})
+    queued_at = datetime.now(UTC) - timedelta(minutes=45)
+
+    async def _set(status: Any, created_at: datetime | None = None) -> None:
+        async with repo._session() as session:  # 造「等了很久」或「已收工」的既成事实
+            row = await session.get(type(task), task.id)
+            assert row is not None
+            row.status = status
+            if created_at is not None:
+                row.created_at = created_at
+            session.add(row)
+            await session.commit()
+
+    await _set(TaskStatus.QUEUED, queued_at)
+
+    stalled = next(item for item in (await check.run()).items if item.key == "queue")
+    assert stalled.ok is False
+    assert "worker 可能无响应" in stalled.detail
+
+    await _set(TaskStatus.QUEUED, datetime.now(UTC))
+    waiting = next(item for item in (await check.run()).items if item.key == "queue")
+    assert waiting.ok is True
+    assert "最久一条已等待 0 分钟" in waiting.detail
+
+    await _set(TaskStatus.DONE)
