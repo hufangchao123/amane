@@ -38,6 +38,18 @@ def is_secret_query_key(key: str) -> bool:
     return normalized.endswith(_SECRET_QUERY_SUFFIXES)
 
 
+def redact_query(query: str) -> str:
+    """只脱敏查询串; 空串原样返回."""
+    if not query:
+        return query
+    pairs = parse_qsl(query, keep_blank_values=True)
+    if not any(is_secret_query_key(name) for name, _ in pairs):
+        return query
+    return "&".join(
+        f"{name}={REDACTED_QUERY_VALUE}" if is_secret_query_key(name) else f"{name}={value}" for name, value in pairs
+    )
+
+
 def redact_url(url: str) -> str:
     """返回脱敏后的 URL; 不含查询参数与 userinfo 时原样返回."""
     if "?" not in url and "@" not in url.split("//", 1)[-1].split("/", 1)[0]:

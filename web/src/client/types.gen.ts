@@ -700,6 +700,58 @@ export type ApprovalsRow = {
 };
 
 /**
+ * AuditListResponse
+ */
+export type AuditListResponse = {
+    /**
+     * Items
+     */
+    items: Array<AuditRecordResponse>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * AuditRecordResponse
+ */
+export type AuditRecordResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Status
+     */
+    status: number;
+    /**
+     * Duration Ms
+     */
+    duration_ms: number;
+    /**
+     * Client
+     */
+    client: string;
+};
+
+/**
  * BackupConfig
  *
  * 备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.
@@ -11539,3 +11591,57 @@ export type NotifyStatusResponses = {
 };
 
 export type NotifyStatusResponse2 = NotifyStatusResponses[keyof NotifyStatusResponses];
+
+export type ClearAuditData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/audit';
+};
+
+export type ClearAuditResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ClearAuditResponse = ClearAuditResponses[keyof ClearAuditResponses];
+
+export type ListAuditData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Method
+         */
+        method?: string | null;
+    };
+    url: '/api/audit';
+};
+
+export type ListAuditErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListAuditError = ListAuditErrors[keyof ListAuditErrors];
+
+export type ListAuditResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditListResponse;
+};
+
+export type ListAuditResponse = ListAuditResponses[keyof ListAuditResponses];

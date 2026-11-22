@@ -9,6 +9,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+from ..observability.audit import should_audit
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -99,6 +101,32 @@ def browser_source_allowed(headers: Headers, configured_origins: Sequence[str]) 
 def _token_matches(presented: str | None, expected: str) -> bool:
     """常量时间比较. ``compare_digest`` 对非 ASCII 的 ``str`` 抛出 ``TypeError``, 故先按 UTF-8 编码."""
     return presented is not None and hmac.compare_digest(presented.encode(), expected.encode())
+
+
+class AuditMiddleware(BaseHTTPMiddleware):
+    """写操作留痕: 在响应返回前写一行, 失败不影响响应结果."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        start = time.monotonic()
+        response = await call_next(request)
+        path = request.url.path
+        method = request.method
+        if not should_audit(method, path):
+            return response
+        runtime = getattr(request.app.state, "runtime", None)
+        audit = getattr(runtime, "audit", None)
+        if audit is None:
+            return response
+        client = request.client.host if request.client is not None else ""
+        await audit.record(
+            method=method,
+            path=path,
+            query=request.url.query,
+            status=response.status_code,
+            duration_ms=(time.monotonic() - start) * 1000,
+            client=client,
+        )
+        return response
 
 
 class CORSPolicyMiddleware:

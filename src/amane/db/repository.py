@@ -27,6 +27,7 @@ class Repository(
     repos.MetadataRepoMixin,
     repos.SchedulesRepoMixin,
     repos.TasksRepoMixin,
+    repos.AuditRepoMixin,
     repos.NotifyRepoMixin,
     repos.TransferRepoMixin,
     repos.WashRepoMixin,

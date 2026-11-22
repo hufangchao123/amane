@@ -1239,6 +1239,78 @@ export const ApprovalsRowSchema = {
     description: '未决审批快照. 每个回合结束发一条, **空列表表示已无未决**, 后者覆盖前者.\n\n原样携带 AG-UI 中断: 前端既用它渲染审批入口, 也把它交给 runtime 完成 `resume`.'
 } as const;
 
+export const AuditListResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/AuditRecordResponse'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'total'
+    ],
+    title: 'AuditListResponse'
+} as const;
+
+export const AuditRecordResponseSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        method: {
+            type: 'string',
+            title: 'Method'
+        },
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        query: {
+            type: 'string',
+            title: 'Query'
+        },
+        status: {
+            type: 'integer',
+            title: 'Status'
+        },
+        duration_ms: {
+            type: 'integer',
+            title: 'Duration Ms'
+        },
+        client: {
+            type: 'string',
+            title: 'Client'
+        }
+    },
+    type: 'object',
+    required: [
+        'id',
+        'created_at',
+        'method',
+        'path',
+        'query',
+        'status',
+        'duration_ms',
+        'client'
+    ],
+    title: 'AuditRecordResponse'
+} as const;
+
 export const BackupConfigSchema = {
     properties: {
         enabled: {

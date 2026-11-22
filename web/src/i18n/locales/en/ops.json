@@ -247,5 +247,27 @@
       "message": "Message",
       "digest": "Digest"
     }
+  },
+  "audit": {
+    "title": "Audit",
+    "hint": "Write operations trail: who changed which path, and when.",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "cleared": "Cleared",
+    "clearFailed": "Clear failed",
+    "summary": "{total} records",
+    "empty": "Nothing recorded yet",
+    "columns": {
+      "time": "Time",
+      "method": "Method",
+      "path": "Path",
+      "status": "Status",
+      "client": "Client"
+    },
+    "filter": {
+      "method": "Method",
+      "all": "All"
+    },
+    "note": "The trail comes from a queue on the request path, so it may lag the action slightly."
   }
 }

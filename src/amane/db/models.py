@@ -849,6 +849,24 @@ class NotifyRecord(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow, index=True)
 
 
+class AuditRecord(SQLModel, table=True):
+    """一次写操作的留痕; 只记方法与路径, 不记请求体与响应体."""
+
+    __tablename__ = "audit_records"  # type: ignore[assignment]
+
+    id: int | None = Field(default=None, primary_key=True)
+    method: str = Field(index=True)
+    path: str
+    """不含查询参数的路径; 查询参数单列在 ``query``."""
+    query: str = Field(default="")
+    """脱敏后的查询串, 便于分辨同一路径的不同请求."""
+    status: int = Field(default=0)
+    duration_ms: int = Field(default=0)
+    client: str = Field(default="")
+    """请求方地址, 可能是反向代理后的地址."""
+    created_at: datetime = Field(default_factory=_utcnow, index=True)
+
+
 class WashRecord(SQLModel, table=True):
     """洗版一条记录 = 一次「留一个、移一个」; ``removed_path`` 是回收站内的实际位置."""
 

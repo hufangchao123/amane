@@ -50,6 +50,7 @@ from ..llm import TranslationCache, TranslationCoalescer, build_translator
 from ..media.watermarks import user_watermark_dir
 from ..net.browser import BrowserPool
 from ..net.http import RateLimiters, WebClient, site_proxy_overrides
+from ..observability.audit import AuditLog
 from ..playback import PlaybackFactory, PlaybackState
 from ..plugins.manager import PluginManager
 from ..plugins.packaging import install_plugin_path, install_plugin_zip, uninstall_plugin_tree
@@ -248,6 +249,8 @@ class AppRuntime:
     playback_state: PlaybackState = field(default_factory=PlaybackState)
     library_locks: LibraryTaskLocks = field(default_factory=LibraryTaskLocks)
     inventory_store: InventoryStore = field(default_factory=InventoryStore)
+    audit: AuditLog | None = None
+    """写操作留痕; 未启用时为空, 中间件跳过."""
     semantic: SemanticService | None = None
     browser: BrowserPool | None = None
     r18_handle: R18Handle | None = None

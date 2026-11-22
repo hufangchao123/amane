@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from .actors import router as actors_router
 from .agent import router as agent_router
 from .agent_agui import router as agent_agui_router
+from .audit import router as audit_router
 from .backup import router as backup_router
 from .bootstrap import router as bootstrap_router
 from .cleanup import router as cleanup_router
@@ -72,3 +73,4 @@ router.include_router(backup_router)
 router.include_router(trash_router)
 router.include_router(nfo_router)
 router.include_router(notify_router)
+router.include_router(audit_router)

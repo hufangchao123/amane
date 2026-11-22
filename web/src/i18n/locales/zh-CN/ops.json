@@ -246,5 +246,27 @@
       "message": "消息",
       "digest": "摘要"
     }
+  },
+  "audit": {
+    "title": "审计",
+    "hint": "写操作留痕：谁在什么时候改了哪条路径。",
+    "refresh": "刷新",
+    "clear": "清空",
+    "cleared": "已清空",
+    "clearFailed": "清空失败",
+    "summary": "共 {total} 条",
+    "empty": "暂无留痕",
+    "columns": {
+      "time": "时间",
+      "method": "方法",
+      "path": "路径",
+      "status": "状态",
+      "client": "来源"
+    },
+    "filter": {
+      "method": "方法",
+      "all": "全部"
+    },
+    "note": "写操作留痕来自请求路径上的队列，可能比刚发生的操作晚一拍。"
   }
 }

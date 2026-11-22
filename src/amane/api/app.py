@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from ..app.bootstrap import start_app
 from ..version import get_version
-from .middleware import CORSPolicyMiddleware, LoggingMiddleware, TokenAuthMiddleware
+from .middleware import AuditMiddleware, CORSPolicyMiddleware, LoggingMiddleware, TokenAuthMiddleware
 from .routes import router
 from .spa import mount_spa
 
@@ -51,6 +51,8 @@ def create_app() -> FastAPI:
     app.include_router(router)
     mount_spa(app)  # 必须在 API 路由之后, 以免 catch-all 覆盖 API
     app.add_middleware(TokenAuthMiddleware)
+    # 留痕在鉴权之外, 被拒的写请求也要留下痕迹
+    app.add_middleware(AuditMiddleware)
     # token 关闭时不放开跨源, 见 CORSPolicyMiddleware
     app.add_middleware(CORSPolicyMiddleware)
     # 最后注册 LoggingMiddleware, 使其位于最外层, 才能记录内层自定义中间件的异常

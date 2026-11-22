@@ -23,6 +23,7 @@ from ..library import InventoryStore
 from ..llm import TranslationCache, TranslationCoalescer
 from ..media import ResourceStore
 from ..observability import setup_logging
+from ..observability.audit import AuditLog
 from ..playback import PlaybackFactory, PlaybackState
 from ..plugins.manager import PluginManager
 from ..release import ReleaseChecker
@@ -234,6 +235,8 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
         watcher_service = None
         logger.warning("watcher service not started", exc_info=True)
 
+    audit = AuditLog(repo)
+
     playback_state = PlaybackState()
     runtime = AppRuntime(
         repo=repo,
@@ -246,6 +249,7 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
         release_checker=ReleaseChecker(),
         resource_store=resource_store,
         proxy_failure_cache=ProxyFailureCache(),
+        audit=audit,
         watcher_service=watcher_service,
         feed_service=feed_service,
         safe_dirs=safe_dirs,
