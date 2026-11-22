@@ -2818,6 +2818,12 @@ export type MediaServerConfig = {
      * 校验 HTTPS 证书; 自签名证书可关闭
      */
     verify_tls?: boolean;
+    /**
+     * Auto Refresh
+     *
+     * 整理落盘后自动让媒体服务器重扫媒体库
+     */
+    auto_refresh?: boolean;
 };
 
 /**

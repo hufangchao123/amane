@@ -8,7 +8,7 @@ from uuid import uuid4
 import structlog
 
 from ..config import HotSettings, WatermarkConfig
-from ..db.models import Library, MediaFile
+from ..db.models import Library, MediaFile, TaskType
 from ..db.repo_types import MediaFileUpdates
 from ..enums import ActorGender, DownloadableResource, LinkMode
 from ..library import MEDIA_EXTENSIONS, LibraryFileKind, LibraryScan, ancestor_dirs, prune_empty_dirs
@@ -44,10 +44,11 @@ from .models import (
     ORGANIZE_CONFLICT_LIMIT,
     CleanupPayload,
     CleanupResult,
+    MediaRefreshPayload,
     OrganizePayload,
     OrganizeResult,
 )
-from .protocol import TaskHandler, TaskResult
+from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config import HotSettings
@@ -659,7 +660,21 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                 pruned_dirs=pruned_dirs,
                 conflicts=conflicts,
             ),
+            followups=self._media_server_followups(library, organized),
         )
+
+    def _media_server_followups(self, library: Library, organized: int) -> list[FollowupTask]:
+        """有文件落盘时让媒体服务器重扫; 未配置或开关关闭时不入队."""
+        if organized == 0 or not self._config.media_server.enabled or not self._config.media_server.auto_refresh:
+            return []
+        return [
+            FollowupTask(
+                key=f"media-refresh:{library.id}",
+                task_type=TaskType.MEDIA_REFRESH,
+                payload=MediaRefreshPayload().model_dump(mode="json"),
+                priority=-1,
+            )
+        ]
 
 
 def _record_conflicts(conflicts: list[OrganizeConflict], entries: Sequence[OrganizeConflict]) -> int:

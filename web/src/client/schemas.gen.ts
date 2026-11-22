@@ -3734,7 +3734,8 @@ export const HotSettingsSchema = {
             $ref: '#/components/schemas/MediaServerConfig',
             default: {
                 kind: 'jellyfin',
-                verify_tls: true
+                verify_tls: true,
+                auto_refresh: false
             }
         },
         actor_scraping: {
@@ -5610,6 +5611,12 @@ export const MediaServerConfigSchema = {
             title: 'Verify Tls',
             description: '校验 HTTPS 证书; 自签名证书可关闭',
             default: true
+        },
+        auto_refresh: {
+            type: 'boolean',
+            title: 'Auto Refresh',
+            description: '整理落盘后自动让媒体服务器重扫媒体库',
+            default: false
         }
     },
     type: 'object',
