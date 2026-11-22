@@ -6,10 +6,12 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import pytest
+from pydantic import ValidationError
 
 from amane.config.manager import HotSettings, NotifyConfig
 from amane.db.models import TaskType
 from amane.handlers import NotifyHandler, NotifyPayload
+from amane.handlers.models import NOTIFY_BODY_LIMIT, NOTIFY_TITLE_LIMIT
 from amane.notify.service import Notifier, NotifyOutcome
 
 if TYPE_CHECKING:
@@ -75,3 +77,14 @@ async def test_digest_builds_summary_from_repository(repo: Repository) -> None:
     assert "115 中转" in body
     assert result.result is not None
     assert result.result.digest_days == 7
+
+
+def test_payload_rejects_over_long_title() -> None:
+    """载荷进任务表, 批量提交时无上限会被写成几 MB 的 JSON."""
+    with pytest.raises(ValidationError):
+        NotifyPayload(title="字" * (NOTIFY_TITLE_LIMIT + 1))
+
+
+def test_payload_rejects_over_long_body() -> None:
+    with pytest.raises(ValidationError):
+        NotifyPayload(body="字" * (NOTIFY_BODY_LIMIT + 1))

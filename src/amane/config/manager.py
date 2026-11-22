@@ -893,10 +893,21 @@ class NotifyConfig(BaseModel):
 
     kind: NotifyKind = "webhook"
     """渠道类型; 决定请求形状, 见 `notify/channels.py`."""
-    url: str = Field(default="", description="渠道地址; 可能含密钥, 导出任务记录时脱敏")
+    url: str = Field(default="", max_length=2000, description="渠道地址; 可能含密钥, 导出任务记录时脱敏")
     timeout_seconds: int = Field(default=10, ge=1, le=60)
     max_records: int = Field(default=50, ge=1, le=1000)
     """保留的发送记录条数, 超出部分由下一次发送删除."""
+
+    @field_validator("url")
+    @classmethod
+    def _check_url(cls, value: str) -> str:
+        """空表示未配置; 非空必须是 http(s) 地址, 让配置阶段就报错, 而不是等推送时才发现."""
+        if not value:
+            return value
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("通知地址须是 http(s) 地址")
+        return value
 
 
 class BackupConfig(BaseModel):

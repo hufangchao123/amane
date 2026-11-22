@@ -634,12 +634,17 @@ class AvatarCheckResult(BaseModel):
     samples: list[str] = Field(default_factory=list)
 
 
+#: 通知标题与正文的长度上限: 载荷进任务表, 批量提交时无上限会被写成几 MB 的 JSON.
+NOTIFY_TITLE_LIMIT = 200
+NOTIFY_BODY_LIMIT = 2000
+
+
 class NotifyPayload(BaseModel):
     """``kind=message`` 原样转发标题与正文; ``kind=digest`` 现算一份统计摘要."""
 
     kind: Literal["message", "digest"] = "message"
-    title: str = ""
-    body: str = ""
+    title: str = Field(default="", max_length=NOTIFY_TITLE_LIMIT)
+    body: str = Field(default="", max_length=NOTIFY_BODY_LIMIT)
 
 
 class NotifyResult(BaseModel):

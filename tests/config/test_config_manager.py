@@ -17,6 +17,7 @@ from amane.config import (
     DownloadableResource,
     HotSettings,
     MediaServerConfig,
+    NotifyConfig,
     ScrapingConfig,
     SiteConfig,
     WatermarkConfig,
@@ -189,6 +190,23 @@ class TestMediaServerConfig:
     )
     def test_enabled(self, url: str, api_key: str | None, expected: bool):
         assert MediaServerConfig(url=url, api_key=api_key).enabled is expected
+
+
+class TestNotifyConfig:
+    """通知地址的格式与长度: 配置阶段就拦住, 不等到推送失败."""
+
+    @pytest.mark.parametrize("url", ["", "https://sctapi.ftqq.com/KEY.send", "http://192.168.9.2:8080/hook"])
+    def test_accepts_http_urls(self, url: str):
+        assert NotifyConfig(url=url).url == url
+
+    @pytest.mark.parametrize("url", ["sctapi.ftqq.com/KEY.send", "ftp://example.com/x", "https://"])
+    def test_rejects_non_http_url(self, url: str):
+        with pytest.raises(ValidationError, match="http"):
+            NotifyConfig(url=url)
+
+    def test_rejects_over_long_url(self):
+        with pytest.raises(ValidationError):
+            NotifyConfig(url="https://example.com/" + "a" * 2000)
 
 
 class TestScrapingDownloadResources:

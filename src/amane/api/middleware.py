@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from ..observability.audit import should_audit
 
@@ -22,6 +22,9 @@ logger = structlog.get_logger("amane.request")
 
 #: token 校验豁免的 API 路径: 就绪检查与接入引导. 免鉴权在此显式登记, 便于集中审查.
 _TOKEN_EXEMPT = {"/api/health", "/api/agent-guide"}
+
+#: 写操作没被执行的响应: 只记日志, 不占审计表.
+_AUDIT_SKIP_STATUSES = frozenset({401, 403})
 
 #: 图片 token 只对 ``/api/resources/*`` 的 GET 请求生效, 供无法附加请求头的消费方
 #: (Jellyfin / Emby 宿主) 获取图片.
@@ -104,29 +107,47 @@ def _token_matches(presented: str | None, expected: str) -> bool:
 
 
 class AuditMiddleware(BaseHTTPMiddleware):
-    """写操作留痕: 在响应返回前写一行, 失败不影响响应结果."""
+    """写操作留痕: 在响应返回前写一行, 失败不影响响应结果.
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+    被拒的写请求 (401 / 403) 不落库: 没有发生写入, 逐条同步 commit 反而会被高频匿名请求放大.
+    抛出未处理异常的写请求以 500 留痕 —— 最该追溯的失败不能恰好缺席.
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.monotonic()
-        response = await call_next(request)
-        path = request.url.path
-        method = request.method
-        if not should_audit(method, path):
+        response: Response | None = None
+        try:
+            response = await call_next(request)
             return response
+        finally:
+            status = response.status_code if response is not None else 500
+            try:
+                await self._record(request, status=status, start=start)
+            except Exception as error:  # 留痕永远不该改变响应
+                logger.exception("audit middleware failed", path=request.url.path, error=str(error))
+
+    @staticmethod
+    async def _record(request: Request, *, status: int, start: float) -> None:
+        method = request.method
+        path = request.url.path
+        if not should_audit(method, path):
+            return
+        client = request.client.host if request.client is not None else ""
+        if status in _AUDIT_SKIP_STATUSES:
+            logger.info("write request rejected", method=method, path=path, status=status, client=client)
+            return
         runtime = getattr(request.app.state, "runtime", None)
         audit = getattr(runtime, "audit", None)
         if audit is None:
-            return response
-        client = request.client.host if request.client is not None else ""
+            return
         await audit.record(
             method=method,
             path=path,
             query=request.url.query,
-            status=response.status_code,
+            status=status,
             duration_ms=(time.monotonic() - start) * 1000,
             client=client,
         )
-        return response
 
 
 class CORSPolicyMiddleware:

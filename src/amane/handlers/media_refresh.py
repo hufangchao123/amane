@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..media_server import MediaServerClient, MediaServerError
+from ..utils.urls import redact_url
 from .models import MediaRefreshPayload, MediaRefreshResult
 from .protocol import TaskHandler, TaskResult
 
@@ -35,7 +36,7 @@ class MediaRefreshHandler(TaskHandler[MediaRefreshPayload, MediaRefreshResult]):
         if not cfg.enabled or cfg.url is None:
             return TaskResult(success=False, error="媒体服务器未配置: 需要 media_server.url 与 media_server.api_key")
 
-        result = MediaRefreshResult(kind=cfg.kind, url=cfg.url)
+        result = MediaRefreshResult(kind=cfg.kind, url=redact_url(cfg.url))
         try:
             async with self._client_factory(cfg) as client:
                 await client.refresh_library()
