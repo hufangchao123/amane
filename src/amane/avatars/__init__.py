@@ -5,6 +5,7 @@ from .audit import (
     SAMPLE_LIMIT,
     AvatarCheckOutcome,
     AvatarFinding,
+    WebAvatarSource,
     looks_like_image,
     verify_location,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "SAMPLE_LIMIT",
     "AvatarCheckOutcome",
     "AvatarFinding",
+    "WebAvatarSource",
     "looks_like_image",
     "verify_location",
 ]

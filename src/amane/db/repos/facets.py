@@ -405,6 +405,25 @@ class FacetsRepoMixin(RepositoryMixinBase):
                 await session.commit()
             return ok
 
+    async def remove_actor_image_url(self, actor_id: int, url: str) -> bool:
+        """去掉一个头像地址; 不改字段锁与来源.
+
+        运维清理失效链接走这里, 而不是 :meth:`update_actor`: 一次「修坏图」不该把 ``image_urls``
+        锁进 ``locked_fields``, 那会让后续刮削不再维护该字段; 整行读改写也在同一事务内完成,
+        不会用旧快照覆盖并发写入的其它地址.
+        """
+        async with self._session() as session:
+            actor = await session.get(Actor, actor_id)
+            if actor is None:
+                return False
+            remaining = [item for item in actor.image_urls if item != url]
+            if len(remaining) == len(actor.image_urls):
+                return False
+            actor.image_urls = remaining
+            session.add(actor)
+            await session.commit()
+        return True
+
     async def update_actor(
         self, actor_id: int, *, mode: WriteMode = WriteMode.AUTO, **updates: Unpack[ActorPersonFields]
     ) -> Actor | None:

@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
+import shutil
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from ..avatars import AvatarFinding, verify_location
 from ..avatars.audit import SAMPLE_LIMIT
-from ..db.repo_types import WriteMode
 from ..net.egress import EgressPolicy
 from .models import AvatarCheckPayload, AvatarCheckResult
 from .protocol import TaskHandler, TaskResult
 
 if TYPE_CHECKING:
-    from ..avatars.audit import AvatarHttp
+    from ..avatars.audit import AvatarSource
     from ..config import HotSettings
     from ..db.repository import Repository
 
@@ -35,7 +37,7 @@ class AvatarCheckHandler(TaskHandler[AvatarCheckPayload, AvatarCheckResult]):
         self,
         repo: Repository,
         hot: HotSettings,
-        web: AvatarHttp,
+        source: AvatarSource,
         *,
         state_dir: Path | None = None,
         egress: EgressPolicy | None = None,
@@ -43,60 +45,68 @@ class AvatarCheckHandler(TaskHandler[AvatarCheckPayload, AvatarCheckResult]):
         super().__init__(payload_t=AvatarCheckPayload, result_t=AvatarCheckResult)
         self._repo = repo
         self._hot = hot
-        self._web = web
+        self._source = source
         self._state_dir = state_dir if state_dir is not None else Path("./data")
         self._egress = egress if egress is not None else EgressPolicy()
 
     async def handle(self, payload: AvatarCheckPayload) -> TaskResult[AvatarCheckResult]:
-        scratch = self._state_dir / "avatar-check"
-        checked = ok = broken = unknown = cleared = 0
+        # 每轮一个临时目录: 并发任务共用同一路径会读到对方写了一半的文件
+        scratch = self._state_dir / "avatar-check" / uuid4().hex
+        checked = ok = broken = unknown = cleared = failed = 0
         samples: list[AvatarFinding] = []
-        offset = 0
-        while checked < payload.limit:
-            page = await self._repo.list_actors(offset=offset, limit=ACTOR_PAGE)
-            if not page:
-                break
-            offset += len(page)
-            for actor in page:
-                if checked >= payload.limit:
+        try:
+            offset = 0
+            while checked + failed < payload.limit:
+                page = await self._repo.list_actors(offset=offset, limit=ACTOR_PAGE)
+                if not page:
                     break
-                if actor.id is None or not actor.image_urls:
-                    continue
-                checked += 1
-                url = actor.image_urls[0]
-                verdict, detail = await verify_location(
-                    self._web, url, scratch / f"{actor.id}.bin", egress=self._egress
-                )
-                if verdict == "ok":
-                    ok += 1
-                    continue
-                if len(samples) < SAMPLE_LIMIT:
-                    samples.append(
-                        AvatarFinding(actor_id=actor.id, name=actor.name, url=url, verdict=verdict, detail=detail)
-                    )
-                if verdict == "unknown":
-                    unknown += 1
-                    continue
-                broken += 1
-                if payload.clear_broken and await self._clear(actor.id, url):
-                    cleared += 1
+                offset += len(page)
+                for actor in page:
+                    if checked + failed >= payload.limit:
+                        break
+                    if actor.id is None or not actor.image_urls:
+                        continue
+                    url = actor.image_urls[0]
+                    try:
+                        verdict, detail = await verify_location(
+                            self._source, url, scratch / f"{actor.id}.bin", egress=self._egress
+                        )
+                    except Exception as error:  # 单个演员的意外不报废整轮
+                        logger.exception("avatar check failed", actor_id=actor.id, error=str(error))
+                        failed += 1
+                        continue
+                    checked += 1
+                    if verdict == "ok":
+                        ok += 1
+                        continue
+                    if len(samples) < SAMPLE_LIMIT:
+                        samples.append(
+                            AvatarFinding(actor_id=actor.id, name=actor.name, url=url, verdict=verdict, detail=detail)
+                        )
+                    if verdict == "unknown":
+                        unknown += 1
+                        continue
+                    broken += 1
+                    if payload.clear_broken and await self._clear(actor.id, url):
+                        cleared += 1
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+            with suppress(OSError):
+                scratch.parent.rmdir()
         result = AvatarCheckResult(
             checked=checked,
             ok=ok,
             broken=broken,
             unknown=unknown,
             cleared=cleared,
+            failed=failed,
             samples=[f"#{item.actor_id} {item.name}: {item.detail or item.verdict}" for item in samples],
         )
-        logger.info("avatar check done", checked=checked, broken=broken, unknown=unknown, cleared=cleared)
-        return TaskResult(success=True, result=result)
+        logger.info(
+            "avatar check done", checked=checked, broken=broken, unknown=unknown, cleared=cleared, failed=failed
+        )
+        return TaskResult(success=failed == 0, result=result)
 
     async def _clear(self, actor_id: int, url: str) -> bool:
-        """摘掉这个坏地址; 其余地址保留."""
-        actor = await self._repo.get_actor(actor_id)
-        if actor is None:
-            return False
-        await self._repo.update_actor(
-            actor_id, image_urls=[item for item in actor.image_urls if item != url], mode=WriteMode.MANUAL
-        )
-        return True
+        """摘掉这个坏地址; 其余地址保留, 字段锁不变."""
+        return await self._repo.remove_actor_image_url(actor_id, url)

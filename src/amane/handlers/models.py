@@ -630,6 +630,7 @@ class AvatarCheckResult(BaseModel):
     broken: int = 0
     unknown: int = 0
     cleared: int = 0
+    failed: int = 0
     samples: list[str] = Field(default_factory=list)
 
 
