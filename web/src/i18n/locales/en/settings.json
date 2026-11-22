@@ -940,6 +940,16 @@
           "newest": "Newest modified",
           "oldest": "Oldest modified"
         }
+      },
+      "strm_prefer": {
+        "label": "Which STRM copy to keep",
+        "description": "A pointer has no quality or size. Default compares container then path; the file-name option trusts the label inside the name.",
+        "options": {
+          "path": "Container and path (recommended)",
+          "definition": "Definition in file name",
+          "newest": "Newest modified",
+          "oldest": "Oldest modified"
+        }
       }
     },
     "watcher": {

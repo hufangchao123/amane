@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 from amane.db.models import WashRecordKind
-from amane.enums import WashPrefer
+from amane.enums import StrmPrefer, WashPrefer
 from amane.library.wash.model import (
     WashEntry,
     build_groups,
@@ -189,11 +189,52 @@ def test_prefer_strategy_picks_keep(prefer: WashPrefer, entries: list[WashEntry]
 def test_strm_groups_ignore_prefer() -> None:
     """STRM 没有画质与体积, 单维度策略对它无效."""
     groups = build_groups(
-        [entry("b/ABC-123.strm", kind=STRM, size=0, mtime=900.0), entry("a/ABC-123.strm", kind=STRM, size=0, mtime=1.0)],
+        [
+            entry("b/ABC-123.strm", kind=STRM, size=0, mtime=900.0),
+            entry("a/ABC-123.strm", kind=STRM, size=0, mtime=1.0),
+        ],
         min_size_bytes=0,
         prefer=WashPrefer.NEWEST,
     )
     assert groups[0].keep.path == "/lib/a/ABC-123.strm"
+
+
+STRM_PREFER_CASES = [
+    pytest.param(
+        StrmPrefer.PATH,
+        [entry("b/ABC-123.strm", kind=STRM, definition="8K"), entry("a/ABC-123.strm", kind=STRM, definition="480p")],
+        "/lib/a/ABC-123.strm",
+        id="path-is-default-and-ignores-definition",
+    ),
+    pytest.param(
+        StrmPrefer.DEFINITION,
+        [entry("a/ABC-123.strm", kind=STRM, definition="480p"), entry("b/ABC-123.strm", kind=STRM, definition="1080p")],
+        "/lib/b/ABC-123.strm",
+        id="definition-follows-file-name",
+    ),
+    pytest.param(
+        StrmPrefer.NEWEST,
+        [entry("old/ABC-123.strm", kind=STRM, mtime=100.0), entry("new/ABC-123.strm", kind=STRM, mtime=900.0)],
+        "/lib/new/ABC-123.strm",
+        id="newest-follows-mtime",
+    ),
+    pytest.param(
+        StrmPrefer.OLDEST,
+        [entry("old/ABC-123.strm", kind=STRM, mtime=100.0), entry("new/ABC-123.strm", kind=STRM, mtime=900.0)],
+        "/lib/old/ABC-123.strm",
+        id="oldest-follows-mtime",
+    ),
+]
+
+
+@pytest.mark.parametrize(("strm_prefer", "entries", "expected"), STRM_PREFER_CASES)
+def test_strm_prefer_is_independent_of_local_prefer(
+    strm_prefer: StrmPrefer, entries: list[WashEntry], expected: str
+) -> None:
+    """STRM 组单独一套策略: 本地设为体积优先也不影响它."""
+    groups = build_groups(reversed(entries), min_size_bytes=0, prefer=WashPrefer.LARGEST, strm_prefer=strm_prefer)
+    assert len(groups) == 1
+    assert groups[0].keep.path == expected
 
 
 def test_strm_ignores_size_and_definition() -> None:

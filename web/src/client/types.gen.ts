@@ -5595,6 +5595,13 @@ export type SrConfig = {
 export type SrPreset = 'realesr-photo-4x' | 'waifu-photo-2x';
 
 /**
+ * StrmPrefer
+ *
+ * STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.
+ */
+export type StrmPrefer = 'path' | 'definition' | 'newest' | 'oldest';
+
+/**
  * SubtitleAuditResult
  *
  * ``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径.
@@ -7058,6 +7065,7 @@ export type WashConfig = {
      */
     keep_days?: number;
     prefer?: WashPrefer;
+    strm_prefer?: StrmPrefer;
 };
 
 /**

@@ -3850,7 +3850,8 @@ export const HotSettingsSchema = {
                 strm: true,
                 min_size_mb: 300,
                 keep_days: 30,
-                prefer: 'quality'
+                prefer: 'quality',
+                strm_prefer: 'path'
             }
         },
         notify: {
@@ -10430,6 +10431,18 @@ export const SrPresetSchema = {
     title: 'SrPreset'
 } as const;
 
+export const StrmPreferSchema = {
+    type: 'string',
+    enum: [
+        'path',
+        'definition',
+        'newest',
+        'oldest'
+    ],
+    title: 'StrmPrefer',
+    description: 'STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.'
+} as const;
+
 export const SubtitleAuditResultSchema = {
     properties: {
         type: {
@@ -12867,6 +12880,10 @@ export const WashConfigSchema = {
         prefer: {
             $ref: '#/components/schemas/WashPrefer',
             default: 'quality'
+        },
+        strm_prefer: {
+            $ref: '#/components/schemas/StrmPrefer',
+            default: 'path'
         }
     },
     type: 'object',

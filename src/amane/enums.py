@@ -97,6 +97,15 @@ class WashPrefer(StrEnum):
     OLDEST = "oldest"
 
 
+class StrmPrefer(StrEnum):
+    """STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置."""
+
+    PATH = "path"
+    DEFINITION = "definition"
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class LibraryAutomation(StrEnum):
     """媒体库自动化级别 (只控制发现侧). 含更低级别的行为; 自动整理由 `Library.auto_organize` 单独控制."""
 

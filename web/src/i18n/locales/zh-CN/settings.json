@@ -940,6 +940,16 @@
           "newest": "修改时间最新",
           "oldest": "修改时间最旧"
         }
+      },
+      "strm_prefer": {
+        "label": "STRM 组保留哪一份",
+        "description": "指针没有画质与体积。默认只比容器与路径；按文件名档位等于信任文件名里的标记。",
+        "options": {
+          "path": "容器与路径（推荐）",
+          "definition": "文件名清晰度",
+          "newest": "修改时间最新",
+          "oldest": "修改时间最旧"
+        }
       }
     },
     "watcher": {

@@ -32,6 +32,7 @@ from ..enums import (
     Language,
     MetadataField,
     SiteName,
+    StrmPrefer,
     WashPrefer,
     WatermarkCorner,
     WatermarkKind,
@@ -883,7 +884,9 @@ class WashConfig(BaseModel):
     keep_days: int = Field(default=30, ge=1, le=365)
     """回收站保留天数, 到期由清理任务删除."""
     prefer: WashPrefer = WashPrefer.QUALITY
-    """同组留哪一份: 默认按画质 (分辨率 → 码率 → 体积); 其余三种只比一个维度."""
+    """本地文件留哪一份: 默认按画质 (分辨率 → 码率 → 体积); 其余三种只比一个维度."""
+    strm_prefer: StrmPrefer = StrmPrefer.PATH
+    """STRM 组留哪一份: 默认按容器与路径; 可选按文件名档位或修改时间."""
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]

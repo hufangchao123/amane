@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ...db.models import WashRecordKind
-from ...enums import WashPrefer
+from ...enums import StrmPrefer, WashPrefer
 from ...parsing import DEFINITION_VALUES, canonical_definition
 
 if TYPE_CHECKING:
@@ -149,9 +149,7 @@ def container_rank(path: str | Path) -> int:
         return len(CONTAINER_PRIORITY)
 
 
-def local_sort_key(
-    entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY
-) -> tuple[int, float, int, int, str]:
+def local_sort_key(entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY) -> tuple[int, float, int, int, str]:
     """本地组的排序键 (升序即优先级从高到低).
 
     默认的五档见模块文档; 其余三种策略只按一个维度比较, 再用容器与路径做决定性兜底 ——
@@ -170,18 +168,38 @@ def local_sort_key(
     return (definition_rank(entry.definition), -bitrate, -entry.size, container, entry.path)
 
 
-def strm_sort_key(entry: WashEntry) -> tuple[int, str]:
-    """STRM 组的排序键: 只比容器与路径, 不比体积 / 码率 / 档位."""
-    return (container_rank(entry.path), entry.path)
+def strm_sort_key(entry: WashEntry, prefer: StrmPrefer = StrmPrefer.PATH) -> tuple[int, float, int, int, str]:
+    """STRM 组的排序键 (升序即优先级从高到低).
+
+    默认只比容器与路径: 指针本身没有画质与体积, 写进文件名的档位说的是云端那份文件, 未经校验.
+    用户显式选了按文件名档位时才用它 —— 那等于接受「信名字」这个前提. 体积与码率永远不参与.
+    """
+    container = container_rank(entry.path)
+    if prefer is StrmPrefer.DEFINITION:
+        return (definition_rank(entry.definition), 0.0, 0, container, entry.path)
+    if prefer is StrmPrefer.NEWEST:
+        return (0, -(entry.mtime if entry.mtime is not None else 0.0), 0, container, entry.path)
+    if prefer is StrmPrefer.OLDEST:
+        age = entry.mtime if entry.mtime is not None else float("inf")
+        return (0, age, 0, container, entry.path)
+    return (0, 0.0, 0, container, entry.path)
 
 
-def sort_key(entry: WashEntry) -> tuple[int, float, int, int, str] | tuple[int, str]:
-    """按条目的 kind 选排序键; 两种键不通用, 调用方须保证同一组 kind 一致."""
-    return strm_sort_key(entry) if entry.kind is WashRecordKind.STRM else local_sort_key(entry)
+def sort_key(
+    entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY, strm_prefer: StrmPrefer = StrmPrefer.PATH
+) -> tuple[int, float, int, int, str]:
+    """按条目的 kind 选排序键; 本地与 STRM 各有一套策略, 调用方须保证同一组 kind 一致."""
+    if entry.kind is WashRecordKind.STRM:
+        return strm_sort_key(entry, strm_prefer)
+    return local_sort_key(entry, prefer)
 
 
 def build_groups(
-    entries: Iterable[WashEntry], *, min_size_bytes: int, prefer: WashPrefer = WashPrefer.QUALITY
+    entries: Iterable[WashEntry],
+    *,
+    min_size_bytes: int,
+    prefer: WashPrefer = WashPrefer.QUALITY,
+    strm_prefer: StrmPrefer = StrmPrefer.PATH,
 ) -> list[WashGroup]:
     """按 ``group_key`` 归并并选出保留者, 只返回至少两份候选的组.
 
@@ -201,10 +219,7 @@ def build_groups(
     for (kind, key), members in buckets.items():
         if len(members) < 2:
             continue
-        ordered = sorted(
-            members,
-            key=strm_sort_key if kind is WashRecordKind.STRM else lambda entry: local_sort_key(entry, prefer),
-        )
+        ordered = sorted(members, key=lambda entry: sort_key(entry, prefer, strm_prefer))
         groups.append(
             WashGroup(
                 group_key=key,
