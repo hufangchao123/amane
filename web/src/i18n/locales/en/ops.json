@@ -200,6 +200,16 @@
       "apply": "Run",
       "queued": "Patch task queued",
       "runFailed": "Could not queue the task"
+    },
+    "avatar": {
+      "title": "Avatar check",
+      "hint": "Sample actor avatars; broken links can be dropped right away.",
+      "limit": "Actors to check",
+      "clearBroken": "Drop broken links",
+      "run": "Check",
+      "queued": "Check task queued",
+      "runFailed": "Submit failed",
+      "note": "The check is read-only; only with the switch on does it rewrite avatar URLs. Internal addresses are skipped."
     }
   },
   "notify": {

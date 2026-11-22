@@ -53,7 +53,8 @@ export type PanelOnlyTaskType =
   | "backup"
   | "trash_purge"
   | "nfo_patch"
-  | "notify";
+  | "notify"
+  | "avatar_check";
 
 export type ManualTaskType = Exclude<SubmittableTaskType, PanelOnlyTaskType>;
 
@@ -124,6 +125,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "trash_purge",
   "nfo_patch",
   "notify",
+  "avatar_check",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(

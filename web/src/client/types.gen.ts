@@ -752,6 +752,60 @@ export type AuditRecordResponse = {
 };
 
 /**
+ * AvatarCheckResult
+ *
+ * ``samples`` 只留前若干条, 整表结论看计数.
+ */
+export type AvatarCheckResult = {
+    /**
+     * Type
+     */
+    type?: 'avatar_check';
+    /**
+     * Checked
+     */
+    checked?: number;
+    /**
+     * Ok
+     */
+    ok?: number;
+    /**
+     * Broken
+     */
+    broken?: number;
+    /**
+     * Unknown
+     */
+    unknown?: number;
+    /**
+     * Cleared
+     */
+    cleared?: number;
+    /**
+     * Samples
+     */
+    samples?: Array<string>;
+};
+
+/**
+ * AvatarCheckSubmission
+ */
+export type AvatarCheckSubmission = {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Clear Broken
+     */
+    clear_broken?: boolean;
+    /**
+     * Type
+     */
+    type?: 'avatar_check';
+};
+
+/**
  * BackupConfig
  *
  * 备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.
@@ -5784,7 +5838,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6108,6 +6162,8 @@ export type TaskResponse = {
     } & NfoPatchResult) | ({
         type: 'notify';
     } & NotifyResult) | ({
+        type: 'avatar_check';
+    } & AvatarCheckResult) | ({
         type: 'wash_scan';
     } & WashScanResult) | ({
         type: 'wash_apply';
@@ -6131,7 +6187,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10223,7 +10279,9 @@ export type SubmitTaskData = {
         type: 'nfo_patch';
     } & NfoPatchSubmission) | ({
         type: 'notify';
-    } & NotifySubmission);
+    } & NotifySubmission) | ({
+        type: 'avatar_check';
+    } & AvatarCheckSubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';

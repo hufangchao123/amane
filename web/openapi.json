@@ -5232,6 +5232,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/NotifySubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AvatarCheckSubmission"
                   }
                 ],
                 "discriminator": {
@@ -5259,7 +5262,8 @@
                     "media_refresh": "#/components/schemas/MediaRefreshSubmission",
                     "trash_purge": "#/components/schemas/TrashPurgeSubmission",
                     "nfo_patch": "#/components/schemas/NfoPatchSubmission",
-                    "notify": "#/components/schemas/NotifySubmission"
+                    "notify": "#/components/schemas/NotifySubmission",
+                    "avatar_check": "#/components/schemas/AvatarCheckSubmission"
                   }
                 },
                 "title": "Req"
@@ -8737,6 +8741,75 @@
           "client"
         ],
         "title": "AuditRecordResponse"
+      },
+      "AvatarCheckResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "avatar_check",
+            "title": "Type",
+            "default": "avatar_check"
+          },
+          "checked": {
+            "type": "integer",
+            "title": "Checked",
+            "default": 0
+          },
+          "ok": {
+            "type": "integer",
+            "title": "Ok",
+            "default": 0
+          },
+          "broken": {
+            "type": "integer",
+            "title": "Broken",
+            "default": 0
+          },
+          "unknown": {
+            "type": "integer",
+            "title": "Unknown",
+            "default": 0
+          },
+          "cleared": {
+            "type": "integer",
+            "title": "Cleared",
+            "default": 0
+          },
+          "samples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Samples"
+          }
+        },
+        "type": "object",
+        "title": "AvatarCheckResult",
+        "description": "``samples`` 只留前若干条, 整表结论看计数."
+      },
+      "AvatarCheckSubmission": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 20
+          },
+          "clear_broken": {
+            "type": "boolean",
+            "title": "Clear Broken",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "avatar_check",
+            "title": "Type",
+            "default": "avatar_check"
+          }
+        },
+        "type": "object",
+        "title": "AvatarCheckSubmission"
       },
       "BackupConfig": {
         "properties": {
@@ -17991,6 +18064,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/NotifySubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/AvatarCheckSubmission"
                 }
               ],
               "discriminator": {
@@ -17998,6 +18074,7 @@
                 "mapping": {
                   "actor_push": "#/components/schemas/ActorPushSubmission",
                   "actor_scrape": "#/components/schemas/ActorScrapeSubmission",
+                  "avatar_check": "#/components/schemas/AvatarCheckSubmission",
                   "backup": "#/components/schemas/BackupSubmission",
                   "cleanup": "#/components/schemas/CleanupSubmission",
                   "delete": "#/components/schemas/DeleteSubmission",
@@ -18584,6 +18661,9 @@
                     "$ref": "#/components/schemas/NotifyResult"
                   },
                   {
+                    "$ref": "#/components/schemas/AvatarCheckResult"
+                  },
+                  {
                     "$ref": "#/components/schemas/WashScanResult"
                   },
                   {
@@ -18601,6 +18681,7 @@
                   "mapping": {
                     "actor_push": "#/components/schemas/ActorPushResult",
                     "actor_scrape": "#/components/schemas/ActorScrapeResult",
+                    "avatar_check": "#/components/schemas/AvatarCheckResult",
                     "backup": "#/components/schemas/BackupResult",
                     "cleanup": "#/components/schemas/CleanupResult",
                     "delete": "#/components/schemas/DeleteResult",
@@ -18684,6 +18765,7 @@
           "subtitle_audit",
           "nfo_patch",
           "notify",
+          "avatar_check",
           "trash_purge",
           "wash_scan",
           "wash_apply",

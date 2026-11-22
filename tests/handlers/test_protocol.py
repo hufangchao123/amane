@@ -16,6 +16,7 @@ from amane.handlers import models as handler_models
 from amane.handlers.models import (
     ActorPushResult,
     ActorScrapeResult,
+    AvatarCheckResult,
     BackupResult,
     CleanupResult,
     DeleteResult,
@@ -166,6 +167,7 @@ RESULT_CASES = [
     pytest.param(WashApplyResult(trashed=6, bytes_freed=1024, skipped=1, failed=0), id="wash_apply"),
     pytest.param(BackupResult(files=["db-1.sqlite"], bytes_written=2048, pruned=1), id="backup"),
     pytest.param(MediaRefreshResult(kind="emby", url="http://emby.local:8096"), id="media_refresh"),
+    pytest.param(AvatarCheckResult(checked=2, ok=1, broken=1), id="avatar_check"),
     pytest.param(NotifyResult(kind="digest", channel="webhook", ok=True, status=200), id="notify"),
 ]
 

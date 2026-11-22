@@ -83,7 +83,8 @@
     "trash_purge": "回收站清理",
     "nfo_patch": "NFO 修补",
     "notify": "通知",
-    "notify_digest": "摘要推送"
+    "notify_digest": "摘要推送",
+    "avatar_check": "头像校验"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -555,6 +556,16 @@
       "body": {
         "label": "正文",
         "description": "正文"
+      }
+    },
+    "avatar_check": {
+      "limit": {
+        "label": "抽查人数",
+        "description": "本轮最多查几个演员"
+      },
+      "clear_broken": {
+        "label": "摘掉失效链接",
+        "description": "查到坏链接时直接从演员上删掉"
       }
     }
   },

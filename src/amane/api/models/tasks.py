@@ -11,6 +11,8 @@ from ...handlers import (
     ActorPushPayload,
     ActorPushResult,
     ActorScrapeResult,
+    AvatarCheckPayload,
+    AvatarCheckResult,
     BackupPayload,
     BackupResult,
     CacheKind,
@@ -85,6 +87,7 @@ TaskResultPayload = Annotated[
     | TrashPurgeResult
     | NfoPatchResult
     | NotifyResult
+    | AvatarCheckResult
     | WashScanResult
     | WashApplyResult
     | BackupResult
@@ -347,6 +350,10 @@ class NotifySubmission(NotifyPayload):
     type: Literal["notify"]
 
 
+class AvatarCheckSubmission(AvatarCheckPayload):
+    type: Literal["avatar_check"] = "avatar_check"
+
+
 class WashScanSubmission(WashScanPayload):
     """洗版扫描: 只出候选清单, 一律不移动文件."""
 
@@ -394,7 +401,8 @@ TaskSubmission = Annotated[
     | MediaRefreshSubmission
     | TrashPurgeSubmission
     | NfoPatchSubmission
-    | NotifySubmission,
+    | NotifySubmission
+    | AvatarCheckSubmission,
     Field(discriminator="type"),
 ]
 

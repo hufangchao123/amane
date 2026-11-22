@@ -614,6 +614,25 @@ class NfoPatchResult(BaseModel):
 # --- 通知 ---
 
 
+class AvatarCheckPayload(BaseModel):
+    """头像校验: ``limit`` 是本轮最多查几个演员, ``clear_broken`` 决定坏链接是否当场摘掉."""
+
+    limit: int = Field(default=20, ge=1, le=200)
+    clear_broken: bool = False
+
+
+class AvatarCheckResult(BaseModel):
+    """``samples`` 只留前若干条, 整表结论看计数."""
+
+    type: Literal[TaskType.AVATAR_CHECK] = TaskType.AVATAR_CHECK
+    checked: int = 0
+    ok: int = 0
+    broken: int = 0
+    unknown: int = 0
+    cleared: int = 0
+    samples: list[str] = Field(default_factory=list)
+
+
 class NotifyPayload(BaseModel):
     """``kind=message`` 原样转发标题与正文; ``kind=digest`` 现算一份统计摘要."""
 

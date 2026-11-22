@@ -102,6 +102,7 @@ from .system import DesktopResponse, ReleaseResponse
 from .tasks import (
     ActorPushSubmission,
     ActorScrapeSubmission,
+    AvatarCheckSubmission,
     BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
@@ -157,6 +158,7 @@ __all__ = [
     "ActorScrapeSubmission",
     "ActorUpdateRequest",
     "ActorUserTagsRequest",
+    "AvatarCheckSubmission",
     "BackupEntryResponse",
     "BackupStatusResponse",
     "BackupSubmission",

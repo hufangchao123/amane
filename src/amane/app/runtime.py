@@ -22,6 +22,7 @@ from ..enums import BrowserBackendName, BrowserMode, SiteName
 from ..handlers import (
     ActorPushHandler,
     ActorScrapeHandler,
+    AvatarCheckHandler,
     BackupHandler,
     CleanupHandler,
     DeleteHandler,
@@ -623,6 +624,7 @@ def build_handlers(
     handlers[TaskType.TRASH_PURGE] = TrashPurgeHandler(repo, library_locks)
     handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, library_locks)
     handlers[TaskType.NOTIFY] = NotifyHandler(repo, hot)
+    handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, hot, web_client, state_dir=state_dir)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
     handlers[TaskType.BACKUP] = BackupHandler(

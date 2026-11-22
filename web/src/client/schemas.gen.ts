@@ -1311,6 +1311,77 @@ export const AuditRecordResponseSchema = {
     title: 'AuditRecordResponse'
 } as const;
 
+export const AvatarCheckResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'avatar_check',
+            title: 'Type',
+            default: 'avatar_check'
+        },
+        checked: {
+            type: 'integer',
+            title: 'Checked',
+            default: 0
+        },
+        ok: {
+            type: 'integer',
+            title: 'Ok',
+            default: 0
+        },
+        broken: {
+            type: 'integer',
+            title: 'Broken',
+            default: 0
+        },
+        unknown: {
+            type: 'integer',
+            title: 'Unknown',
+            default: 0
+        },
+        cleared: {
+            type: 'integer',
+            title: 'Cleared',
+            default: 0
+        },
+        samples: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Samples'
+        }
+    },
+    type: 'object',
+    title: 'AvatarCheckResult',
+    description: '``samples`` 只留前若干条, 整表结论看计数.'
+} as const;
+
+export const AvatarCheckSubmissionSchema = {
+    properties: {
+        limit: {
+            type: 'integer',
+            maximum: 200,
+            minimum: 1,
+            title: 'Limit',
+            default: 20
+        },
+        clear_broken: {
+            type: 'boolean',
+            title: 'Clear Broken',
+            default: false
+        },
+        type: {
+            type: 'string',
+            const: 'avatar_check',
+            title: 'Type',
+            default: 'avatar_check'
+        }
+    },
+    type: 'object',
+    title: 'AvatarCheckSubmission'
+} as const;
+
 export const BackupConfigSchema = {
     properties: {
         enabled: {
@@ -10769,6 +10840,9 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/NotifySubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/AvatarCheckSubmission'
                     }
                 ],
                 discriminator: {
@@ -10776,6 +10850,7 @@ export const TaskBatchSubmitRequestSchema = {
                     mapping: {
                         actor_push: '#/components/schemas/ActorPushSubmission',
                         actor_scrape: '#/components/schemas/ActorScrapeSubmission',
+                        avatar_check: '#/components/schemas/AvatarCheckSubmission',
                         backup: '#/components/schemas/BackupSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
@@ -11371,6 +11446,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/NotifyResult'
                         },
                         {
+                            $ref: '#/components/schemas/AvatarCheckResult'
+                        },
+                        {
                             $ref: '#/components/schemas/WashScanResult'
                         },
                         {
@@ -11388,6 +11466,7 @@ export const TaskResponseSchema = {
                         mapping: {
                             actor_push: '#/components/schemas/ActorPushResult',
                             actor_scrape: '#/components/schemas/ActorScrapeResult',
+                            avatar_check: '#/components/schemas/AvatarCheckResult',
                             backup: '#/components/schemas/BackupResult',
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
@@ -11474,6 +11553,7 @@ export const TaskTypeSchema = {
         'subtitle_audit',
         'nfo_patch',
         'notify',
+        'avatar_check',
         'trash_purge',
         'wash_scan',
         'wash_apply',

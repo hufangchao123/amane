@@ -71,6 +71,7 @@ SUBMIT_CASES = [
     pytest.param({"type": "trash_purge", "keep_days": 7}, "trash_purge", id="trash-purge"),
     pytest.param({"type": "nfo_patch", "kind": "directors"}, "nfo_patch", id="nfo-patch"),
     pytest.param({"type": "notify", "title": "测试", "body": "正文"}, "notify", id="notify"),
+    pytest.param({"type": "avatar_check", "limit": 5}, "avatar_check", id="avatar-check"),
 ]
 
 
@@ -78,7 +79,7 @@ class TestOpsSubmit:
     @pytest.mark.asyncio(loop_scope="function")
     @pytest.mark.parametrize(("body", "task_type"), SUBMIT_CASES)
     async def test_submit_accepted(self, client: AsyncClient, body: dict, task_type: str) -> None:
-        """六类运维任务都能入队; 缺省字段由 payload 默认值补齐."""
+        """运维任务都能入队; 缺省字段由 payload 默认值补齐."""
         resp = await client.post("tasks", json=body)
         assert resp.status_code == 202
         assert resp.json()["type"] == task_type

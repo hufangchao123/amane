@@ -95,7 +95,8 @@
     "trash_purge": "Trash cleanup",
     "nfo_patch": "NFO patch",
     "notify": "Notification",
-    "notify_digest": "Digest push"
+    "notify_digest": "Digest push",
+    "avatar_check": "Avatar check"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -586,6 +587,16 @@
       "body": {
         "label": "Body",
         "description": "Body"
+      }
+    },
+    "avatar_check": {
+      "limit": {
+        "label": "Actors to check",
+        "description": "How many actors this run checks at most"
+      },
+      "clear_broken": {
+        "label": "Drop broken links",
+        "description": "Remove the broken URL from the actor"
       }
     }
   },

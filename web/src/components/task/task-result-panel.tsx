@@ -97,6 +97,7 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
     case "media_refresh":
     case "trash_purge":
     case "nfo_patch":
+    case "avatar_check":
     case "notify":
       return <EmptyHint visible={!failed} />;
     default:

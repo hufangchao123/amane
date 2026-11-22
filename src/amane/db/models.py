@@ -50,6 +50,7 @@ class TaskType(StrEnum):
     SUBTITLE_AUDIT = "subtitle_audit"
     NFO_PATCH = "nfo_patch"
     NOTIFY = "notify"
+    AVATAR_CHECK = "avatar_check"
     TRASH_PURGE = "trash_purge"
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"

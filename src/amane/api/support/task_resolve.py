@@ -6,6 +6,7 @@ from ...db.models import TaskType
 from ...handlers import (
     ActorPushPayload,
     ActorScrapePayload,
+    AvatarCheckPayload,
     BackupPayload,
     CleanupPayload,
     DeletePayload,
@@ -31,6 +32,7 @@ from ...handlers import (
 from ..models import (
     ActorPushSubmission,
     ActorScrapeSubmission,
+    AvatarCheckSubmission,
     BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
@@ -78,6 +80,7 @@ ResolvedPayload = (
     | WashScanPayload
     | TrashPurgePayload
     | NfoPatchPayload
+    | AvatarCheckPayload
     | NotifyPayload
     | WashApplyPayload
     | BackupPayload
@@ -137,6 +140,8 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.TRASH_PURGE, TrashPurgePayload(
                 library_id=req.library_id, keep_days=req.keep_days, dry_run=req.dry_run
             )
+        case AvatarCheckSubmission():
+            return TaskType.AVATAR_CHECK, AvatarCheckPayload(limit=req.limit, clear_broken=req.clear_broken)
         case NotifySubmission():
             return TaskType.NOTIFY, NotifyPayload(kind=req.kind, title=req.title, body=req.body)
         case NfoPatchSubmission():
