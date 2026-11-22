@@ -810,110 +810,6 @@ export type AvatarCheckSubmission = {
 };
 
 /**
- * BackupConfig
- *
- * 备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.
- */
-export type BackupConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Dir
-     *
-     * 备份根目录; 空则用 data_dir/backups
-     */
-    dir?: string;
-    /**
-     * Keep Db
-     */
-    keep_db?: number;
-    /**
-     * Keep Assets
-     */
-    keep_assets?: number;
-};
-
-/**
- * BackupEntryResponse
- */
-export type BackupEntryResponse = {
-    /**
-     * Name
-     */
-    name: string;
-    /**
-     * Kind
-     */
-    kind: 'db' | 'assets';
-    /**
-     * Size Bytes
-     */
-    size_bytes: number;
-    /**
-     * Created At
-     */
-    created_at: string;
-};
-
-/**
- * BackupResult
- */
-export type BackupResult = {
-    /**
-     * Type
-     */
-    type?: 'backup';
-    /**
-     * Files
-     */
-    files?: Array<string>;
-    /**
-     * Bytes Written
-     */
-    bytes_written?: number;
-    /**
-     * Pruned
-     */
-    pruned?: number;
-};
-
-/**
- * BackupStatusResponse
- */
-export type BackupStatusResponse = {
-    /**
-     * Enabled
-     */
-    enabled: boolean;
-    /**
-     * Root
-     */
-    root: string;
-    /**
-     * Entries
-     */
-    entries: Array<BackupEntryResponse>;
-};
-
-/**
- * BackupSubmission
- *
- * 备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数.
- */
-export type BackupSubmission = {
-    /**
-     * Kind
-     */
-    kind?: 'db' | 'assets' | 'all';
-    /**
-     * Type
-     */
-    type: 'backup';
-};
-
-/**
  * Body_install_plugin
  */
 export type BodyInstallPlugin = {
@@ -2098,7 +1994,6 @@ export type HotSettings = {
     transfer?: TransferConfig;
     subtitles?: SubtitleFetchConfig;
     wash?: WashConfig;
-    backup?: BackupConfig;
     notify?: NotifyConfig;
     worker?: WorkerConfig;
     logging?: LoggingConfig;
@@ -4611,7 +4506,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'backup' | 'media_refresh' | 'notify_digest';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'media_refresh' | 'notify_digest';
 
 /**
  * RuntimePaths
@@ -4922,8 +4817,6 @@ export type ScheduleCreateRequest = {
     } & Transfer115Submission) | ({
         type: 'wash_scan';
     } & WashScanSubmission) | ({
-        type: 'backup';
-    } & BackupSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
         type: 'notify_digest';
@@ -4983,8 +4876,6 @@ export type ScheduleResponse = {
     } & Transfer115Submission) | ({
         type: 'wash_scan';
     } & WashScanSubmission) | ({
-        type: 'backup';
-    } & BackupSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
         type: 'notify_digest';
@@ -5932,7 +5823,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6264,8 +6155,6 @@ export type TaskResponse = {
     } & WashScanResult) | ({
         type: 'wash_apply';
     } & WashApplyResult) | ({
-        type: 'backup';
-    } & BackupResult) | ({
         type: 'media_refresh';
     } & MediaRefreshResult) | null;
 };
@@ -6283,7 +6172,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10368,8 +10257,6 @@ export type SubmitTaskData = {
     } & WashScanSubmission) | ({
         type: 'wash_apply';
     } & WashApplySubmission) | ({
-        type: 'backup';
-    } & BackupSubmission) | ({
         type: 'media_refresh';
     } & MediaRefreshSubmission) | ({
         type: 'trash_purge';
@@ -11683,22 +11570,6 @@ export type DiagnosticsStatusResponses = {
 };
 
 export type DiagnosticsStatusResponse = DiagnosticsStatusResponses[keyof DiagnosticsStatusResponses];
-
-export type BackupStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/backup/status';
-};
-
-export type BackupStatusResponses = {
-    /**
-     * Successful Response
-     */
-    200: BackupStatusResponse;
-};
-
-export type BackupStatusResponse2 = BackupStatusResponses[keyof BackupStatusResponses];
 
 export type GetTrashStatusData = {
     body?: never;

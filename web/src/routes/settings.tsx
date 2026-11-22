@@ -18,7 +18,6 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { isHidden, resolveSchema } from "@/components/schema-form/schema";
 import { AuditPanel } from "@/features/audit/audit-panel";
-import { BackupPanel } from "@/features/backup/backup-panel";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { useConfig, useConfigSchema, useUpdateConfig } from "@/hooks/use-config";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
@@ -142,11 +141,6 @@ function SettingsPage() {
                     onSave={(patch) => saveMutation.mutate({ body: { [key]: patch } })}
                     saving={saveMutation.isPending}
                   />
-                  {key === "backup" && (
-                    <Box mt="md">
-                      <BackupPanel />
-                    </Box>
-                  )}
                 </Paper>
               );
             })}

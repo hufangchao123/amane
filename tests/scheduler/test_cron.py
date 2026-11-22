@@ -8,7 +8,6 @@ import pytest
 from amane.db import RoutineType, TaskType
 from amane.db.models import WashRecordKind
 from amane.handlers import (
-    BackupPayload,
     SemanticIndexPayload,
     Transfer115Payload,
     WashApplyPayload,
@@ -68,22 +67,6 @@ async def test_due_transfer_schedule_enqueues_transfer_task(repo: Repository) ->
     tasks = await repo.list_tasks(task_types=[TaskType.TRANSFER_115])
     assert len(tasks) == 1
     assert Transfer115Payload.model_validate(tasks[0].payload).full is True
-
-
-@pytest.mark.asyncio
-async def test_due_backup_schedule_enqueues_backup_task(repo: Repository) -> None:
-    await repo.create_schedule(
-        cron="0 4 * * *",
-        task_type=RoutineType.BACKUP,
-        payload={"type": "backup", "kind": "db"},
-        next_run=datetime.now(UTC) - timedelta(minutes=1),
-    )
-
-    await CronScheduler(repo)._tick()
-
-    tasks = await repo.list_tasks(task_types=[TaskType.BACKUP])
-    assert len(tasks) == 1
-    assert BackupPayload.model_validate(tasks[0].payload).kind == "db"
 
 
 @pytest.mark.asyncio

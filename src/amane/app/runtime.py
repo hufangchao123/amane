@@ -11,7 +11,6 @@ import httpx2 as httpx
 import structlog
 
 from ..avatars import WebAvatarSource
-from ..backup import BackupManager
 from ..config import R18Config
 from ..crawlers import actor_registry, registry
 from ..crawlers.base import CrawlerProfile
@@ -24,7 +23,6 @@ from ..handlers import (
     ActorPushHandler,
     ActorScrapeHandler,
     AvatarCheckHandler,
-    BackupHandler,
     CleanupHandler,
     DeleteHandler,
     LibraryTaskLocks,
@@ -630,9 +628,6 @@ def build_handlers(
     handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, hot, WebAvatarSource(web_client), state_dir=state_dir)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
-    handlers[TaskType.BACKUP] = BackupHandler(
-        BackupManager(hot.backup, state_dir if state_dir is not None else Path("./data"))
-    )
     handlers[TaskType.MEDIA_REFRESH] = MediaRefreshHandler(hot)
     # state_dir 缺省回退 cwd/data (精简构造场景).
     handlers[TaskType.R18_IMPORT] = R18ImportHandler(

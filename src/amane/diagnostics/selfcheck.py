@@ -19,8 +19,6 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from ..backup import BackupManager
-from ..backup.manager import BackupRootError
 from ..db import SortOrder, TaskSortField, TaskStatus
 from ..utils.threads import in_thread
 
@@ -40,10 +38,8 @@ QUEUE_BACKLOG_LIMIT = 500
 QUEUE_STALL_MINUTES = 30
 """最久等待时长: 有任务排队却没人执行超过该时长, 视为 worker 卡住."""
 
-BACKUP_MAX_AGE_DAYS = 7
 """数据库备份的最大年龄: 超过它视为「实际上没有备份」."""
 
-BACKUP_WARN_AGE_DAYS = 3
 """数据库备份的预警年龄: 超过它提醒一句, 但不判失败."""
 
 
@@ -121,7 +117,6 @@ class SelfCheck:
                 self._transfer_item(),
                 self._subtitles_item(),
                 self._wash_item(),
-                await self._backup_item(),
                 self._queue_item(queued, running, oldest_wait),
             ]
         )
@@ -198,40 +193,6 @@ class SelfCheck:
         if not config.local and not config.strm:
             return CheckItem(key="wash", ok=False, detail="已启用但 local 与 strm 均关闭, 无法产生候选")
         return CheckItem(key="wash", ok=True, detail="配置完整")
-
-    async def _backup_item(self) -> CheckItem:
-        """启用备份却长期没有产物, 等于没有备份; 此处只报告, 不补执行.
-
-        顺带跑一遍备份根目录的边界校验: 配置指到 data_dir 本身或满是无关文件的目录时, 备份任务
-        每轮都会失败, 体检要比等到那时更早一步说出来. 数据库备份与资源归档的年龄分开报, 前者是
-        恢复的对象, 后者只是缓存.
-        """
-        config = self._hot.backup
-        if not config.enabled:
-            return CheckItem(key="backup", ok=True, detail="未启用")
-        manager = BackupManager(config, Path(self._cold.data_dir))
-        try:
-            # 刻意复用备份任务那套边界判据: 体检要与任务给出同一个结论, 不能各写一份.
-            root_path = manager._checked_root()
-        except BackupRootError as error:
-            return CheckItem(key="backup", ok=False, detail=str(error))
-        entries = await manager.list_backups()
-        databases = [entry for entry in entries if entry.kind == "db"]
-        if not databases:
-            return CheckItem(key="backup", ok=False, detail=f"尚无数据库备份, 目标目录 {root_path}")
-        now = datetime.now(UTC)
-        age_days = (now - max(entry.created_at for entry in databases)).days
-        detail = f"最近一份数据库备份在 {age_days} 天前"
-        archives = [entry for entry in entries if entry.kind == "assets"]
-        if archives:
-            detail += f", 资源归档 {max(now - entry.created_at for entry in archives).days} 天前"
-        else:
-            detail += ", 无资源归档"
-        if age_days > BACKUP_MAX_AGE_DAYS:
-            return CheckItem(key="backup", ok=False, detail=detail + f", 已超过 {BACKUP_MAX_AGE_DAYS} 天")
-        if age_days > BACKUP_WARN_AGE_DAYS:
-            detail += f", 偏旧, 已超过 {BACKUP_WARN_AGE_DAYS} 天"
-        return CheckItem(key="backup", ok=True, detail=detail)
 
     async def _oldest_queued_wait(self) -> timedelta | None:
         """排队最久的那条等了多久.

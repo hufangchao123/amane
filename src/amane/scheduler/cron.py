@@ -11,7 +11,6 @@ from structlog.contextvars import bound_contextvars
 
 from ..db import RoutineType, TaskType
 from ..handlers import (
-    BackupPayload,
     CleanupPayload,
     MediaRefreshPayload,
     NotifyPayload,
@@ -118,8 +117,6 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.SEMANTIC_INDEX, SemanticIndexPayload.model_validate(payload))
             case RoutineType.TRANSFER_115:
                 await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
-            case RoutineType.BACKUP:
-                await self._repo.create_task(TaskType.BACKUP, BackupPayload(kind=payload.get("kind", "all")))
             case RoutineType.NOTIFY_DIGEST:
                 await self._repo.create_task(TaskType.NOTIFY, NotifyPayload(kind="digest"))
             case RoutineType.MEDIA_REFRESH:

@@ -679,6 +679,17 @@ class TestConfigManagerLoad:
         mgr = ConfigManager.with_cold(cold)
         assert mgr.hot.worker.concurrency == 4
 
+    def test_legacy_backup_section_dropped(self, tmp_path: Path):
+        """备份功能已移除, 旧 TOML 的 [backup] 被忽略, 不让整份配置校验失败."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text('[backup]\nenabled = true\nkeep_db = 7\n\n[worker]\nconcurrency = 4\n')
+
+        with patch.dict(os.environ, {"AMANE_DATA_DIR": str(tmp_path)}, clear=False):
+            cold = ColdSettings()
+
+        mgr = ConfigManager.with_cold(cold)
+        assert mgr.hot.worker.concurrency == 4
+
     def test_round_trip_preserves_values(self, tmp_path: Path):
         """load → update → load 往返保留所有值"""
         with patch.dict(os.environ, {"AMANE_DATA_DIR": str(tmp_path)}, clear=False):

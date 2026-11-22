@@ -14,7 +14,6 @@
     "transfer": "115 中转",
     "subtitles": "字幕补全",
     "wash": "洗版",
-    "backup": "备份",
     "notify": "通知渠道",
     "watcher": "文件监控",
     "worker": "任务引擎",
@@ -145,26 +144,6 @@
       "history_max_sessions": {
         "label": "会话历史内存容量",
         "description": "同时保留的会话历史上限 (LRU)"
-      }
-    },
-    "backup": {
-      "label": "备份",
-      "description": "定期备份数据库与资源目录",
-      "enabled": {
-        "label": "启用",
-        "description": "关闭后备份任务直接跳过"
-      },
-      "dir": {
-        "label": "备份目录",
-        "description": "留空则用 data_dir/backups"
-      },
-      "keep_db": {
-        "label": "保留数据库份数",
-        "description": "超出份数的旧备份自动清理"
-      },
-      "keep_assets": {
-        "label": "保留资源份数",
-        "description": "超出份数的旧备份自动清理"
       }
     },
     "llm": {

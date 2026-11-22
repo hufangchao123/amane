@@ -13,7 +13,6 @@ STATUS_CASES = [
     pytest.param("subtitles/status", {"enabled", "missing", "queued"}, id="subtitles"),
     pytest.param("wash/status", {"enabled", "groups", "trashed", "restorable_bytes"}, id="wash"),
     pytest.param("diagnostics/status", {"items", "failed"}, id="diagnostics"),
-    pytest.param("backup/status", {"enabled", "root", "entries"}, id="backup"),
     pytest.param("trash/status", {"libraries", "total_files", "total_bytes"}, id="trash"),
     pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
     pytest.param("notify/status", {"enabled", "kind", "has_url", "records"}, id="notify"),
@@ -45,7 +44,7 @@ class TestOpsConfig:
     async def test_sections_roundtrip(self, client: AsyncClient) -> None:
         """四个 section 进配置 schema, 且能写回后再读出来."""
         schema = (await client.get("config/schema")).json()["properties"]
-        for section in ("transfer", "subtitles", "wash", "backup"):
+        for section in ("transfer", "subtitles", "wash"):
             assert section in schema
 
         patched = await client.patch("config", json={"transfer": {"enabled": True, "interval_minutes": 30}})
@@ -67,7 +66,6 @@ SUBMIT_CASES = [
     pytest.param({"type": "subtitle_audit"}, "subtitle_audit", id="subtitle-audit"),
     pytest.param({"type": "wash_scan", "kind": "local"}, "wash_scan", id="wash-scan"),
     pytest.param({"type": "wash_apply", "group_keys": ["SSIS-1"]}, "wash_apply", id="wash-apply"),
-    pytest.param({"type": "backup", "kind": "db"}, "backup", id="backup"),
     pytest.param({"type": "trash_purge", "keep_days": 7}, "trash_purge", id="trash-purge"),
     pytest.param({"type": "nfo_patch", "kind": "directors"}, "nfo_patch", id="nfo-patch"),
     pytest.param({"type": "notify", "title": "测试", "body": "正文"}, "notify", id="notify"),
@@ -88,4 +86,3 @@ class TestOpsSubmit:
     async def test_wash_kind_rejected(self, client: AsyncClient) -> None:
         """kind 只认三个字面量, 其它值 422."""
         assert (await client.post("tasks", json={"type": "wash_scan", "kind": "both"})).status_code == 422
-        assert (await client.post("tasks", json={"type": "backup", "kind": "everything"})).status_code == 422

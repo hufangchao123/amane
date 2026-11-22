@@ -11,7 +11,6 @@ from .actors import (
     ActorUserTagsRequest,
     CropAvatarRequest,
 )
-from .backup import BackupEntryResponse, BackupStatusResponse
 from .comments import CommentCreateRequest, CommentResponse, CommentUpdateRequest
 from .crop import CropBoxRequest
 from .diagnostics import CheckItemResponse, DiagnosticsResponse
@@ -103,7 +102,6 @@ from .tasks import (
     ActorPushSubmission,
     ActorScrapeSubmission,
     AvatarCheckSubmission,
-    BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
     MediaRefreshSubmission,
@@ -160,9 +158,6 @@ __all__ = [
     "ActorUpdateRequest",
     "ActorUserTagsRequest",
     "AvatarCheckSubmission",
-    "BackupEntryResponse",
-    "BackupStatusResponse",
-    "BackupSubmission",
     "BrowserBackendItemResponse",
     "BrowserBackendReportResponse",
     "BrowserInstanceResponse",

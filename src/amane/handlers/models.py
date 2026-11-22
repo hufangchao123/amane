@@ -550,19 +550,6 @@ class WashApplyResult(BaseModel):
     failed: int = 0
 
 
-class BackupPayload(BaseModel):
-    """备份范围; 保留份数由 ``BackupConfig.keep_db`` / ``keep_assets`` 决定."""
-
-    kind: Literal["db", "assets", "all"] = "all"
-
-
-class BackupResult(BaseModel):
-    type: Literal[TaskType.BACKUP] = TaskType.BACKUP
-    files: list[str] = []
-    bytes_written: int = 0
-    pruned: int = 0
-
-
 # --- 媒体库刷新 ---
 
 

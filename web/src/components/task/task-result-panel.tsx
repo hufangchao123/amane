@@ -217,21 +217,6 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
-    case "backup":
-      return (
-        <CountBadges
-          failed={failed}
-          entries={[
-            { label: t("result.counts.files"), value: result.files?.length ?? 0, tone: "teal" },
-            {
-              label: t("result.counts.written"),
-              value: formatFileSize(result.bytes_written),
-              tone: "gray",
-            },
-            { label: t("result.counts.pruned"), value: result.pruned ?? 0, tone: "gray" },
-          ]}
-        />
-      );
     case "media_refresh":
       return (
         <Stack gap="xs">

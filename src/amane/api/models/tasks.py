@@ -13,8 +13,6 @@ from ...handlers import (
     ActorScrapeResult,
     AvatarCheckPayload,
     AvatarCheckResult,
-    BackupPayload,
-    BackupResult,
     CacheKind,
     CleanupPayload,
     CleanupResult,
@@ -93,7 +91,6 @@ TaskResultPayload = Annotated[
     | AvatarCheckResult
     | WashScanResult
     | WashApplyResult
-    | BackupResult
     | MediaRefreshResult,
     Field(discriminator="type"),
 ]
@@ -375,12 +372,6 @@ class WashApplySubmission(WashApplyPayload):
     type: Literal["wash_apply"]
 
 
-class BackupSubmission(BackupPayload):
-    """备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数."""
-
-    type: Literal["backup"]
-
-
 class MediaRefreshSubmission(MediaRefreshPayload):
     """媒体库刷新: 目标服务器由 ``media_server`` 配置决定."""
 
@@ -407,7 +398,6 @@ TaskSubmission = Annotated[
     | SubtitleFetchSubmission
     | WashScanSubmission
     | WashApplySubmission
-    | BackupSubmission
     | MediaRefreshSubmission
     | TrashPurgeSubmission
     | NfoPatchSubmission
@@ -451,7 +441,6 @@ RoutineSubmission = Annotated[
     | SemanticIndexSubmission
     | Transfer115Submission
     | WashScanSubmission
-    | BackupSubmission
     | WashPurgeRoutine
     | NotifyDigestRoutine
     | MediaRefreshRoutine

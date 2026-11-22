@@ -1387,157 +1387,6 @@ export const AvatarCheckSubmissionSchema = {
     title: 'AvatarCheckSubmission'
 } as const;
 
-export const BackupConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        dir: {
-            type: 'string',
-            title: 'Dir',
-            description: '备份根目录; 空则用 data_dir/backups',
-            default: ''
-        },
-        keep_db: {
-            type: 'integer',
-            maximum: 90,
-            minimum: 1,
-            title: 'Keep Db',
-            default: 7
-        },
-        keep_assets: {
-            type: 'integer',
-            maximum: 90,
-            minimum: 1,
-            title: 'Keep Assets',
-            default: 3
-        }
-    },
-    type: 'object',
-    title: 'BackupConfig',
-    description: '备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存.'
-} as const;
-
-export const BackupEntryResponseSchema = {
-    properties: {
-        name: {
-            type: 'string',
-            title: 'Name'
-        },
-        kind: {
-            type: 'string',
-            enum: [
-                'db',
-                'assets'
-            ],
-            title: 'Kind'
-        },
-        size_bytes: {
-            type: 'integer',
-            title: 'Size Bytes'
-        },
-        created_at: {
-            type: 'string',
-            format: 'date-time',
-            title: 'Created At'
-        }
-    },
-    type: 'object',
-    required: [
-        'name',
-        'kind',
-        'size_bytes',
-        'created_at'
-    ],
-    title: 'BackupEntryResponse'
-} as const;
-
-export const BackupResultSchema = {
-    properties: {
-        type: {
-            type: 'string',
-            const: 'backup',
-            title: 'Type',
-            default: 'backup'
-        },
-        files: {
-            items: {
-                type: 'string'
-            },
-            type: 'array',
-            title: 'Files',
-            default: []
-        },
-        bytes_written: {
-            type: 'integer',
-            title: 'Bytes Written',
-            default: 0
-        },
-        pruned: {
-            type: 'integer',
-            title: 'Pruned',
-            default: 0
-        }
-    },
-    type: 'object',
-    title: 'BackupResult'
-} as const;
-
-export const BackupStatusResponseSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled'
-        },
-        root: {
-            type: 'string',
-            title: 'Root'
-        },
-        entries: {
-            items: {
-                $ref: '#/components/schemas/BackupEntryResponse'
-            },
-            type: 'array',
-            title: 'Entries'
-        }
-    },
-    type: 'object',
-    required: [
-        'enabled',
-        'root',
-        'entries'
-    ],
-    title: 'BackupStatusResponse'
-} as const;
-
-export const BackupSubmissionSchema = {
-    properties: {
-        kind: {
-            type: 'string',
-            enum: [
-                'db',
-                'assets',
-                'all'
-            ],
-            title: 'Kind',
-            default: 'all'
-        },
-        type: {
-            type: 'string',
-            const: 'backup',
-            title: 'Type'
-        }
-    },
-    type: 'object',
-    required: [
-        'type'
-    ],
-    title: 'BackupSubmission',
-    description: '备份: 数据库或资源目录, 由 ``keep_db``/``keep_assets`` 决定保留份数.'
-} as const;
-
 export const Body_install_pluginSchema = {
     properties: {
         file: {
@@ -4047,15 +3896,6 @@ export const HotSettingsSchema = {
                 strm: true,
                 min_size_mb: 300,
                 keep_days: 30
-            }
-        },
-        backup: {
-            $ref: '#/components/schemas/BackupConfig',
-            default: {
-                enabled: false,
-                dir: '',
-                keep_db: 7,
-                keep_assets: 3
             }
         },
         notify: {
@@ -8637,7 +8477,6 @@ export const RoutineTypeSchema = {
         'wash_scan',
         'wash_purge',
         'trash_purge',
-        'backup',
         'media_refresh',
         'notify_digest'
     ],
@@ -9123,9 +8962,6 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/WashScanSubmission'
                 },
                 {
-                    $ref: '#/components/schemas/BackupSubmission'
-                },
-                {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
@@ -9142,7 +8978,6 @@ export const ScheduleCreateRequestSchema = {
             discriminator: {
                 propertyName: 'type',
                 mapping: {
-                    backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     notify_digest: '#/components/schemas/NotifyDigestRoutine',
@@ -9236,9 +9071,6 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/WashScanSubmission'
                 },
                 {
-                    $ref: '#/components/schemas/BackupSubmission'
-                },
-                {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
@@ -9255,7 +9087,6 @@ export const ScheduleResponseSchema = {
             discriminator: {
                 propertyName: 'type',
                 mapping: {
-                    backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     notify_digest: '#/components/schemas/NotifyDigestRoutine',
@@ -11003,9 +10834,6 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/WashApplySubmission'
                     },
                     {
-                        $ref: '#/components/schemas/BackupSubmission'
-                    },
-                    {
                         $ref: '#/components/schemas/MediaRefreshSubmission'
                     },
                     {
@@ -11027,7 +10855,6 @@ export const TaskBatchSubmitRequestSchema = {
                         actor_push: '#/components/schemas/ActorPushSubmission',
                         actor_scrape: '#/components/schemas/ActorScrapeSubmission',
                         avatar_check: '#/components/schemas/AvatarCheckSubmission',
-                        backup: '#/components/schemas/BackupSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
                         media_refresh: '#/components/schemas/MediaRefreshSubmission',
@@ -11635,9 +11462,6 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/WashApplyResult'
                         },
                         {
-                            $ref: '#/components/schemas/BackupResult'
-                        },
-                        {
                             $ref: '#/components/schemas/MediaRefreshResult'
                         }
                     ],
@@ -11647,7 +11471,6 @@ export const TaskResponseSchema = {
                             actor_push: '#/components/schemas/ActorPushResult',
                             actor_scrape: '#/components/schemas/ActorScrapeResult',
                             avatar_check: '#/components/schemas/AvatarCheckResult',
-                            backup: '#/components/schemas/BackupResult',
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
                             media_refresh: '#/components/schemas/MediaRefreshResult',
@@ -11739,7 +11562,6 @@ export const TaskTypeSchema = {
         'trash_purge',
         'wash_scan',
         'wash_apply',
-        'backup',
         'media_refresh'
     ],
     title: 'TaskType'

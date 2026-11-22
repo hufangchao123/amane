@@ -76,7 +76,6 @@
     "subtitle_fetch": "字幕下载",
     "wash_scan": "洗版扫描",
     "wash_apply": "洗版执行",
-    "backup": "备份",
     "media_refresh": "媒体库刷新",
     "wash_purge": "回收站清理",
     "subtitle_audit": "字幕巡检",
@@ -186,8 +185,6 @@
       "broken": "失效",
       "unknown": "未判定",
       "cleared": "已摘链接",
-      "written": "写入",
-      "pruned": "修剪",
       "refreshed": "已通知 {{kind}} 刷新媒体库",
       "channel": "渠道",
       "status": "状态码",
@@ -539,16 +536,6 @@
       "purge_ids": {
         "label": "清理记录标识",
         "description": "要真删的回收站记录, 未到期由任务跳过"
-      }
-    },
-    "backup": {
-      "kind": {
-        "label": "范围",
-        "options": {
-          "db": "仅数据库",
-          "assets": "仅资源",
-          "all": "全部"
-        }
       }
     },
     "subtitle_audit": {

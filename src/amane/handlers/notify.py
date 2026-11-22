@@ -48,7 +48,6 @@ _TYPE_LABELS: dict[TaskType, str] = {
     TaskType.TRASH_PURGE: "回收站清理",
     TaskType.WASH_SCAN: "洗版扫描",
     TaskType.WASH_APPLY: "洗版",
-    TaskType.BACKUP: "备份",
     TaskType.MEDIA_REFRESH: "媒体库刷新",
 }
 

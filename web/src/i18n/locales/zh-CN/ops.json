@@ -129,28 +129,6 @@
       "queue": "任务队列"
     }
   },
-  "backup": {
-    "title": "备份",
-    "hint": "数据库在线备份与资源归档; 不包含媒体文件.",
-    "refresh": "刷新列表",
-    "run": "立即备份",
-    "queued": "备份任务已入队",
-    "runFailed": "提交备份任务失败",
-    "loadFailed": "读取备份列表失败",
-    "enabled": "已启用",
-    "disabled": "未启用",
-    "empty": "还没有备份产物",
-    "columns": {
-      "name": "文件",
-      "kind": "类型",
-      "size": "大小",
-      "created": "生成时间"
-    },
-    "kinds": {
-      "db": "数据库",
-      "assets": "资源"
-    }
-  },
   "trash": {
     "title": "回收站",
     "hint": "历史回收站 (.amane_trash) 的规模与清理; 清理由任务执行, 默认只统计.",

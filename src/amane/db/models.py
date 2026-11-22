@@ -56,7 +56,6 @@ class TaskType(StrEnum):
     TRASH_PURGE = "trash_purge"
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
-    BACKUP = "backup"
     MEDIA_REFRESH = "media_refresh"
 
 
@@ -70,7 +69,6 @@ class RoutineType(StrEnum):
     WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
     TRASH_PURGE = "trash_purge"
-    BACKUP = "backup"
     MEDIA_REFRESH = "media_refresh"
     NOTIFY_DIGEST = "notify_digest"
 

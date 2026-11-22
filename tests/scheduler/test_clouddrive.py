@@ -75,6 +75,7 @@ class TestCloudDriveIngest:
             scrape_input_dir=str(pending),
         )
         await service.start()
+        assert lib.id is not None
         route = service._cloud_routes[lib.id]
         assert route.local_path == str(pending)
         await service.stop()

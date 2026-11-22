@@ -81,9 +81,6 @@
       "full": "Rescan everything",
       "incremental": "Only files not moved yet"
     },
-    "backup": {
-      "kind": "Scope {{kind}}"
-    },
     "media_refresh": {
       "summary": "Ask the media server to rescan its libraries",
       "scope": "Scope",

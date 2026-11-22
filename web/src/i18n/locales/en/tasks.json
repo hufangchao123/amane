@@ -88,7 +88,6 @@
     "subtitle_fetch": "Subtitle fetch",
     "wash_scan": "Wash scan",
     "wash_apply": "Wash apply",
-    "backup": "Backup",
     "media_refresh": "Media library refresh",
     "wash_purge": "Trash purge",
     "subtitle_audit": "Subtitle audit",
@@ -217,8 +216,6 @@
       "broken": "Broken",
       "unknown": "Undetermined",
       "cleared": "Links cleared",
-      "written": "Written",
-      "pruned": "Pruned",
       "refreshed": "Asked {{kind}} to refresh the library",
       "channel": "Channel",
       "status": "Status",
@@ -570,16 +567,6 @@
       "purge_ids": {
         "label": "Purge record ids",
         "description": "Trash records to delete; not-yet-expired ones are skipped"
-      }
-    },
-    "backup": {
-      "kind": {
-        "label": "Scope",
-        "options": {
-          "db": "Database only",
-          "assets": "Assets only",
-          "all": "All"
-        }
       }
     },
     "subtitle_audit": {

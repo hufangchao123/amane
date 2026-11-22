@@ -14,7 +14,6 @@
     "transfer": "115 Transfer",
     "subtitles": "Subtitle Fill",
     "wash": "Wash",
-    "backup": "Backup",
     "notify": "Notify channel",
     "watcher": "File Monitoring",
     "worker": "Task Engine",
@@ -145,26 +144,6 @@
       "history_max_sessions": {
         "label": "Session History Capacity",
         "description": "Max sessions kept in the history hot cache (LRU)"
-      }
-    },
-    "backup": {
-      "label": "Backup",
-      "description": "Periodically back up the database and resources",
-      "enabled": {
-        "label": "Enabled",
-        "description": "Skip backup tasks while off"
-      },
-      "dir": {
-        "label": "Backup directory",
-        "description": "Empty means data_dir/backups"
-      },
-      "keep_db": {
-        "label": "Kept database copies",
-        "description": "Older copies beyond this count are removed"
-      },
-      "keep_assets": {
-        "label": "Kept resource copies",
-        "description": "Older copies beyond this count are removed"
       }
     },
     "llm": {

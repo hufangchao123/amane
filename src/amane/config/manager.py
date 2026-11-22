@@ -910,16 +910,6 @@ class NotifyConfig(BaseModel):
         return value
 
 
-class BackupConfig(BaseModel):
-    """备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存."""
-
-    enabled: bool = False
-
-    dir: str = Field(default="", description="备份根目录; 空则用 data_dir/backups")
-    keep_db: int = Field(default=7, ge=1, le=90)
-    keep_assets: int = Field(default=3, ge=1, le=90)
-
-
 class HotSettings(BaseModel):
     """运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败."""
 
@@ -928,9 +918,13 @@ class HotSettings(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _drop_removed_sections(cls, data: Any) -> Any:
-        """丢弃已移除的 paths section."""
+        """丢弃已移除的 section: ``paths`` 与 ``backup``.
+
+        ``extra=forbid`` 下留着旧 section 会让整份配置校验失败, 因此这里显式丢弃.
+        """
         if isinstance(data, dict):
             data.pop("paths", None)
+            data.pop("backup", None)
         return data
 
     @model_validator(mode="before")
@@ -981,7 +975,6 @@ class HotSettings(BaseModel):
     transfer: TransferConfig = TransferConfig()
     subtitles: SubtitleFetchConfig = SubtitleFetchConfig()
     wash: WashConfig = WashConfig()
-    backup: BackupConfig = BackupConfig()
 
     notify: NotifyConfig = NotifyConfig()
     worker: WorkerConfig = WorkerConfig()

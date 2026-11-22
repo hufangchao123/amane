@@ -130,28 +130,6 @@
       "queue": "Task queue"
     }
   },
-  "backup": {
-    "title": "Backup",
-    "hint": "Online database backup and resource archive; media files are not included.",
-    "refresh": "Refresh",
-    "run": "Back up now",
-    "queued": "Backup task queued",
-    "runFailed": "Failed to queue the backup task",
-    "loadFailed": "Failed to load backups",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
-    "empty": "No backup artifacts yet",
-    "columns": {
-      "name": "File",
-      "kind": "Kind",
-      "size": "Size",
-      "created": "Created"
-    },
-    "kinds": {
-      "db": "Database",
-      "assets": "Resources"
-    }
-  },
   "trash": {
     "title": "Trash",
     "hint": "Size and cleanup of the legacy trash directory (.amane_trash); cleanup runs as a task and only counts by default.",
