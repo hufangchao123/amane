@@ -97,6 +97,18 @@ class WashPrefer(StrEnum):
     OLDEST = "oldest"
 
 
+class TransferLoginClient(StrEnum):
+    """扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端."""
+
+    WEB = "web"
+    ANDROID = "android"
+    IOS = "ios"
+    WINDOWS = "windows"
+    MAC = "mac"
+    LINUX = "linux"
+    TV = "tv"
+
+
 class StrmPrefer(StrEnum):
     """STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置."""
 

@@ -25,6 +25,30 @@
       "title": "最近记录",
       "empty": "还没有记录",
       "total": "共 {{total}} 条"
+    },
+    "qr": {
+      "title": "扫码登录",
+      "hint": "用 115 手机端扫码确认。确认后 Cookie 直接写进配置，界面不回显；不同客户端拿到的 Cookie 用途不同，中转用网页端即可。",
+      "client": "登录客户端",
+      "start": "获取二维码",
+      "refresh": "换一张",
+      "waiting": "等待扫码",
+      "scanned": "已扫码，请在手机上确认",
+      "confirmed": "已确认",
+      "expired": "二维码已过期，请换一张",
+      "expires": "有效期约 {{seconds}} 秒",
+      "saved": "已登录，Cookie 已保存",
+      "startFailed": "获取二维码失败",
+      "pollFailed": "轮询状态失败，请换一张二维码",
+      "clients": {
+        "web": "网页端（推荐）",
+        "android": "安卓",
+        "ios": "iOS",
+        "windows": "Windows",
+        "mac": "macOS",
+        "linux": "Linux",
+        "tv": "TV 端"
+      }
     }
   },
   "subtitles": {
@@ -54,7 +78,7 @@
   },
   "wash": {
     "title": "洗版",
-    "hint": "同番号多份文件留最优的一份, 其余进回收站, 可还原.",
+    "hint": "同番号多份文件留最优的一份, 其余进回收站, 可还原. 串流指针指 .strm 这类只记路径的文件.",
     "statGroups": "待处理组数",
     "statRestorable": "可回收体积",
     "statTrashed": "回收站条数",
@@ -82,7 +106,7 @@
     },
     "kind": {
       "local": "本地",
-      "strm": "STRM"
+      "strm": "串流指针"
     },
     "state": {
       "trashed": "在回收站",

@@ -6834,6 +6834,170 @@
         }
       }
     },
+    "/api/transfer/qrcode": {
+      "post": {
+        "tags": [
+          "transfer"
+        ],
+        "summary": "Start Transfer Qrcode",
+        "description": "换一张二维码. 扫码要人来做, 因此这里只发码, 结果由前端轮询 ``/qrcode/status``.",
+        "operationId": "start_transfer_qrcode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferQrStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferQrTicketResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transfer/qrcode/status": {
+      "get": {
+        "tags": [
+          "transfer"
+        ],
+        "summary": "Poll Transfer Qrcode",
+        "description": "轮询一次; 确认后把 Cookie 写进配置并立刻重建运行时服务.",
+        "operationId": "poll_transfer_qrcode",
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransferLoginClient"
+            }
+          },
+          {
+            "name": "uid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "time",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Time"
+            }
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Sign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferQrPollResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transfer/qrcode/image": {
+      "get": {
+        "tags": [
+          "transfer"
+        ],
+        "summary": "Transfer Qrcode Image",
+        "description": "把二维码图片转给浏览器. 图片本身不含凭据, 但仍不让前端直连 115 域名.",
+        "operationId": "transfer_qrcode_image",
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransferLoginClient"
+            }
+          },
+          {
+            "name": "uid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Uid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/transfer/items": {
       "get": {
         "tags": [
@@ -19178,6 +19342,98 @@
           "failed"
         ],
         "title": "TransferItemState"
+      },
+      "TransferLoginClient": {
+        "type": "string",
+        "enum": [
+          "web",
+          "android",
+          "ios",
+          "windows",
+          "mac",
+          "linux",
+          "tv"
+        ],
+        "title": "TransferLoginClient",
+        "description": "扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端."
+      },
+      "TransferQrPollResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "scanned",
+              "confirmed",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "saved": {
+            "type": "boolean",
+            "title": "Saved",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "TransferQrPollResponse"
+      },
+      "TransferQrStartRequest": {
+        "properties": {
+          "client": {
+            "$ref": "#/components/schemas/TransferLoginClient",
+            "default": "web"
+          }
+        },
+        "type": "object",
+        "title": "TransferQrStartRequest",
+        "description": "要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口."
+      },
+      "TransferQrTicketResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "uid": {
+            "type": "string",
+            "title": "Uid"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "sign": {
+            "type": "string",
+            "title": "Sign"
+          },
+          "client": {
+            "$ref": "#/components/schemas/TransferLoginClient"
+          },
+          "qrcode_url": {
+            "type": "string",
+            "title": "Qrcode Url"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "uid",
+          "time",
+          "sign",
+          "client",
+          "qrcode_url",
+          "expires_in"
+        ],
+        "title": "TransferQrTicketResponse",
+        "description": "一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示."
       },
       "TransferStatusResponse": {
         "properties": {

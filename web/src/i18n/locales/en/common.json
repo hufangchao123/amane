@@ -192,5 +192,22 @@
       "digest": "",
       "message": ""
     }
+  },
+  "transfer": {
+    "qr": {
+      "clients": {
+        "android": "",
+        "ios": "",
+        "windows": "",
+        "mac": "",
+        "linux": "",
+        "tv": "",
+        "web": ""
+      },
+      "scanned": "",
+      "confirmed": "",
+      "expired": "",
+      "waiting": ""
+    }
   }
 }

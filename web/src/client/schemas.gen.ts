@@ -12020,6 +12020,102 @@ export const TransferItemStateSchema = {
     title: 'TransferItemState'
 } as const;
 
+export const TransferLoginClientSchema = {
+    type: 'string',
+    enum: [
+        'web',
+        'android',
+        'ios',
+        'windows',
+        'mac',
+        'linux',
+        'tv'
+    ],
+    title: 'TransferLoginClient',
+    description: '扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端.'
+} as const;
+
+export const TransferQrPollResponseSchema = {
+    properties: {
+        status: {
+            type: 'string',
+            enum: [
+                'waiting',
+                'scanned',
+                'confirmed',
+                'expired'
+            ],
+            title: 'Status'
+        },
+        saved: {
+            type: 'boolean',
+            title: 'Saved',
+            default: false
+        }
+    },
+    type: 'object',
+    required: [
+        'status'
+    ],
+    title: 'TransferQrPollResponse'
+} as const;
+
+export const TransferQrStartRequestSchema = {
+    properties: {
+        client: {
+            $ref: '#/components/schemas/TransferLoginClient',
+            default: 'web'
+        }
+    },
+    type: 'object',
+    title: 'TransferQrStartRequest',
+    description: '要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口.'
+} as const;
+
+export const TransferQrTicketResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        uid: {
+            type: 'string',
+            title: 'Uid'
+        },
+        time: {
+            type: 'string',
+            title: 'Time'
+        },
+        sign: {
+            type: 'string',
+            title: 'Sign'
+        },
+        client: {
+            $ref: '#/components/schemas/TransferLoginClient'
+        },
+        qrcode_url: {
+            type: 'string',
+            title: 'Qrcode Url'
+        },
+        expires_in: {
+            type: 'integer',
+            title: 'Expires In'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'uid',
+        'time',
+        'sign',
+        'client',
+        'qrcode_url',
+        'expires_in'
+    ],
+    title: 'TransferQrTicketResponse',
+    description: '一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示.'
+} as const;
+
 export const TransferStatusResponseSchema = {
     properties: {
         enabled: {

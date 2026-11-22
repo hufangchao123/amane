@@ -25,6 +25,30 @@
       "title": "Recent records",
       "empty": "No records yet",
       "total": "{{total}} total"
+    },
+    "qr": {
+      "title": "Sign in by QR code",
+      "hint": "Scan with the 115 mobile app. The cookie is written to config on confirm and never shown back; different clients produce cookies for different APIs, the web client is enough for transfer.",
+      "client": "Login client",
+      "start": "Get QR code",
+      "refresh": "New code",
+      "waiting": "Waiting for scan",
+      "scanned": "Scanned, confirm on your phone",
+      "confirmed": "Confirmed",
+      "expired": "QR code expired, get a new one",
+      "expires": "Valid for about {{seconds}} seconds",
+      "saved": "Signed in, cookie saved",
+      "startFailed": "Failed to get a QR code",
+      "pollFailed": "Failed to poll the status, get a new code",
+      "clients": {
+        "web": "Web (recommended)",
+        "android": "Android",
+        "ios": "iOS",
+        "windows": "Windows",
+        "mac": "macOS",
+        "linux": "Linux",
+        "tv": "TV"
+      }
     }
   },
   "subtitles": {

@@ -6479,6 +6479,69 @@ export type TransferItemResponse = {
 export type TransferItemState = 'pending' | 'moved' | 'skipped' | 'failed';
 
 /**
+ * TransferLoginClient
+ *
+ * 扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端.
+ */
+export type TransferLoginClient = 'web' | 'android' | 'ios' | 'windows' | 'mac' | 'linux' | 'tv';
+
+/**
+ * TransferQrPollResponse
+ */
+export type TransferQrPollResponse = {
+    /**
+     * Status
+     */
+    status: 'waiting' | 'scanned' | 'confirmed' | 'expired';
+    /**
+     * Saved
+     */
+    saved?: boolean;
+};
+
+/**
+ * TransferQrStartRequest
+ *
+ * 要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口.
+ */
+export type TransferQrStartRequest = {
+    client?: TransferLoginClient;
+};
+
+/**
+ * TransferQrTicketResponse
+ *
+ * 一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示.
+ */
+export type TransferQrTicketResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Uid
+     */
+    uid: string;
+    /**
+     * Time
+     */
+    time: string;
+    /**
+     * Sign
+     */
+    sign: string;
+    client: TransferLoginClient;
+    /**
+     * Qrcode Url
+     */
+    qrcode_url: string;
+    /**
+     * Expires In
+     */
+    expires_in: number;
+};
+
+/**
  * TransferStatusResponse
  */
 export type TransferStatusResponse = {
@@ -11310,6 +11373,99 @@ export type TransferStatusResponses = {
 };
 
 export type TransferStatusResponse2 = TransferStatusResponses[keyof TransferStatusResponses];
+
+export type StartTransferQrcodeData = {
+    body: TransferQrStartRequest;
+    path?: never;
+    query?: never;
+    url: '/api/transfer/qrcode';
+};
+
+export type StartTransferQrcodeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartTransferQrcodeError = StartTransferQrcodeErrors[keyof StartTransferQrcodeErrors];
+
+export type StartTransferQrcodeResponses = {
+    /**
+     * Successful Response
+     */
+    201: TransferQrTicketResponse;
+};
+
+export type StartTransferQrcodeResponse = StartTransferQrcodeResponses[keyof StartTransferQrcodeResponses];
+
+export type PollTransferQrcodeData = {
+    body?: never;
+    path?: never;
+    query: {
+        client: TransferLoginClient;
+        /**
+         * Uid
+         */
+        uid: string;
+        /**
+         * Time
+         */
+        time: string;
+        /**
+         * Sign
+         */
+        sign: string;
+    };
+    url: '/api/transfer/qrcode/status';
+};
+
+export type PollTransferQrcodeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PollTransferQrcodeError = PollTransferQrcodeErrors[keyof PollTransferQrcodeErrors];
+
+export type PollTransferQrcodeResponses = {
+    /**
+     * Successful Response
+     */
+    200: TransferQrPollResponse;
+};
+
+export type PollTransferQrcodeResponse = PollTransferQrcodeResponses[keyof PollTransferQrcodeResponses];
+
+export type TransferQrcodeImageData = {
+    body?: never;
+    path?: never;
+    query: {
+        client: TransferLoginClient;
+        /**
+         * Uid
+         */
+        uid: string;
+    };
+    url: '/api/transfer/qrcode/image';
+};
+
+export type TransferQrcodeImageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TransferQrcodeImageError = TransferQrcodeImageErrors[keyof TransferQrcodeImageErrors];
+
+export type TransferQrcodeImageResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type ListTransferItemsData = {
     body?: never;

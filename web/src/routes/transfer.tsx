@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { transferStatusOptions } from "@/client/@tanstack/react-query.gen";
 import { OpsPageShell } from "@/components/ops/page-shell";
+import { QrLogin } from "@/features/transfer/qr-login";
 import { RecentItems } from "@/features/transfer/recent-items";
 import { RunTransferButton } from "@/features/transfer/run-button";
 import { TransferStatusCards } from "@/features/transfer/status-cards";
@@ -31,6 +32,7 @@ function TransferPage() {
           </Alert>
         )}
         {status !== undefined && <TransferStatusCards status={status} />}
+        <QrLogin />
         <RecentItems />
       </Stack>
     </OpsPageShell>

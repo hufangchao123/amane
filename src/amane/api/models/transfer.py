@@ -1,8 +1,10 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
 from ...db.models import TransferItemState
+from ...enums import TransferLoginClient
 
 
 class TransferStatusResponse(BaseModel):
@@ -26,6 +28,31 @@ class TransferItemResponse(BaseModel):
     error: str | None
     moved_at: datetime | None
     updated_at: datetime
+
+
+class TransferQrStartRequest(BaseModel):
+    """要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口."""
+
+    client: TransferLoginClient = TransferLoginClient.WEB
+
+
+class TransferQrTicketResponse(BaseModel):
+    """一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示."""
+
+    enabled: bool
+    """中转未启用时也允许扫码登录 (Cookie 是启用条件的另一半), 这里恒为真, 留给前端判断是否需要提示."""
+    uid: str
+    time: str
+    sign: str
+    client: TransferLoginClient
+    qrcode_url: str
+    expires_in: int
+
+
+class TransferQrPollResponse(BaseModel):
+    status: Literal["waiting", "scanned", "confirmed", "expired"]
+    saved: bool = False
+    """确认后 Cookie 已写进配置; 前端据此刷新状态与提示."""
 
 
 class TransferItemListResponse(BaseModel):

@@ -44,6 +44,17 @@
 
 面板时代的 `115-transfer-state.json` 等状态文件**不再读写**; 迁移期允许一次性导入, 之后以库为准。
 
+## 115 中转的扫码登录
+
+Cookie 支持扫码取得, 省掉手工从浏览器复制. 三条接口都按登录客户端分路径 (`web` / `android` / `ios` / `windows` / `mac` / `linux` / `tv`), 客户端决定 115 发给哪个端的凭据: 中转只读网盘目录与搬运, 网页端即可.
+
+- 取码 `POST /api/transfer/qrcode`: 透传 `GET qrcodeapi.115.com/api/1.0/{client}/1.0/token/` 的 `uid` / `time` / `sign`.
+- 轮询 `GET /api/transfer/qrcode/status`: 未扫时 115 回 `code 90038`, 映射成 `waiting`; `scanned` / `expired` 原样转出. 网页端确认后 115 不再回 Cookie, 要另换一次: `POST passportapi.115.com/app/1.0/web/1.0/login/qrcode/` 的 `data.cookie`, 即 `confirmed` 分支.
+- 图片 `GET /api/transfer/qrcode/image`: 后端转发 `qrcode/?uid=`, 浏览器不直连 115 的域名.
+- 确认后 Cookie 直接写进 `transfer.cookies`, 响应只报 `saved`, 不回显内容; 中转按该 Cookie 动作, 与手工填写等价.
+
+Open objectives: 无.
+
 ## 字幕补全的目标
 
 只挑 `status=scraped` 且没有外挂字幕的媒体文件; 落位要按番号找到元数据条目, 缺条目记为失败而不是缺口。同一目录已有一份字幕后, 后续文件按「已有外挂字幕」跳过, 因此一次任务通常只落一份。
