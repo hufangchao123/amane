@@ -53,7 +53,7 @@ class _Outcome(StrEnum):
     MISSING = "missing"
     """来源没有这份字幕: 记为缺口, 不是故障."""
     FAILED = "failed"
-    """出错: 落位失败、缺元数据、来源报错."""
+    """出错: 落位失败、缺元数据、来源临时故障."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +184,11 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         try:
             download = await fetch_subtitle(web, config, number)
         except SubtitleSourceError as exc:
+            if exc.transient:
+                # 限流与断连说明"这一轮没取到", 不说明"来源没有这份字幕": 记成缺口会让人以为
+                # 补全跑完了, 实际下一轮重跑还能补上, 因此单独计入 failed.
+                logger.warning("subtitles.source_failed", media_file_id=media.id, number=number, reason=str(exc))
+                return _TargetOutcome(_Outcome.FAILED, str(exc))
             logger.info("subtitles.missing", media_file_id=media.id, number=number, reason=str(exc))
             return _TargetOutcome(_Outcome.MISSING, str(exc))
         return await self._place(media, library, metadata, download)

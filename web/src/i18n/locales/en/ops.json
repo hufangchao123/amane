@@ -43,9 +43,11 @@
     "recentTitle": "Recent runs",
     "recentEmpty": "No runs yet.",
     "recentStatus": "Status",
-    "recentResult": "Result",
+    "recentFetched": "Placed",
+    "recentMissing": "Missing",
+    "recentFailed": "Failed",
     "recentTime": "Finished",
-    "recentCounts": "Placed {{fetched}} / missing {{missing}} / failed {{failed}}",
+    "recentLegend": "Missing means the sources have no subtitle for this title; failed means the run could not finish it (no metadata, placement conflict or a transient source error) and the next run retries.",
     "justNow": "just now"
   },
   "wash": {

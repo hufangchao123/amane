@@ -99,13 +99,22 @@ class Transfer115Client:
     ) -> None:
         if not cookies.strip():
             raise TransferNotConfigured("115 Cookie 为空, 中转未启用")
+        _check_limits(
+            page_limit=page_limit,
+            max_entries=max_entries,
+            max_retry=max_retry,
+            interval=interval,
+            move_interval=move_interval,
+            retry_base=retry_base,
+        )
         self._cookies = cookies.strip()
         self._base_url = base_url.rstrip("/")
         self._interval = interval
         self._move_interval = move_interval
         self._max_retry = max_retry
         self._retry_base = retry_base
-        self._page_limit = page_limit
+        # 单页比总量上限还大没有意义: 一页就拿满上限, 只会让 115 白回一批用不上的条目.
+        self._page_limit = min(page_limit, max_entries)
         self._max_entries = max_entries
         self._sleep = sleep
         self._clock = clock
@@ -126,6 +135,10 @@ class Transfer115Client:
                 params={"aid": 1, "cid": cid, "offset": offset, "limit": self._page_limit, "show_dir": 1},
             )
             batch = _entry_list(payload)
+            if not batch:
+                # 翻页的终点由"这一页空了"决定, 不只靠"这一页不满": 网盘偶尔在还有条目时
+                # 回一个空页, 而 offset 不再前进会把这个循环卡死.
+                break
             entries.extend(entry for raw in batch if (entry := _parse_entry(raw)) is not None)
             offset += len(batch)
             if len(batch) < self._page_limit:
@@ -186,6 +199,31 @@ class Transfer115Client:
             remaining = gap - (self._clock() - self._last_call)
             if remaining > 0:
                 self._sleep(remaining)
+
+
+def _check_limits(
+    *,
+    page_limit: int,
+    max_entries: int,
+    max_retry: int,
+    interval: float,
+    move_interval: float,
+    retry_base: float,
+) -> None:
+    """把构造参数挡在合法区间内: 越界的翻页窗口与间隔不会报错, 只会把一轮任务卡死或空转.
+
+    分页参数尤其要挡: ``page_limit <= 0`` 时"本页不满就停"的条件永远不成立, 目录读不完整;
+    间隔或退避为负则相当于关掉限流, 115 会直接把这一轮打成 429.
+    """
+    if page_limit < 1:
+        raise ValueError(f"page_limit 必须 ≥ 1, 收到 {page_limit}")
+    if max_entries < 1:
+        raise ValueError(f"max_entries 必须 ≥ 1, 收到 {max_entries}")
+    if max_retry < 0:
+        raise ValueError(f"max_retry 不能为负, 收到 {max_retry}")
+    for name, value in (("interval", interval), ("move_interval", move_interval), ("retry_base", retry_base)):
+        if value < 0:
+            raise ValueError(f"{name} 不能为负, 收到 {value}")
 
 
 def _json_object(response: httpx2.Response) -> dict[str, object]:

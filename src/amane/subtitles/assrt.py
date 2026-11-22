@@ -3,8 +3,9 @@
 接口形状 (两跳): ``/v1/sub/search?q=<番号>&token=…`` 给候选, ``/v1/sub/detail?id=…&token=…``
 给 ``filelist``. 解析与网络分开, 解析函数是纯函数, 才能拿固定应答做单测.
 
-token 只出现在查询串里, 因此任何错误消息都只能取 ``failure.message``, 不能用 ``str(exc)``:
-后者会把整个带 token 的 URL 写进日志与任务结果.
+token 只能走查询串: 接口没有头部认证的口子, 已知客户端 (bazarr / mpv 插件) 也都用 ``?token=``,
+因此这里不改协议, 改为保证地址不外泄 —— 错误消息只取 ``failure.message`` (不用 ``str(exc)``),
+取到之后再脱敏 (见 ``models.redact_message``), 日志与任务结果里就不会出现明文 token.
 """
 
 from __future__ import annotations

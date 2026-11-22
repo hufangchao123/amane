@@ -235,6 +235,27 @@ class TestFailures:
         assert not (root / "AD-9.zh.srt").exists()
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_transient_source_failure_counts_as_failed(
+        self,
+        repo: Repository,
+        tmp_path: Path,
+        subtitle_config: SubtitleFetchConfig,
+    ):
+        """限流与断连只说明这一轮没取到, 不说明来源没有: 记 ``failed``, 下一轮还能补上."""
+        root = tmp_path / "lib"
+        _, media = await seed_media(repo, root, number="AD-1")
+        url = "https://www.subtitlecat.com/index.php?search=AD-1"
+        web = FakeHttp(texts={url: "<html></html>"}, transient_failures={url: 5})
+        config = subtitle_config.model_copy(update={"max_attempts": 1})
+
+        assert media.id is not None
+        result = await _handler(repo, web, config).handle(SubtitleFetchPayload(media_file_id=media.id))
+
+        assert result.success is True
+        assert result.result is not None
+        assert (result.result.missing, result.result.failed) == (0, 1)
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_transient_failure_is_retried_up_to_max_attempts(
         self,
         repo: Repository,

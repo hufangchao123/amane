@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final
 
 from ..config.manager import SubtitleProvider
 from ..net import FailureKind, RequestError
+from ..utils.urls import redact_url
 
 MAX_SUBTITLE_BYTES: Final[int] = 4 * 1024 * 1024
 """单份字幕的下载上限. 正常字幕几十 KB, 压缩包也不过百 KB; 超限说明来源回了非字幕内容."""
@@ -123,6 +125,18 @@ def is_transient_failure(exc: RequestError) -> bool:
     return False
 
 
+_URL_IN_TEXT: Final[re.Pattern[str]] = re.compile(r"https?://[^\s'\"<>]+")
+"""消息正文里出现的地址. 来源的失败文案常把整条请求地址抄进来."""
+
+
+def redact_message(text: str) -> str:
+    """把正文里的地址逐个脱敏: assrt 的 token 只能走查询串, 任何抄了地址的文案都会带出它."""
+    return _URL_IN_TEXT.sub(lambda match: redact_url(match.group()), text)
+
+
 def request_error_message(prefix: str, exc: RequestError) -> str:
-    """只取 ``failure.message``, 不用 ``str(exc)``: 后者带完整 URL, assrt 的 URL 里含 token."""
-    return f"{prefix}: {exc.message}"
+    """只取 ``failure.message``, 不用 ``str(exc)``: 后者带完整 URL, assrt 的 URL 里含 token.
+
+    ``failure.message`` 本身也可能抄了地址 (上游把它当诊断字段), 因此再过一遍 ``redact_message``.
+    """
+    return f"{prefix}: {redact_message(exc.message)}"

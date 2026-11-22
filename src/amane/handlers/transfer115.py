@@ -79,6 +79,7 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
 
     搬移在网盘侧发生, 本地只落 STRM 清单; 网盘客户端在这里构造, 因为只有本任务用到它.
     ``client_factory`` 是测试注入点: 用例断言编排, 不该连 webapi.115.com.
+    ``max_moves`` 覆盖单轮上限: 配置层还没有这个字段, 部署侧要调就只能从这里注入.
     """
 
     def __init__(
@@ -86,11 +87,16 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
         repo: Repository,
         hot: HotSettings,
         client_factory: Callable[[str], TransferClientLike] = Transfer115Client,
+        *,
+        max_moves: int = MAX_MOVES_PER_RUN,
     ) -> None:
         super().__init__(payload_t=Transfer115Payload, result_t=Transfer115Result)
+        if max_moves < 1:
+            raise ValueError(f"max_moves 必须 ≥ 1, 收到 {max_moves}")
         self._repo = repo
         self._hot = hot
         self._client_factory = client_factory
+        self._max_moves = max_moves
 
     async def handle(self, payload: Transfer115Payload) -> TaskResult[Transfer115Result]:
         config = self._hot.transfer
@@ -126,7 +132,7 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
             [(entry.key, entry.name) for entry in candidates if entry.key not in snapshots]
         )
 
-        run = _Run(config=config, client=client, keywords=tuple(config.ad_keywords))
+        run = _Run(config=config, client=client, keywords=tuple(config.ad_keywords), budget=self._max_moves)
         moved = skipped = failed = 0
         total = len(candidates)
         for scanned, entry in enumerate(candidates, start=1):
