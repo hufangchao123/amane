@@ -880,7 +880,7 @@ class WashConfig(BaseModel):
     strm: bool = True
     """参与洗版的 STRM 文件."""
     min_size_mb: int = Field(default=300, ge=0)
-    """小于此体积不参与, 避免误删样片."""
+    """本地文件小于此体积不参与洗版, 避免误删样片; STRM 指针不受此限 (指针本身只有几百字节)."""
     keep_days: int = Field(default=30, ge=1, le=365)
     """回收站保留天数, 到期由清理任务删除."""
     prefer: WashPrefer = WashPrefer.QUALITY

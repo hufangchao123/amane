@@ -925,7 +925,7 @@
       },
       "min_size_mb": {
         "label": "Minimum size (MB)",
-        "description": "Smaller files are left alone to protect samples"
+        "description": "Local files only: smaller videos stay out of wash to avoid touching samples. .strm pointers ignore this limit — a pointer is a few hundred bytes, so a size filter would exclude all of them."
       },
       "keep_days": {
         "label": "Keep days",
