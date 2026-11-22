@@ -7145,6 +7145,9 @@ export type WashCandidateSortField = 'bytes_freed' | 'group_key' | 'keep_path';
  * WashConfig
  *
  * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
+ *
+ * 字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,
+ * 共用的回收站保留天数排最后.
  */
 export type WashConfig = {
     /**
@@ -7156,19 +7159,19 @@ export type WashConfig = {
      */
     local?: boolean;
     /**
-     * Strm
-     */
-    strm?: boolean;
-    /**
      * Min Size Mb
      */
     min_size_mb?: number;
+    prefer?: WashPrefer;
+    /**
+     * Strm
+     */
+    strm?: boolean;
+    strm_prefer?: StrmPrefer;
     /**
      * Keep Days
      */
     keep_days?: number;
-    prefer?: WashPrefer;
-    strm_prefer?: StrmPrefer;
 };
 
 /**

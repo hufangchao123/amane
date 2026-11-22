@@ -3847,11 +3847,11 @@ export const HotSettingsSchema = {
             default: {
                 enabled: false,
                 local: true,
-                strm: true,
                 min_size_mb: 300,
-                keep_days: 30,
                 prefer: 'quality',
-                strm_prefer: 'path'
+                strm: true,
+                strm_prefer: 'path',
+                keep_days: 30
             }
         },
         notify: {
@@ -13014,16 +13014,24 @@ export const WashConfigSchema = {
             title: 'Local',
             default: true
         },
-        strm: {
-            type: 'boolean',
-            title: 'Strm',
-            default: true
-        },
         min_size_mb: {
             type: 'integer',
             minimum: 0,
             title: 'Min Size Mb',
             default: 300
+        },
+        prefer: {
+            $ref: '#/components/schemas/WashPrefer',
+            default: 'quality'
+        },
+        strm: {
+            type: 'boolean',
+            title: 'Strm',
+            default: true
+        },
+        strm_prefer: {
+            $ref: '#/components/schemas/StrmPrefer',
+            default: 'path'
         },
         keep_days: {
             type: 'integer',
@@ -13031,19 +13039,11 @@ export const WashConfigSchema = {
             minimum: 1,
             title: 'Keep Days',
             default: 30
-        },
-        prefer: {
-            $ref: '#/components/schemas/WashPrefer',
-            default: 'quality'
-        },
-        strm_prefer: {
-            $ref: '#/components/schemas/StrmPrefer',
-            default: 'path'
         }
     },
     type: 'object',
     title: 'WashConfig',
-    description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.'
+    description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.\n\n字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,\n共用的回收站保留天数排最后.'
 } as const;
 
 export const WashPreferSchema = {

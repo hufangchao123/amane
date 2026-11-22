@@ -871,22 +871,26 @@ class SubtitleFetchConfig(BaseModel):
 
 
 class WashConfig(BaseModel):
-    """洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站."""
+    """洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
+
+    字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,
+    共用的回收站保留天数排最后.
+    """
 
     enabled: bool = False
 
     local: bool = True
     """参与洗版的本地文件."""
-    strm: bool = True
-    """参与洗版的 STRM 文件."""
     min_size_mb: int = Field(default=300, ge=0)
     """本地文件小于此体积不参与洗版, 避免误删样片; STRM 指针不受此限 (指针本身只有几百字节)."""
-    keep_days: int = Field(default=30, ge=1, le=365)
-    """回收站保留天数, 到期由清理任务删除."""
     prefer: WashPrefer = WashPrefer.QUALITY
     """本地文件留哪一份: 默认按画质 (分辨率 → 码率 → 体积); 其余三种只比一个维度."""
+    strm: bool = True
+    """参与洗版的 STRM 文件."""
     strm_prefer: StrmPrefer = StrmPrefer.PATH
     """STRM 组留哪一份: 默认按容器与路径; 可选按文件名档位或修改时间."""
+    keep_days: int = Field(default=30, ge=1, le=365)
+    """回收站保留天数, 到期由清理任务删除."""
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]
