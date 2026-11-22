@@ -90,6 +90,7 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
     case "delete":
     case "transfer_115":
     case "subtitle_fetch":
+    case "subtitle_audit":
     case "wash_scan":
     case "wash_apply":
     case "backup":

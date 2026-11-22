@@ -61,6 +61,7 @@ class TestOpsConfig:
 SUBMIT_CASES = [
     pytest.param({"type": "transfer_115"}, "transfer_115", id="transfer"),
     pytest.param({"type": "subtitle_fetch", "library_id": 1}, "subtitle_fetch", id="subtitles"),
+    pytest.param({"type": "subtitle_audit"}, "subtitle_audit", id="subtitle-audit"),
     pytest.param({"type": "wash_scan", "kind": "local"}, "wash_scan", id="wash-scan"),
     pytest.param({"type": "wash_apply", "group_keys": ["SSIS-1"]}, "wash_apply", id="wash-apply"),
     pytest.param({"type": "backup", "kind": "db"}, "backup", id="backup"),
@@ -71,7 +72,7 @@ class TestOpsSubmit:
     @pytest.mark.asyncio(loop_scope="function")
     @pytest.mark.parametrize(("body", "task_type"), SUBMIT_CASES)
     async def test_submit_accepted(self, client: AsyncClient, body: dict, task_type: str) -> None:
-        """五类运维任务都能入队; 缺省字段由 payload 默认值补齐."""
+        """六类运维任务都能入队; 缺省字段由 payload 默认值补齐."""
         resp = await client.post("tasks", json=body)
         assert resp.status_code == 202
         assert resp.json()["type"] == task_type

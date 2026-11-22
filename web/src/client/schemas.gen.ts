@@ -9889,6 +9889,80 @@ export const SrPresetSchema = {
     title: 'SrPreset'
 } as const;
 
+export const SubtitleAuditResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'subtitle_audit',
+            title: 'Type',
+            default: 'subtitle_audit'
+        },
+        libraries: {
+            type: 'integer',
+            title: 'Libraries',
+            default: 0
+        },
+        videos: {
+            type: 'integer',
+            title: 'Videos',
+            default: 0
+        },
+        subtitles: {
+            type: 'integer',
+            title: 'Subtitles',
+            default: 0
+        },
+        missing: {
+            type: 'integer',
+            title: 'Missing',
+            default: 0
+        },
+        orphans: {
+            type: 'integer',
+            title: 'Orphans',
+            default: 0
+        },
+        samples: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Samples',
+            default: []
+        }
+    },
+    type: 'object',
+    title: 'SubtitleAuditResult',
+    description: '``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径.'
+} as const;
+
+export const SubtitleAuditSubmissionSchema = {
+    properties: {
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        type: {
+            type: 'string',
+            const: 'subtitle_audit',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'SubtitleAuditSubmission',
+    description: '巡检范围; 空表示全部媒体库.'
+} as const;
+
 export const SubtitleFetchConfigSchema = {
     properties: {
         enabled: {
@@ -10180,6 +10254,9 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/Transfer115Submission'
                     },
                     {
+                        $ref: '#/components/schemas/SubtitleAuditSubmission'
+                    },
+                    {
                         $ref: '#/components/schemas/SubtitleFetchSubmission'
                     },
                     {
@@ -10212,6 +10289,7 @@ export const TaskBatchSubmitRequestSchema = {
                         scrape: '#/components/schemas/ScrapeSubmission',
                         semantic_benchmark: '#/components/schemas/SemanticBenchmarkSubmission',
                         semantic_index: '#/components/schemas/SemanticIndexSubmission',
+                        subtitle_audit: '#/components/schemas/SubtitleAuditSubmission',
                         subtitle_fetch: '#/components/schemas/SubtitleFetchSubmission',
                         transfer_115: '#/components/schemas/Transfer115Submission',
                         upscale: '#/components/schemas/UpscaleSubmission',
@@ -10776,6 +10854,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/Transfer115Result'
                         },
                         {
+                            $ref: '#/components/schemas/SubtitleAuditResult'
+                        },
+                        {
                             $ref: '#/components/schemas/SubtitleFetchResult'
                         },
                         {
@@ -10808,6 +10889,7 @@ export const TaskResponseSchema = {
                             scrape: '#/components/schemas/ScrapeResult',
                             semantic_benchmark: '#/components/schemas/SemanticBenchmarkResult',
                             semantic_index: '#/components/schemas/SemanticIndexResult',
+                            subtitle_audit: '#/components/schemas/SubtitleAuditResult',
                             subtitle_fetch: '#/components/schemas/SubtitleFetchResult',
                             transfer_115: '#/components/schemas/Transfer115Result',
                             upscale: '#/components/schemas/UpscaleResult',
@@ -10875,6 +10957,7 @@ export const TaskTypeSchema = {
         'actor_push',
         'transfer_115',
         'subtitle_fetch',
+        'subtitle_audit',
         'wash_scan',
         'wash_apply',
         'backup',

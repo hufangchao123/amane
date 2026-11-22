@@ -1,6 +1,6 @@
 import { Badge, Button, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDownload } from "@tabler/icons-react";
+import { IconDownload, IconListSearch } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -67,6 +67,20 @@ export function SubtitleStatusCards() {
       }),
   });
 
+  /** 巡检只读, 与抓取分开: 抓取的按钮受 enabled 约束, 巡检不需要. */
+  const audit = useMutation({
+    ...submitTaskMutation(),
+    onSuccess: () => {
+      notifications.show({ message: t("ops:subtitles.auditStarted"), color: "blue" });
+      void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
+    },
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
+
   const status = statusQuery.data;
   const enabled = status?.enabled ?? false;
   const running = submit.isPending;
@@ -97,6 +111,14 @@ export function SubtitleStatusCards() {
           <Badge variant="light" color={enabled ? "teal" : "gray"}>
             {enabled ? t("ops:subtitles.enabled") : t("ops:subtitles.disabled")}
           </Badge>
+          <Button
+            variant="default"
+            leftSection={<IconListSearch size={16} />}
+            loading={audit.isPending}
+            onClick={() => audit.mutate({ body: { type: "subtitle_audit" } })}
+          >
+            {t("ops:subtitles.audit")}
+          </Button>
           <Button
             leftSection={<IconDownload size={16} />}
             loading={running}

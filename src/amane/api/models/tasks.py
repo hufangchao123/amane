@@ -34,6 +34,8 @@ from ...handlers import (
     ScrapeResult,
     SemanticBenchmarkResult,
     SemanticIndexResult,
+    SubtitleAuditPayload,
+    SubtitleAuditResult,
     SubtitleFetchPayload,
     SubtitleFetchResult,
     Transfer115Payload,
@@ -72,6 +74,7 @@ TaskResultPayload = Annotated[
     | SemanticIndexResult
     | SemanticBenchmarkResult
     | Transfer115Result
+    | SubtitleAuditResult
     | SubtitleFetchResult
     | WashScanResult
     | WashApplyResult
@@ -305,6 +308,12 @@ class Transfer115Submission(Transfer115Payload):
     type: Literal["transfer_115"]
 
 
+class SubtitleAuditSubmission(SubtitleAuditPayload):
+    """巡检范围; 空表示全部媒体库."""
+
+    type: Literal["subtitle_audit"]
+
+
 class SubtitleFetchSubmission(SubtitleFetchPayload):
     """字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑."""
 
@@ -350,6 +359,7 @@ TaskSubmission = Annotated[
     | SemanticIndexSubmission
     | SemanticBenchmarkSubmission
     | Transfer115Submission
+    | SubtitleAuditSubmission
     | SubtitleFetchSubmission
     | WashScanSubmission
     | WashApplySubmission

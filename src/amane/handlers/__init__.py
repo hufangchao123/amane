@@ -13,6 +13,7 @@ from .rescrape import *
 from .scan_invalid import *
 from .scrape import *
 from .semantic import *
+from .subtitle_audit import *
 from .subtitle_fetch import *
 from .transfer115 import *
 from .upscale import *

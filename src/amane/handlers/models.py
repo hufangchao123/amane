@@ -466,6 +466,24 @@ class SubtitleFetchResult(BaseModel):
     failed: int = 0
 
 
+class SubtitleAuditPayload(BaseModel):
+    """巡检范围; 空表示全部媒体库."""
+
+    library_id: int | None = None
+
+
+class SubtitleAuditResult(BaseModel):
+    """``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径."""
+
+    type: Literal[TaskType.SUBTITLE_AUDIT] = TaskType.SUBTITLE_AUDIT
+    libraries: int = 0
+    videos: int = 0
+    subtitles: int = 0
+    missing: int = 0
+    orphans: int = 0
+    samples: list[str] = []
+
+
 class WashScanPayload(BaseModel):
     """洗版扫描范围; 只出候选清单, 一律不移动文件."""
 

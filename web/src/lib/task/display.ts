@@ -48,6 +48,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   actor_push: IconCloudUpload,
   transfer_115: IconCloudDownload,
   subtitle_fetch: IconSubtitles,
+  subtitle_audit: IconSubtitles,
   wash_scan: IconArrowsExchange,
   wash_apply: IconArrowsExchange,
   backup: IconArchive,

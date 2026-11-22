@@ -78,7 +78,8 @@
     "wash_apply": "洗版执行",
     "backup": "备份",
     "media_refresh": "媒体库刷新",
-    "wash_purge": "回收站清理"
+    "wash_purge": "回收站清理",
+    "subtitle_audit": "字幕巡检"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -494,6 +495,12 @@
           "assets": "仅资源",
           "all": "全部"
         }
+      }
+    },
+    "subtitle_audit": {
+      "library_id": {
+        "label": "媒体库",
+        "description": "留空巡检全部媒体库"
       }
     }
   },

@@ -48,7 +48,9 @@
     "recentFailed": "Failed",
     "recentTime": "Finished",
     "recentLegend": "Missing means the sources have no subtitle for this title; failed means the run could not finish it (no metadata, placement conflict or a transient source error) and the next run retries.",
-    "justNow": "just now"
+    "justNow": "just now",
+    "audit": "Audit",
+    "auditStarted": "Subtitle audit queued"
   },
   "wash": {
     "title": "Wash",

@@ -73,6 +73,15 @@
 
 `handlers/models.py` 里的 Payload / Result 与 `handlers/*.py` 里的 handler 分离, 结果模型带 `type: Literal[TaskType.X]` 判别字段。新增任务类型要同步五处, 少一处就有编译期或测试期报错挡着: `TaskSubmission` 联合、`TaskResultPayload` 联合、`api/support/task_resolve.py::resolve_submission` 的 `match`、`web/src/lib/exhaustive-maps.ts` 的 `TASK_TYPES`、`web/src/lib/task/display.ts` 的 `TASK_ICONS`; 另有 i18n 的 `settings.json`(配置字段) 与 `tasks.json`(提交字段 + `filters.*`) 两处编译期穷举检查。
 
+### 字幕巡检的判据
+
+`SUBTITLE_AUDIT` 遍历库内已入库的文件, 逐目录比对视频与字幕, 输出两项互不校正的计数: `missing` 取自库里
+`has_subtitle` 标记, `orphans` 取自磁盘 —— 字幕文件名不以任何视频的 stem 开头即算配不上, 因为落位规则是
+`<视频 stem>.<语言>.srt`. 判据只看文件名, 不判「来源番号与目标番号是否一致」: 那要下载历史, 库内没有这份历史.
+
+扫描的目录只取已入库文件所在的目录, 扩展名取 `libraries.subtitle_extensions` (空列表跳过). 巡检只出清单,
+不移动文件, 因此不取库锁; 清理配不上的字幕在回收站运维里做.
+
 ## 定时入口
 
 `scheduler/cron.py::_execute_task` 的 `match` 有四个媒体运维分支, 每一支只做「把例行转成任务」:

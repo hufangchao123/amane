@@ -5255,6 +5255,58 @@ export type SrConfig = {
 export type SrPreset = 'realesr-photo-4x' | 'waifu-photo-2x';
 
 /**
+ * SubtitleAuditResult
+ *
+ * ``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径.
+ */
+export type SubtitleAuditResult = {
+    /**
+     * Type
+     */
+    type?: 'subtitle_audit';
+    /**
+     * Libraries
+     */
+    libraries?: number;
+    /**
+     * Videos
+     */
+    videos?: number;
+    /**
+     * Subtitles
+     */
+    subtitles?: number;
+    /**
+     * Missing
+     */
+    missing?: number;
+    /**
+     * Orphans
+     */
+    orphans?: number;
+    /**
+     * Samples
+     */
+    samples?: Array<string>;
+};
+
+/**
+ * SubtitleAuditSubmission
+ *
+ * 巡检范围; 空表示全部媒体库.
+ */
+export type SubtitleAuditSubmission = {
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Type
+     */
+    type: 'subtitle_audit';
+};
+
+/**
  * SubtitleFetchConfig
  *
  * 字幕批量下载: 缺凭据时只用免鉴权来源.
@@ -5403,7 +5455,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission>;
 };
 
 /**
@@ -5717,6 +5769,8 @@ export type TaskResponse = {
     } & SemanticBenchmarkResult) | ({
         type: 'transfer_115';
     } & Transfer115Result) | ({
+        type: 'subtitle_audit';
+    } & SubtitleAuditResult) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchResult) | ({
         type: 'wash_scan';
@@ -5742,7 +5796,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -9675,6 +9729,8 @@ export type SubmitTaskData = {
     } & SemanticBenchmarkSubmission) | ({
         type: 'transfer_115';
     } & Transfer115Submission) | ({
+        type: 'subtitle_audit';
+    } & SubtitleAuditSubmission) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchSubmission) | ({
         type: 'wash_scan';

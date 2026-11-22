@@ -90,7 +90,8 @@
     "wash_apply": "Wash apply",
     "backup": "Backup",
     "media_refresh": "Media library refresh",
-    "wash_purge": "Trash purge"
+    "wash_purge": "Trash purge",
+    "subtitle_audit": "Subtitle audit"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -525,6 +526,12 @@
           "assets": "Assets only",
           "all": "All"
         }
+      }
+    },
+    "subtitle_audit": {
+      "library_id": {
+        "label": "Library",
+        "description": "Leave empty to audit every library"
       }
     }
   },
