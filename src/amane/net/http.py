@@ -16,6 +16,7 @@ from aiolimiter import AsyncLimiter
 from curl_cffi import CurlError
 from curl_cffi.requests import AsyncSession, BrowserTypeLiteral, Response
 
+from ..utils.urls import redact_url
 from .egress import EgressPolicy, ensure_http_scheme
 from .errors import FailureKind, RequestError, RequestFailure
 from .recording import get_bound_http_recorder, skip_body_recording
@@ -423,12 +424,12 @@ class WebClient:
                 # 先记录拒绝项并选出下一个: 预算用尽时它留给该 host 的下一次请求, 不重复试探同一个指纹.
                 rotated = self._fingerprints.rotate(key)
                 if rotated is None:
-                    logger.warning("host rejected every fingerprint", url=url, status=resp.status_code)
+                    logger.warning("host rejected every fingerprint", url=redact_url(url), status=resp.status_code)
                 elif rotations < _MAX_IMPERSONATE_ROTATIONS:
                     rotations += 1
                     logger.warning(
                         "impersonate rotated",
-                        url=url,
+                        url=redact_url(url),
                         status=resp.status_code,
                         rejected=impersonate,
                         impersonate=rotated,
@@ -445,7 +446,7 @@ class WebClient:
             logger.warning(
                 "request retry",
                 method=method,
-                url=url,
+                url=redact_url(url),
                 attempt=retries,
                 max_retries=attempts,
                 error=failure.message if failure else None,
@@ -459,7 +460,7 @@ class WebClient:
         log_failed(
             "request failed",
             method=method,
-            url=url,
+            url=redact_url(url),
             error=failure.message if failure else None,
             attempts=sent,
             duration_s=round(time.monotonic() - t0, 2),
@@ -492,7 +493,7 @@ class WebClient:
                 body = None
         rec.record_http(
             method=str(method),
-            url=url,
+            url=redact_url(url),
             status=status,
             error=error,
             content_type=content_type,
@@ -658,7 +659,7 @@ class WebClient:
         except RequestError as e:
             logger.error(
                 "download failed",
-                url=url,
+                url=redact_url(url),
                 status=e.failure.status if e.failure else None,
                 reason=e.reason,
                 error=e.message,
@@ -689,7 +690,7 @@ class WebClient:
         except RequestError as e:
             logger.error(
                 "download failed",
-                url=url,
+                url=redact_url(url),
                 status=e.failure.status if e.failure else None,
                 reason=e.reason,
                 error=e.message,
@@ -703,7 +704,7 @@ class WebClient:
                 async for chunk in resp.aiter_content():
                     written += len(chunk)
                     if written > max_bytes:
-                        logger.error("download exceeds size cap", url=url, bytes=written, cap=max_bytes)
+                        logger.error("download exceeds size cap", url=redact_url(url), bytes=written, cap=max_bytes)
                         return False
                     await f.write(chunk)
             return True
@@ -711,7 +712,7 @@ class WebClient:
             logger.error("file write failed", path=str(dest), error=str(e))
             return False
         except Exception as e:
-            logger.error("download stream failed", url=url, error=f"{type(e).__name__}: {e}")
+            logger.error("download stream failed", url=redact_url(url), error=f"{type(e).__name__}: {e}")
             return False
         finally:
             await self._close(resp)
@@ -728,10 +729,10 @@ class WebClient:
         chunk_size = self._chunk_size
         parts = [(s, min(s + chunk_size - 1, file_size - 1)) for s in range(0, file_size, chunk_size)]
         if len(parts) > _MAX_CHUNKS:
-            logger.error("download split into too many chunks", url=url, chunks=len(parts), size=file_size)
+            logger.error("download split into too many chunks", url=redact_url(url), chunks=len(parts), size=file_size)
             return False
 
-        logger.info("chunked download started", url=url, chunks=len(parts), size=file_size)
+        logger.info("chunked download started", url=redact_url(url), chunks=len(parts), size=file_size)
 
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -765,13 +766,15 @@ class WebClient:
 
         for i, result in enumerate(results):
             if isinstance(result, BaseException):
-                logger.error("chunk download failed", chunk=i, url=url, error=str(result))
+                logger.error("chunk download failed", chunk=i, url=redact_url(url), error=str(result))
                 return False
             if result is not None:
-                logger.error("chunk download failed", chunk=i, url=url, status=result.status, error=result.message)
+                logger.error(
+                    "chunk download failed", chunk=i, url=redact_url(url), status=result.status, error=result.message
+                )
                 return False
 
-        logger.info("chunked download complete", url=url)
+        logger.info("chunked download complete", url=redact_url(url))
         return True
 
     async def close(self) -> None:

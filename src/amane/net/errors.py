@@ -10,6 +10,8 @@ from enum import StrEnum
 
 from pydantic import ValidationError
 
+from ..utils.urls import redact_url
+
 
 class FailureKind(StrEnum):
     """语义在 kind/status, message 仅供展示."""
@@ -97,7 +99,7 @@ class RequestError(SourceError):
             reason = FailureReason.NETWORK
             http_status = None
         super().__init__(reason, http_status=http_status, detail=self.message, url=url)
-        Exception.__init__(self, f"{url}: {self.message}")
+        Exception.__init__(self, f"{redact_url(url)}: {self.message}")
 
 
 class EgressRejected(RequestError):

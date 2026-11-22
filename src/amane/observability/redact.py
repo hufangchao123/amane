@@ -49,6 +49,12 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     r18 = hot_dump.get("r18")
     if isinstance(r18, dict) and r18.get("dsn"):
         return True
+    transfer = hot_dump.get("transfer")
+    if isinstance(transfer, dict) and transfer.get("cookies"):
+        return True
+    subtitles = hot_dump.get("subtitles")
+    if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
+        return True
 
     plugins = hot_dump.get("plugins")
     if isinstance(plugins, dict):
@@ -102,6 +108,15 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
         for plugin in plugins.values():
             if isinstance(plugin, dict):
                 plugin["config"] = _redact_secret_values(plugin.get("config"))
+
+    # 媒体运维的密钥: 顶层 section 不走 _redact_secret_values 递归, 只能逐字段登记
+    transfer = out.get("transfer")
+    if isinstance(transfer, dict) and transfer.get("cookies"):
+        transfer["cookies"] = REDACTION_PLACEHOLDER
+
+    subtitles = out.get("subtitles")
+    if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
+        subtitles["assrt_token"] = REDACTION_PLACEHOLDER
 
     return out
 
