@@ -84,7 +84,8 @@
     "nfo_patch": "NFO 修补",
     "notify": "通知",
     "notify_digest": "摘要推送",
-    "avatar_check": "头像校验"
+    "avatar_check": "头像校验",
+    "scrape_transfer": "刮削后转移"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -189,7 +190,8 @@
       "pruned": "修剪",
       "refreshed": "已通知 {{kind}} 刷新媒体库",
       "channel": "渠道",
-      "status": "状态码"
+      "status": "状态码",
+      "size": "占用"
     }
   },
   "status": {
@@ -600,6 +602,18 @@
       "clear_broken": {
         "label": "摘掉失效链接",
         "description": "查到坏链接时直接从演员上删掉"
+      }
+    },
+    "scrape_transfer": {
+      "media_file_id": {
+        "label": "媒体文件"
+      },
+      "outcome": {
+        "label": "时机",
+        "options": {
+          "ok": "刮削成功",
+          "failed": "刮削失败"
+        }
       }
     }
   },

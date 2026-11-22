@@ -38,6 +38,9 @@ class LibraryCreateRequest(BaseModel):
     path: str
     automation: LibraryAutomation = LibraryAutomation.SCRAPE
     auto_organize: bool = False
+    scrape_transfer: bool = False
+    scrape_ok_dir: str | None = None
+    scrape_fail_dir: str | None = None
     ingest: LibraryIngest = LibraryIngest.NATIVE
     cloud_path: str | None = None
     """CloudDrive 虚拟路径 (POSIX, 如 /115open/云下载). ingest=clouddrive 时必填."""
@@ -85,6 +88,9 @@ class LibraryResponse(BaseModel):
     path: str
     automation: LibraryAutomation
     auto_organize: bool
+    scrape_transfer: bool
+    scrape_ok_dir: str | None = None
+    scrape_fail_dir: str | None = None
     ingest: LibraryIngest
     cloud_path: str | None = None
     recursive: bool

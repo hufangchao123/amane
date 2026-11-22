@@ -13,7 +13,15 @@ from ..observability import current
 from ..observability.models import SiteOutcomeKind
 from ..plugins.models import SourceDescriptor, SourceTrait
 from ._common import ensure_oshash, finalize_media_file
-from .models import ActorScrapePayload, CacheKind, OrganizePayload, ScrapePayload, ScrapeResult
+from .models import (
+    ActorScrapePayload,
+    CacheKind,
+    OrganizePayload,
+    ScrapePayload,
+    ScrapeResult,
+    ScrapeTransferOutcome,
+    ScrapeTransferPayload,
+)
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
@@ -207,6 +215,8 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
         actor_followups = await self._actor_scrape_followups(meta.actors)
         # 库开启自动整理时为本次刮削的文件扇出 ORGANIZE.
         organize_followups = await self._auto_organize_followups(payload, file)
+        # 库开启刮削后转移时把该文件搬到成功目录.
+        transfer_followups = await self._scrape_transfer_followups(payload, outcome="ok")
 
         await self.report_progress(progress_total, progress_total, "done")
 
@@ -218,6 +228,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             failed_sites=result.failed_sites,
             actor_followups=len(actor_followups),
             organize_followups=len(organize_followups),
+            transfer_followups=len(transfer_followups),
         )
 
         assert meta.id is not None
@@ -229,7 +240,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
                 failed_sites=result.failed_sites,
                 outcomes=current().site_outcomes(),
             ),
-            followups=[*actor_followups, *organize_followups],
+            followups=[*actor_followups, *organize_followups, *transfer_followups],
         )
 
     def failure_result(self, payload: ScrapePayload) -> ScrapeResult | None:
@@ -277,6 +288,47 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             ]
         except Exception:
             current().exception("failed to build auto organize followup", media_file_id=file.id)
+            return []
+
+    async def failure_followups(self, payload: ScrapePayload) -> list[FollowupTask]:
+        """刮削失败时把该文件搬进失败目录; 其余失败后继没有.
+
+        由 worker 在崩溃与判失败后调用, 因此载荷里可能已没有读得到的文件 (索引与任务不一致),
+        这种情况静默跳过.
+        """
+        return await self._scrape_transfer_followups(payload, outcome="failed")
+
+    async def _scrape_transfer_followups(
+        self, payload: ScrapePayload, *, outcome: ScrapeTransferOutcome
+    ) -> list[FollowupTask]:
+        """库开启刮削后转移时描述 SCRAPE_TRANSFER 后继; 未开启或缺目的目录则不链.
+
+        按番号刮削没有可搬的 ``MediaFile``, 不在此列. ``priority=-1``: 转移不抢占交互提交的任务.
+        整段 ``except`` 只为不让已写库的刮削任务失败: 转移是附带动作, 漏一次等于文件留在原处.
+        """
+        if payload.media_file_id is None:
+            return []
+        try:
+            file = await self._repo.get_media_file(payload.media_file_id)
+            if file is None or file.id is None:
+                return []
+            library = await self._repo.get_library(file.library_id)
+            if library is None or not library.scrape_transfer:
+                return []
+            destination = library.scrape_ok_dir if outcome == "ok" else library.scrape_fail_dir
+            if not destination:
+                return []
+            transfer = ScrapeTransferPayload(media_file_id=file.id, outcome=outcome)
+            return [
+                FollowupTask(
+                    key=f"scrape-transfer:{file.id}",
+                    task_type=TaskType.SCRAPE_TRANSFER,
+                    payload=transfer.model_dump(mode="json"),
+                    priority=-1,
+                )
+            ]
+        except Exception:
+            current().exception("failed to build scrape transfer followup", media_file_id=payload.media_file_id)
             return []
 
     async def _actor_scrape_followups(self, actor_names: list[str]) -> list[FollowupTask]:

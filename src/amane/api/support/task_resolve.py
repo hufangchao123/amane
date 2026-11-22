@@ -19,6 +19,7 @@ from ...handlers import (
     RescrapePayload,
     ScanInvalidPayload,
     ScrapePayload,
+    ScrapeTransferPayload,
     SemanticBenchmarkPayload,
     SemanticIndexPayload,
     SubtitleAuditPayload,
@@ -45,6 +46,7 @@ from ..models import (
     RescrapeSubmission,
     ScanInvalidSubmission,
     ScrapeSubmission,
+    ScrapeTransferSubmission,
     SemanticBenchmarkSubmission,
     SemanticIndexSubmission,
     SubtitleAuditSubmission,
@@ -63,6 +65,7 @@ if TYPE_CHECKING:
 ResolvedPayload = (
     RefreshPayload
     | ScrapePayload
+    | ScrapeTransferPayload
     | ScanInvalidPayload
     | DeletePayload
     | OrganizePayload
@@ -101,6 +104,8 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
         case ScanInvalidSubmission():
             await req.resolve(repo)
             return TaskType.SCAN_INVALID, req
+        case ScrapeTransferSubmission():
+            return TaskType.SCRAPE_TRANSFER, ScrapeTransferPayload(media_file_id=req.media_file_id, outcome=req.outcome)
         case ScrapeSubmission():
             return TaskType.SCRAPE, await req.resolve(repo)
         case CleanupSubmission():

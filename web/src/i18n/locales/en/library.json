@@ -89,6 +89,20 @@
     "label": "Auto organize",
     "hint": "Organize the file automatically once it is scraped"
   },
+  "scrapeTransfer": {
+    "label": "Transfer after scrape",
+    "hint": "Move the file out of the library once scraping finishes; the index follows the new path",
+    "okDir": {
+      "label": "Success directory",
+      "hint": "Destination for successful scrapes; must be outside the library or the file gets scanned back in",
+      "placeholder": "/media/scraped"
+    },
+    "failDir": {
+      "label": "Failure directory",
+      "hint": "Destination for failed scrapes; either directory alone is enough",
+      "placeholder": "/media/scrape-failed"
+    }
+  },
   "ingest": {
     "label": "File discovery",
     "hint": "Webhook requires a CloudDrive2 membership; performs better than watching the mount path",

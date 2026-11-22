@@ -192,6 +192,17 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
+    case "scrape_transfer":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.files"), value: result.files ?? 0, tone: "teal" },
+            { label: t("result.counts.size"), value: formatFileSize(result.bytes), tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
     case "avatar_check":
       return (
         <CountBadges

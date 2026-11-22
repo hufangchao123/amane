@@ -67,6 +67,9 @@ class LibrariesRepoMixin(RepositoryMixinBase):
         path: str,
         automation: LibraryAutomation = LibraryAutomation.SCRAPE,
         auto_organize: bool = False,
+        scrape_transfer: bool = False,
+        scrape_ok_dir: str | None = None,
+        scrape_fail_dir: str | None = None,
         ingest: LibraryIngest = LibraryIngest.NATIVE,
         cloud_path: str | None = None,
         recursive: bool = True,
@@ -112,6 +115,9 @@ class LibrariesRepoMixin(RepositoryMixinBase):
                 path=str(resolved_path(path)),
                 automation=automation,
                 auto_organize=auto_organize,
+                scrape_transfer=scrape_transfer,
+                scrape_ok_dir=scrape_ok_dir,
+                scrape_fail_dir=scrape_fail_dir,
                 ingest=ingest,
                 cloud_path=cloud_path,
                 recursive=recursive,
@@ -207,6 +213,12 @@ class LibrariesRepoMixin(RepositoryMixinBase):
                 lib.automation = updates["automation"]
             if "auto_organize" in updates:
                 lib.auto_organize = updates["auto_organize"]
+            if "scrape_transfer" in updates:
+                lib.scrape_transfer = updates["scrape_transfer"]
+            if "scrape_ok_dir" in updates:
+                lib.scrape_ok_dir = updates["scrape_ok_dir"]
+            if "scrape_fail_dir" in updates:
+                lib.scrape_fail_dir = updates["scrape_fail_dir"]
             if "ingest" in updates:
                 lib.ingest = updates["ingest"]
             if "cloud_path" in updates:

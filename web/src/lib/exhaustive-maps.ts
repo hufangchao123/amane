@@ -54,7 +54,8 @@ export type PanelOnlyTaskType =
   | "trash_purge"
   | "nfo_patch"
   | "notify"
-  | "avatar_check";
+  | "avatar_check"
+  | "scrape_transfer";
 
 export type ManualTaskType = Exclude<SubmittableTaskType, PanelOnlyTaskType>;
 
@@ -106,6 +107,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "organize",
   "cleanup",
   "scrape",
+  "scrape_transfer",
   "upscale",
   "r18_import",
   "actor_scrape",

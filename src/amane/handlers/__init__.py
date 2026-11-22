@@ -15,6 +15,7 @@ from .refresh import *
 from .rescrape import *
 from .scan_invalid import *
 from .scrape import *
+from .scrape_transfer import *
 from .semantic import *
 from .subtitle_audit import *
 from .subtitle_fetch import *

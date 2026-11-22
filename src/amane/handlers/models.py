@@ -656,3 +656,26 @@ class NotifyResult(BaseModel):
     status: int | None = None
     """渠道返回的状态码; 没拿到响应时为空."""
     digest_days: int = 0
+
+
+#: 转移时机: 刮削成功进成功目录, 刮削失败进失败目录.
+ScrapeTransferOutcome = Literal["ok", "failed"]
+
+
+class ScrapeTransferPayload(BaseModel):
+    """由 SCRAPE 扇出的单文件转移; 目的目录取自该库配置, 载荷不重复携带."""
+
+    media_file_id: int
+    outcome: ScrapeTransferOutcome = "ok"
+
+
+class ScrapeTransferResult(BaseModel):
+    type: Literal[TaskType.SCRAPE_TRANSFER] = TaskType.SCRAPE_TRANSFER
+    outcome: ScrapeTransferOutcome = "ok"
+    destination: str = ""
+    """实际使用的目的目录; 未配置或未开启时为空."""
+    files: int = 0
+    bytes: int = 0
+    failed: int = 0
+    note: str = ""
+    """不搬的原因 (未开启、目的目录未配置、源文件已不在); 与文件级失败区分."""

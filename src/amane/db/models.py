@@ -33,6 +33,8 @@ class MediaFileStatus(StrEnum):
 
 class TaskType(StrEnum):
     SCRAPE = "scrape"
+    SCRAPE_TRANSFER = "scrape_transfer"
+    """刮削结束后把该文件搬到成功或失败目录; 由 SCRAPE 扇出, 不单独提交."""
     ORGANIZE = "organize"
     REFRESH = "refresh"
     CLEANUP = "cleanup"
@@ -405,6 +407,17 @@ class Library(SQLModel, table=True):
 
     与 `automation` 正交: none / watch 下手动刮削同样触发. 只影响新后继, 不撤销已入队的整理.
     """
+    scrape_transfer: bool = Field(default=False)
+    """刮削结束后把该文件的视频与同前缀附属文件搬走: 成功进 `scrape_ok_dir`, 失败进 `scrape_fail_dir`.
+
+    目的目录须在库外, 否则监控会把搬走的文件重新入库. 与 `auto_organize` 正交: 两者同时开启时
+    先搬走再整理, 整理按新路径落盘.
+    """
+    scrape_ok_dir: str | None = Field(default=None)
+    """刮削成功后的目的目录; 空则不搬, 文件留在原处."""
+    scrape_fail_dir: str | None = Field(default=None)
+    """刮削失败后的目的目录; 空则失败时原地保留, 便于直接重试."""
+
     ingest: LibraryIngest = Field(default=LibraryIngest.NATIVE)
     """文件发现通道. clouddrive 不 schedule Observer, 由 webhook 按 cloud_path 分流."""
     cloud_path: str | None = None

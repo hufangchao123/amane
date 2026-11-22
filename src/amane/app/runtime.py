@@ -37,6 +37,7 @@ from ..handlers import (
     RescrapeHandler,
     ScanInvalidHandler,
     ScrapeHandler,
+    ScrapeTransferHandler,
     SemanticBenchmarkHandler,
     SemanticIndexHandler,
     SubtitleAuditHandler,
@@ -618,7 +619,8 @@ def build_handlers(
         TaskType.SEMANTIC_INDEX: SemanticIndexHandler(semantic),
         TaskType.SEMANTIC_BENCHMARK: SemanticBenchmarkHandler(semantic),
     }
-    # 中转 / 字幕 / 洗版 / 备份: 二期实现, 此处先占位, 入队后立即失败而不是找不到 handler.
+    # 媒体运维: 由各自的库配置或热配置决定是否真的动作, 未启用时任务成功但只记说明.
+    handlers[TaskType.SCRAPE_TRANSFER] = ScrapeTransferHandler(repo, library_locks)
     handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot, max_moves=hot.transfer.max_moves_per_run)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo)

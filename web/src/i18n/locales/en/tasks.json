@@ -96,7 +96,8 @@
     "nfo_patch": "NFO patch",
     "notify": "Notification",
     "notify_digest": "Digest push",
-    "avatar_check": "Avatar check"
+    "avatar_check": "Avatar check",
+    "scrape_transfer": "Transfer after scrape"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -220,7 +221,8 @@
       "pruned": "Pruned",
       "refreshed": "Asked {{kind}} to refresh the library",
       "channel": "Channel",
-      "status": "Status"
+      "status": "Status",
+      "size": "Size"
     }
   },
   "status": {
@@ -631,6 +633,18 @@
       "clear_broken": {
         "label": "Drop broken links",
         "description": "Remove the broken URL from the actor"
+      }
+    },
+    "scrape_transfer": {
+      "media_file_id": {
+        "label": "Media file"
+      },
+      "outcome": {
+        "label": "Outcome",
+        "options": {
+          "ok": "After success",
+          "failed": "After failure"
+        }
       }
     }
   },

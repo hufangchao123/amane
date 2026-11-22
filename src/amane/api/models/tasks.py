@@ -38,6 +38,8 @@ from ...handlers import (
     ScanInvalidResult,
     ScrapePayload,
     ScrapeResult,
+    ScrapeTransferPayload,
+    ScrapeTransferResult,
     SemanticBenchmarkResult,
     SemanticIndexResult,
     SubtitleAuditPayload,
@@ -73,6 +75,7 @@ TaskResultPayload = Annotated[
     | ScanInvalidResult
     | DeleteResult
     | ScrapeResult
+    | ScrapeTransferResult
     | CleanupResult
     | UpscaleResult
     | R18ImportResult
@@ -271,6 +274,12 @@ class ScrapeSubmission(ScrapeRequest):
     type: Literal["scrape"]
 
 
+class ScrapeTransferSubmission(ScrapeTransferPayload):
+    """刮削后的单文件转移: 通常由刮削任务扇出, 也可手工提交重试."""
+
+    type: Literal["scrape_transfer"]
+
+
 class CleanupSubmission(CleanupPayload):
     type: Literal["cleanup"]
 
@@ -384,6 +393,7 @@ TaskSubmission = Annotated[
     | ScanInvalidSubmission
     | DeleteSubmission
     | ScrapeSubmission
+    | ScrapeTransferSubmission
     | CleanupSubmission
     | UpscaleSubmission
     | R18ImportSubmission

@@ -111,6 +111,9 @@ export interface LibraryFormState {
   subtitle_template: string;
   automation: LibraryAutomation;
   auto_organize: boolean;
+  scrape_transfer: boolean;
+  scrape_ok_dir: string;
+  scrape_fail_dir: string;
   ingest: LibraryIngest;
   cloud_path: string;
   scan: boolean;
@@ -146,6 +149,9 @@ export function emptyLibraryForm(schema?: PathTemplateSchemaResponse | null): Li
     subtitle_template: defaults?.subtitle_template ?? "",
     automation: "scrape",
     auto_organize: false,
+    scrape_transfer: false,
+    scrape_ok_dir: "",
+    scrape_fail_dir: "",
     ingest: "native",
     cloud_path: "",
     scan: true,
@@ -179,6 +185,9 @@ export function libraryFormFromResponse(lib: LibraryResponse): LibraryFormState 
     subtitle_template: lib.subtitle_template ?? "",
     automation: lib.automation,
     auto_organize: lib.auto_organize,
+    scrape_transfer: lib.scrape_transfer,
+    scrape_ok_dir: lib.scrape_ok_dir ?? "",
+    scrape_fail_dir: lib.scrape_fail_dir ?? "",
     ingest: lib.ingest,
     cloud_path: lib.cloud_path ?? "",
     scan: false,
@@ -227,6 +236,9 @@ function libraryFormValues(form: LibraryFormState): Record<string, unknown> {
     subtitle_template: form.subtitle_template.trim(),
     automation: form.automation,
     auto_organize: form.auto_organize,
+    scrape_transfer: form.scrape_transfer,
+    scrape_ok_dir: form.scrape_ok_dir.trim(),
+    scrape_fail_dir: form.scrape_fail_dir.trim(),
     ingest: form.ingest,
     cloud_path: form.ingest === "clouddrive" ? form.cloud_path.trim() : "",
   };
@@ -566,6 +578,39 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             aria-label={t("autoOrganize.label")}
           />
         </FieldChrome>
+        <FieldChrome label={t("scrapeTransfer.label")} description={t("scrapeTransfer.hint")}>
+          <Switch
+            checked={value.scrape_transfer}
+            onChange={(e) => onChange({ ...value, scrape_transfer: e.currentTarget.checked })}
+            aria-label={t("scrapeTransfer.label")}
+          />
+        </FieldChrome>
+        {value.scrape_transfer && (
+          <>
+            <FieldChrome
+              label={t("scrapeTransfer.okDir.label")}
+              description={t("scrapeTransfer.okDir.hint")}
+            >
+              <TextInput
+                value={value.scrape_ok_dir}
+                onChange={(e) => onChange({ ...value, scrape_ok_dir: e.currentTarget.value })}
+                placeholder={t("scrapeTransfer.okDir.placeholder")}
+                aria-label={t("scrapeTransfer.okDir.label")}
+              />
+            </FieldChrome>
+            <FieldChrome
+              label={t("scrapeTransfer.failDir.label")}
+              description={t("scrapeTransfer.failDir.hint")}
+            >
+              <TextInput
+                value={value.scrape_fail_dir}
+                onChange={(e) => onChange({ ...value, scrape_fail_dir: e.currentTarget.value })}
+                placeholder={t("scrapeTransfer.failDir.placeholder")}
+                aria-label={t("scrapeTransfer.failDir.label")}
+              />
+            </FieldChrome>
+          </>
+        )}
         {showCreateOnly && (
           <FieldChrome label={t("fieldInitialRefresh")}>
             <Switch

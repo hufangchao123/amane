@@ -637,3 +637,55 @@ async def test_worker_no_followups_on_failure(repo: Repository) -> None:
 
     assert await repo.list_task_links(parent_task_id=t.id) == []
     assert await repo.list_tasks_by_root(t.id) == []
+
+
+class FailureFollowupHandler(FailHandler):
+    """判失败后仍要排一条后继: 覆盖 worker 的失败分支."""
+
+    async def failure_followups(self, payload: dict) -> list[FollowupTask]:
+        return [FollowupTask(key="after-fail", task_type=TaskType.CLEANUP, payload={"marker": "fail"}, priority=-1)]
+
+
+class CrashFollowupHandler(TaskHandler):
+    """崩溃后仍要排一条后继: 覆盖 worker 的异常分支."""
+
+    def __init__(self) -> None:
+        super().__init__(payload_t=dict, result_t=dict)
+
+    async def handle(self, payload: dict):
+        raise RuntimeError("boom")
+
+    async def failure_followups(self, payload: dict) -> list[FollowupTask]:
+        return [FollowupTask(key="after-crash", task_type=TaskType.CLEANUP, payload={"marker": "crash"}, priority=-1)]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_failure_enqueues_failure_followups(repo: Repository) -> None:
+    """判失败后 worker 把 ``failure_followups`` 的后继单独入队 (不与失败任务结对)."""
+    tracker = Tracker()
+    handlers = {TaskType.SCRAPE: FailureFollowupHandler(), TaskType.CLEANUP: SuccessHandler(tracker)}
+    worker = AsyncWorker(repo=repo, handlers=handlers, poll_interval=0.05)
+
+    await repo.create_task(TaskType.SCRAPE, payload={"x": 1})
+    worker.start()
+    done_ids = await recv(worker, 2)
+    await stop_worker(worker)
+
+    assert len(done_ids) == 2
+    assert tracker.calls == [{"marker": "fail"}]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_crash_enqueues_failure_followups(repo: Repository) -> None:
+    """崩溃同样走后继: 文件搬走不依赖刮削任务本身成功落库."""
+    tracker = Tracker()
+    handlers = {TaskType.SCRAPE: CrashFollowupHandler(), TaskType.CLEANUP: SuccessHandler(tracker)}
+    worker = AsyncWorker(repo=repo, handlers=handlers, poll_interval=0.05)
+
+    await repo.create_task(TaskType.SCRAPE, payload={"x": 1})
+    worker.start()
+    done_ids = await recv(worker, 2)
+    await stop_worker(worker)
+
+    assert len(done_ids) == 2
+    assert tracker.calls == [{"marker": "crash"}]

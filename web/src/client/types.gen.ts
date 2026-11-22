@@ -2379,6 +2379,18 @@ export type LibraryCreateRequest = {
      * Auto Organize
      */
     auto_organize?: boolean;
+    /**
+     * Scrape Transfer
+     */
+    scrape_transfer?: boolean;
+    /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
+    /**
+     * Scrape Fail Dir
+     */
+    scrape_fail_dir?: string | null;
     ingest?: LibraryIngest;
     /**
      * Cloud Path
@@ -2506,6 +2518,18 @@ export type LibraryResponse = {
      * Auto Organize
      */
     auto_organize: boolean;
+    /**
+     * Scrape Transfer
+     */
+    scrape_transfer: boolean;
+    /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
+    /**
+     * Scrape Fail Dir
+     */
+    scrape_fail_dir?: string | null;
     ingest: LibraryIngest;
     /**
      * Cloud Path
@@ -2608,6 +2632,18 @@ export type LibraryUpdateRequest = {
      * Auto Organize
      */
     auto_organize?: boolean | null;
+    /**
+     * Scrape Transfer
+     */
+    scrape_transfer?: boolean | null;
+    /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
+    /**
+     * Scrape Fail Dir
+     */
+    scrape_fail_dir?: string | null;
     ingest?: LibraryIngest | null;
     /**
      * Cloud Path
@@ -5048,6 +5084,60 @@ export type ScrapeSubmission = {
 };
 
 /**
+ * ScrapeTransferResult
+ */
+export type ScrapeTransferResult = {
+    /**
+     * Type
+     */
+    type?: 'scrape_transfer';
+    /**
+     * Outcome
+     */
+    outcome?: 'ok' | 'failed';
+    /**
+     * Destination
+     */
+    destination?: string;
+    /**
+     * Files
+     */
+    files?: number;
+    /**
+     * Bytes
+     */
+    bytes?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Note
+     */
+    note?: string;
+};
+
+/**
+ * ScrapeTransferSubmission
+ *
+ * 刮削后的单文件转移: 通常由刮削任务扇出, 也可手工提交重试.
+ */
+export type ScrapeTransferSubmission = {
+    /**
+     * Media File Id
+     */
+    media_file_id: number;
+    /**
+     * Outcome
+     */
+    outcome?: 'ok' | 'failed';
+    /**
+     * Type
+     */
+    type: 'scrape_transfer';
+};
+
+/**
  * ScrapingConfig
  */
 export type ScrapingConfig = {
@@ -5842,7 +5932,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6138,6 +6228,8 @@ export type TaskResponse = {
     } & DeleteResult) | ({
         type: 'scrape';
     } & ScrapeResult) | ({
+        type: 'scrape_transfer';
+    } & ScrapeTransferResult) | ({
         type: 'cleanup';
     } & CleanupResult) | ({
         type: 'upscale';
@@ -6191,7 +6283,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10248,6 +10340,8 @@ export type SubmitTaskData = {
     } & DeleteSubmission) | ({
         type: 'scrape';
     } & ScrapeSubmission) | ({
+        type: 'scrape_transfer';
+    } & ScrapeTransferSubmission) | ({
         type: 'cleanup';
     } & CleanupSubmission) | ({
         type: 'upscale';

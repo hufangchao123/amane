@@ -117,6 +117,7 @@ from .tasks import (
     ScanInvalidSubmission,
     ScrapeRequest,
     ScrapeSubmission,
+    ScrapeTransferSubmission,
     SemanticBenchmarkSubmission,
     SemanticIndexSubmission,
     SubtitleAuditSubmission,

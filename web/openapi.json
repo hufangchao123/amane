@@ -5180,6 +5180,9 @@
                     "$ref": "#/components/schemas/ScrapeSubmission"
                   },
                   {
+                    "$ref": "#/components/schemas/ScrapeTransferSubmission"
+                  },
+                  {
                     "$ref": "#/components/schemas/CleanupSubmission"
                   },
                   {
@@ -5245,6 +5248,7 @@
                     "scan_invalid": "#/components/schemas/ScanInvalidSubmission",
                     "delete": "#/components/schemas/DeleteSubmission",
                     "scrape": "#/components/schemas/ScrapeSubmission",
+                    "scrape_transfer": "#/components/schemas/ScrapeTransferSubmission",
                     "cleanup": "#/components/schemas/CleanupSubmission",
                     "upscale": "#/components/schemas/UpscaleSubmission",
                     "r18_import": "#/components/schemas/R18ImportSubmission",
@@ -11916,6 +11920,33 @@
             "title": "Auto Organize",
             "default": false
           },
+          "scrape_transfer": {
+            "type": "boolean",
+            "title": "Scrape Transfer",
+            "default": false
+          },
+          "scrape_ok_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Ok Dir"
+          },
+          "scrape_fail_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Fail Dir"
+          },
           "ingest": {
             "$ref": "#/components/schemas/LibraryIngest",
             "default": "native"
@@ -12162,6 +12193,32 @@
             "type": "boolean",
             "title": "Auto Organize"
           },
+          "scrape_transfer": {
+            "type": "boolean",
+            "title": "Scrape Transfer"
+          },
+          "scrape_ok_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Ok Dir"
+          },
+          "scrape_fail_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Fail Dir"
+          },
           "ingest": {
             "$ref": "#/components/schemas/LibraryIngest"
           },
@@ -12349,6 +12406,7 @@
           "path",
           "automation",
           "auto_organize",
+          "scrape_transfer",
           "ingest",
           "recursive",
           "move_mode",
@@ -12407,6 +12465,39 @@
               }
             ],
             "title": "Auto Organize"
+          },
+          "scrape_transfer": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Transfer"
+          },
+          "scrape_ok_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Ok Dir"
+          },
+          "scrape_fail_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrape Fail Dir"
           },
           "ingest": {
             "anyOf": [
@@ -16625,6 +16716,81 @@
         ],
         "title": "ScrapeSubmission"
       },
+      "ScrapeTransferResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "scrape_transfer",
+            "title": "Type",
+            "default": "scrape_transfer"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "failed"
+            ],
+            "title": "Outcome",
+            "default": "ok"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination",
+            "default": ""
+          },
+          "files": {
+            "type": "integer",
+            "title": "Files",
+            "default": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ScrapeTransferResult"
+      },
+      "ScrapeTransferSubmission": {
+        "properties": {
+          "media_file_id": {
+            "type": "integer",
+            "title": "Media File Id"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "failed"
+            ],
+            "title": "Outcome",
+            "default": "ok"
+          },
+          "type": {
+            "type": "string",
+            "const": "scrape_transfer",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "media_file_id",
+          "type"
+        ],
+        "title": "ScrapeTransferSubmission",
+        "description": "刮削后的单文件转移: 通常由刮削任务扇出, 也可手工提交重试."
+      },
       "ScrapingConfig": {
         "properties": {
           "download_resources": {
@@ -18020,6 +18186,9 @@
                   "$ref": "#/components/schemas/ScrapeSubmission"
                 },
                 {
+                  "$ref": "#/components/schemas/ScrapeTransferSubmission"
+                },
+                {
                   "$ref": "#/components/schemas/CleanupSubmission"
                 },
                 {
@@ -18095,6 +18264,7 @@
                   "rescrape": "#/components/schemas/RescrapeSubmission",
                   "scan_invalid": "#/components/schemas/ScanInvalidSubmission",
                   "scrape": "#/components/schemas/ScrapeSubmission",
+                  "scrape_transfer": "#/components/schemas/ScrapeTransferSubmission",
                   "semantic_benchmark": "#/components/schemas/SemanticBenchmarkSubmission",
                   "semantic_index": "#/components/schemas/SemanticIndexSubmission",
                   "subtitle_audit": "#/components/schemas/SubtitleAuditSubmission",
@@ -18627,6 +18797,9 @@
                     "$ref": "#/components/schemas/ScrapeResult"
                   },
                   {
+                    "$ref": "#/components/schemas/ScrapeTransferResult"
+                  },
+                  {
                     "$ref": "#/components/schemas/CleanupResult"
                   },
                   {
@@ -18702,6 +18875,7 @@
                     "rescrape": "#/components/schemas/RescrapeResult",
                     "scan_invalid": "#/components/schemas/ScanInvalidResult",
                     "scrape": "#/components/schemas/ScrapeResult",
+                    "scrape_transfer": "#/components/schemas/ScrapeTransferResult",
                     "semantic_benchmark": "#/components/schemas/SemanticBenchmarkResult",
                     "semantic_index": "#/components/schemas/SemanticIndexResult",
                     "subtitle_audit": "#/components/schemas/SubtitleAuditResult",
@@ -18756,6 +18930,7 @@
         "type": "string",
         "enum": [
           "scrape",
+          "scrape_transfer",
           "organize",
           "refresh",
           "cleanup",

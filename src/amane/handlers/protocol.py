@@ -58,6 +58,14 @@ class TaskHandler[P: BaseModel | dict = dict, R: BaseModel | dict = dict](ABC):
         """
         return None
 
+    async def failure_followups(self, payload: P) -> list[FollowupTask]:
+        """任务判失败后仍要排的后继; 默认没有.
+
+        由 worker 在崩溃与失败两个分支调用, 后继以独立任务入队 (任务链只在成功分支写),
+        因此它们不出现在失败任务的子任务里. 钩子抛异常只记日志, 不影响失败处理.
+        """
+        return []
+
     def parse_payload(self, raw: dict) -> P:
         """已是目标类型时原样返回, 不重新校验."""
         if isinstance(raw, self.payload_type):

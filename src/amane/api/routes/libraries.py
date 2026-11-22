@@ -38,10 +38,30 @@ async def list_libraries(repo: RepoDep) -> LibraryListResponse:
     return LibraryListResponse(items=[to_resp(LibraryResponse, lib) for lib in items])
 
 
+def _check_scrape_dirs(*, transfer: bool, ok_dir: str | None, fail_dir: str | None, library_path: str) -> None:
+    """刮削后转移的目的目录校验: 开启时至少给一个, 且必须落在库外.
+
+    库内的目的目录会被监控重新扫到并再次入库, 形成来回搬运, 因此直接拒绝.
+    """
+    if not transfer:
+        return
+    directories = [directory for directory in (ok_dir, fail_dir) if directory]
+    if not directories:
+        raise HTTPException(status_code=422, detail="开启刮削后转移时至少要填一个目的目录")
+    root = Path(library_path).resolve()
+    for directory in directories:
+        target = Path(directory).resolve()
+        if target == root or root in target.parents:
+            raise HTTPException(status_code=422, detail=f"目的目录不能位于库内: {directory}")
+
+
 @router.post("", status_code=201)
 async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: RuntimeDep) -> LibraryResponse:
     # 校验路径: 须存在、是目录、位于 safe_dirs 内
     await validate_directory_path(req.path, runtime.safe_dirs)
+    _check_scrape_dirs(
+        transfer=req.scrape_transfer, ok_dir=req.scrape_ok_dir, fail_dir=req.scrape_fail_dir, library_path=req.path
+    )
 
     name = req.name or Path(req.path).name
 
@@ -51,6 +71,9 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
             path=req.path,
             automation=req.automation,
             auto_organize=req.auto_organize,
+            scrape_transfer=req.scrape_transfer,
+            scrape_ok_dir=req.scrape_ok_dir,
+            scrape_fail_dir=req.scrape_fail_dir,
             ingest=req.ingest,
             cloud_path=req.cloud_path,
             recursive=req.recursive,
@@ -131,6 +154,16 @@ async def update_library(
     # 仅 path 被显式更新时才校验
     if "path" in updates and updates["path"] is not None:
         await validate_directory_path(updates["path"], runtime.safe_dirs)
+
+    current = await repo.get_library(library_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="媒体库不存在")
+    _check_scrape_dirs(
+        transfer=updates.get("scrape_transfer", current.scrape_transfer),
+        ok_dir=updates.get("scrape_ok_dir", current.scrape_ok_dir),
+        fail_dir=updates.get("scrape_fail_dir", current.scrape_fail_dir),
+        library_path=updates.get("path", current.path),
+    )
 
     try:
         lib = await repo.update_library(library_id, **updates)

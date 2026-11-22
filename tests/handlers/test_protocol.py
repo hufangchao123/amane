@@ -29,6 +29,7 @@ from amane.handlers.models import (
     RescrapeResult,
     ScanInvalidResult,
     ScrapeResult,
+    ScrapeTransferResult,
     SemanticBenchmarkResult,
     SemanticIndexResult,
     SubtitleAuditResult,
@@ -158,6 +159,10 @@ RESULT_CASES = [
     pytest.param(
         TrashPurgeResult(dry_run=False, libraries=1, scanned=3, purged=2, bytes_freed=1024),
         id="trash_purge",
+    ),
+    pytest.param(
+        ScrapeTransferResult(outcome="ok", destination="/media/done", files=3, bytes=2048),
+        id="scrape_transfer",
     ),
     pytest.param(
         NfoPatchResult(kind="thumbs", dry_run=True, libraries=1, files=4, changed=2, filled=3, missing_image=1),

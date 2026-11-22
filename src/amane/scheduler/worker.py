@@ -292,6 +292,19 @@ class AsyncWorker:
                     return None
                 return TaskResult(success=False, result=failure).as_dict()
 
+            async def _failure_followups() -> None:
+                """失败后继: 钩子出错不影响失败处理, 后继逐个入队且不与失败任务结对."""
+                try:
+                    pending = await handler.failure_followups(typed_payload)
+                except Exception:
+                    logger.exception("failure followups build failed", task_id=task_id)
+                    return
+                for followup in pending:
+                    try:
+                        await self._repo.create_task(followup.task_type, followup.payload, priority=followup.priority)
+                    except Exception:
+                        logger.exception("failure followup enqueue failed", task_id=task_id, key=followup.key)
+
             async def _finalize_recorder(*, success: bool, error: str | None) -> None:
                 if rec is None:
                     return
@@ -321,6 +334,7 @@ class AsyncWorker:
                     duration_s = round(time.monotonic() - start_time, 2)
                     logger.exception("task crashed", error=str(e), duration_s=duration_s)
                     await self._repo.fail_task(task_id, error=str(e), result=_failure_payload())
+                    await _failure_followups()
                     await _finalize_recorder(success=False, error=str(e))
                     if self._event_bus:
                         await self._event_bus.emit(
@@ -357,6 +371,7 @@ class AsyncWorker:
                     duration_s = round(time.monotonic() - start_time, 2)
                     err = result.error or "Unknown error"
                     await self._repo.fail_task(task_id, error=err, result=result.as_dict())
+                    await _failure_followups()
                     logger.warning("task failed", error=result.error, duration_s=duration_s)
                     await _finalize_recorder(success=False, error=err)
                     if self._event_bus:

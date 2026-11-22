@@ -354,3 +354,74 @@ class TestAutoOrganize:
         stored = await repo.get_library(created.json()["id"])
         assert stored is not None
         assert stored.auto_organize is True
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_dirs_round_trip(client: AsyncClient, safe_path: Path) -> None:
+    """开启刮削后转移时两个目的目录随库保存; 目的目录在库外."""
+    library_root = safe_path / "media"
+    library_root.mkdir()
+    done, failed = safe_path / "done", safe_path / "failed"
+
+    created = await client.post(
+        "libraries",
+        json={
+            "path": str(library_root),
+            "scrape_transfer": True,
+            "scrape_ok_dir": str(done),
+            "scrape_fail_dir": str(failed),
+        },
+    )
+
+    assert created.status_code == 201
+    body = created.json()
+    assert (body["scrape_transfer"], body["scrape_ok_dir"], body["scrape_fail_dir"]) == (
+        True,
+        str(done),
+        str(failed),
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_requires_a_destination(client: AsyncClient, safe_path: Path) -> None:
+    """开关打开却没有目的目录: 任务会无事可做, 因此直接拒绝."""
+    library_root = safe_path / "media"
+    library_root.mkdir()
+
+    created = await client.post("libraries", json={"path": str(library_root), "scrape_transfer": True})
+
+    assert created.status_code == 422
+    assert created.json()["detail"] == "开启刮削后转移时至少要填一个目的目录"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_rejects_destination_inside_library(client: AsyncClient, safe_path: Path) -> None:
+    """库内的目的目录会被重新扫到并再次入库, 形成来回搬运."""
+    library_root = safe_path / "media"
+    inside = library_root / "done"
+    inside.mkdir(parents=True)
+
+    created = await client.post(
+        "libraries",
+        json={"path": str(library_root), "scrape_transfer": True, "scrape_ok_dir": str(inside)},
+    )
+
+    assert created.status_code == 422
+    assert "目的目录不能位于库内" in created.json()["detail"]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_patch_merges_with_existing_dirs(client: AsyncClient, safe_path: Path) -> None:
+    """改开关时按落库后的值合并校验: 老的失败目录仍然生效."""
+    library_root, inside = safe_path / "media", safe_path / "media" / "done"
+    library_root.mkdir()
+    inside.mkdir()
+    created = await client.post("libraries", json={"path": str(library_root)})
+    library_id = created.json()["id"]
+
+    rejected = await client.patch(
+        f"libraries/{library_id}", json={"scrape_transfer": True, "scrape_ok_dir": str(inside)}
+    )
+
+    assert rejected.status_code == 422
+    assert "目的目录不能位于库内" in rejected.json()["detail"]

@@ -4563,6 +4563,33 @@ export const LibraryCreateRequestSchema = {
             title: 'Auto Organize',
             default: false
         },
+        scrape_transfer: {
+            type: 'boolean',
+            title: 'Scrape Transfer',
+            default: false
+        },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
+        },
+        scrape_fail_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Fail Dir'
+        },
         ingest: {
             $ref: '#/components/schemas/LibraryIngest',
             default: 'native'
@@ -4812,6 +4839,32 @@ export const LibraryResponseSchema = {
             type: 'boolean',
             title: 'Auto Organize'
         },
+        scrape_transfer: {
+            type: 'boolean',
+            title: 'Scrape Transfer'
+        },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
+        },
+        scrape_fail_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Fail Dir'
+        },
         ingest: {
             $ref: '#/components/schemas/LibraryIngest'
         },
@@ -4999,6 +5052,7 @@ export const LibraryResponseSchema = {
         'path',
         'automation',
         'auto_organize',
+        'scrape_transfer',
         'ingest',
         'recursive',
         'move_mode',
@@ -5058,6 +5112,39 @@ export const LibraryUpdateRequestSchema = {
                 }
             ],
             title: 'Auto Organize'
+        },
+        scrape_transfer: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Transfer'
+        },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
+        },
+        scrape_fail_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Fail Dir'
         },
         ingest: {
             anyOf: [
@@ -9369,6 +9456,83 @@ export const ScrapeSubmissionSchema = {
     title: 'ScrapeSubmission'
 } as const;
 
+export const ScrapeTransferResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'scrape_transfer',
+            title: 'Type',
+            default: 'scrape_transfer'
+        },
+        outcome: {
+            type: 'string',
+            enum: [
+                'ok',
+                'failed'
+            ],
+            title: 'Outcome',
+            default: 'ok'
+        },
+        destination: {
+            type: 'string',
+            title: 'Destination',
+            default: ''
+        },
+        files: {
+            type: 'integer',
+            title: 'Files',
+            default: 0
+        },
+        bytes: {
+            type: 'integer',
+            title: 'Bytes',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        note: {
+            type: 'string',
+            title: 'Note',
+            default: ''
+        }
+    },
+    type: 'object',
+    title: 'ScrapeTransferResult'
+} as const;
+
+export const ScrapeTransferSubmissionSchema = {
+    properties: {
+        media_file_id: {
+            type: 'integer',
+            title: 'Media File Id'
+        },
+        outcome: {
+            type: 'string',
+            enum: [
+                'ok',
+                'failed'
+            ],
+            title: 'Outcome',
+            default: 'ok'
+        },
+        type: {
+            type: 'string',
+            const: 'scrape_transfer',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'media_file_id',
+        'type'
+    ],
+    title: 'ScrapeTransferSubmission',
+    description: '刮削后的单文件转移: 通常由刮削任务扇出, 也可手工提交重试.'
+} as const;
+
 export const ScrapingConfigSchema = {
     properties: {
         download_resources: {
@@ -10796,6 +10960,9 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/ScrapeSubmission'
                     },
                     {
+                        $ref: '#/components/schemas/ScrapeTransferSubmission'
+                    },
+                    {
                         $ref: '#/components/schemas/CleanupSubmission'
                     },
                     {
@@ -10871,6 +11038,7 @@ export const TaskBatchSubmitRequestSchema = {
                         rescrape: '#/components/schemas/RescrapeSubmission',
                         scan_invalid: '#/components/schemas/ScanInvalidSubmission',
                         scrape: '#/components/schemas/ScrapeSubmission',
+                        scrape_transfer: '#/components/schemas/ScrapeTransferSubmission',
                         semantic_benchmark: '#/components/schemas/SemanticBenchmarkSubmission',
                         semantic_index: '#/components/schemas/SemanticIndexSubmission',
                         subtitle_audit: '#/components/schemas/SubtitleAuditSubmission',
@@ -11412,6 +11580,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/ScrapeResult'
                         },
                         {
+                            $ref: '#/components/schemas/ScrapeTransferResult'
+                        },
+                        {
                             $ref: '#/components/schemas/CleanupResult'
                         },
                         {
@@ -11487,6 +11658,7 @@ export const TaskResponseSchema = {
                             rescrape: '#/components/schemas/RescrapeResult',
                             scan_invalid: '#/components/schemas/ScanInvalidResult',
                             scrape: '#/components/schemas/ScrapeResult',
+                            scrape_transfer: '#/components/schemas/ScrapeTransferResult',
                             semantic_benchmark: '#/components/schemas/SemanticBenchmarkResult',
                             semantic_index: '#/components/schemas/SemanticIndexResult',
                             subtitle_audit: '#/components/schemas/SubtitleAuditResult',
@@ -11544,6 +11716,7 @@ export const TaskTypeSchema = {
     type: 'string',
     enum: [
         'scrape',
+        'scrape_transfer',
         'organize',
         'refresh',
         'cleanup',
