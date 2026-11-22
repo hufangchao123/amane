@@ -11,6 +11,11 @@ export type AmaneWidget = "PathPicker" | "LibraryPicker" | string;
 export interface AmaneBaseExtensions {
   "x-widget"?: AmaneWidget;
   "x-hidden"?: boolean;
+  /**
+   * 分组名: 该字段在表单里单独成框, 框标题取 `common:fieldGroups.<name>`.
+   * 用于同段配置里既有本地文件的一套项又有 STRM 的一套项时, 标出共用的项.
+   */
+  "x-group"?: string;
   "x-readonly"?: boolean;
   /**
    * 在 dict 上下文中, 仅当 key 匹配时显示此子字段

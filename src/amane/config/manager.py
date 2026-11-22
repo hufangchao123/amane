@@ -889,8 +889,8 @@ class WashConfig(BaseModel):
     """参与洗版的 STRM 文件."""
     strm_prefer: StrmPrefer = StrmPrefer.PATH
     """STRM 组留哪一份: 默认按容器与路径; 可选按文件名档位或修改时间."""
-    keep_days: int = Field(default=30, ge=1, le=365)
-    """回收站保留天数, 到期由清理任务删除."""
+    keep_days: int = Field(default=30, ge=1, le=365, json_schema_extra={"x-group": "shared"})
+    """回收站保留天数, 到期由清理任务删除. 两种文件共用这一个保留期, 表单里因此单独成框."""
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]

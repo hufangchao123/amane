@@ -20135,7 +20135,8 @@
             "maximum": 365.0,
             "minimum": 1.0,
             "title": "Keep Days",
-            "default": 30
+            "default": 30,
+            "x-group": "shared"
           }
         },
         "type": "object",

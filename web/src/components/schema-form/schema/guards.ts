@@ -134,6 +134,15 @@ export function isHidden(schema: JSONSchemaObject): boolean {
   return schema["x-hidden"] === true;
 }
 
+/**
+ * 分组标记: 同一段配置里既有本地文件又有 STRM 各自的一套项时, 共用的字段用它单独框起来.
+ * 值只是分组名, 标题文案在 common:fieldGroups.<name>.
+ */
+export function groupOf(schema: JSONSchemaObject): string | null {
+  const group = schema["x-group"];
+  return typeof group === "string" && group.length > 0 ? group : null;
+}
+
 /** Check if schema is nullable (explicit flag or anyOf with null) */
 export function isNullable(schema: JSONSchemaObject): boolean {
   if (schema.nullable) return true;

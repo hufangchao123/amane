@@ -1,4 +1,4 @@
-import { Box, Button, Group, SimpleGrid, Stack } from "@mantine/core";
+import { Box, Button, Group, Paper, SimpleGrid, Stack, Text } from "@mantine/core";
 import { useForm } from "@tanstack/react-form";
 import { useCallback, useId, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import {
   isBool,
   isDict,
   isEnum,
+  groupOf,
   isHidden,
   isLibrary,
   isNumeric,
@@ -297,6 +298,21 @@ export function SchemaForm({
     const rowStyle =
       rowIdx > 0 ? { borderTop: "1px solid var(--mantine-color-default-border)" } : undefined;
     if (row.length === 1) {
+      const group = groupOf(row[0].schema);
+      if (group !== null) {
+        // 分组字段单独成框: 同段配置里既有本地文件的一套项又有 STRM 的一套项时,
+        // 共用的项靠这个框说明它不归任何一组.
+        return (
+          <Paper key={row[0].key} withBorder p="sm" mt="xs" style={rowStyle}>
+            <Stack gap="sm">
+              <Text size="sm" fw={600} c="dimmed">
+                {t(`fieldGroups.${group}`, { defaultValue: group })}
+              </Text>
+              {fields[0]}
+            </Stack>
+          </Paper>
+        );
+      }
       return (
         <Box key={row[0].key} style={rowStyle}>
           {fields[0]}

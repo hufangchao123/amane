@@ -208,5 +208,8 @@
       "expired": "",
       "waiting": ""
     }
+  },
+  "fieldGroups": {
+    "shared": "Shared by both"
   }
 }

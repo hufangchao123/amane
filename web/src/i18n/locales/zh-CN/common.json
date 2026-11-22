@@ -198,5 +198,8 @@
       "expired": "transfer.qr.expired",
       "waiting": "transfer.qr.waiting"
     }
+  },
+  "fieldGroups": {
+    "shared": "两种文件共用"
   }
 }

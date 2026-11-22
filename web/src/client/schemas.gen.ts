@@ -12817,7 +12817,8 @@ export const WashConfigSchema = {
             maximum: 365,
             minimum: 1,
             title: 'Keep Days',
-            default: 30
+            default: 30,
+            'x-group': 'shared'
         }
     },
     type: 'object',
