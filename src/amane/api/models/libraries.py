@@ -39,7 +39,7 @@ class LibraryCreateRequest(BaseModel):
     automation: LibraryAutomation = LibraryAutomation.SCRAPE
     auto_organize: bool = False
     scrape_transfer: bool = False
-    scrape_ok_dir: str | None = None
+    scrape_input_dir: str | None = None
     scrape_fail_dir: str | None = None
     ingest: LibraryIngest = LibraryIngest.NATIVE
     cloud_path: str | None = None
@@ -89,7 +89,7 @@ class LibraryResponse(BaseModel):
     automation: LibraryAutomation
     auto_organize: bool
     scrape_transfer: bool
-    scrape_ok_dir: str | None = None
+    scrape_input_dir: str | None
     scrape_fail_dir: str | None = None
     ingest: LibraryIngest
     cloud_path: str | None = None

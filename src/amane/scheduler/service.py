@@ -104,6 +104,12 @@ class WatcherService:
             media_extensions=frozenset(self._media_extensions) if self._media_extensions else None,
         )
 
+    def _watch_path(self, lib: Library) -> str:
+        """开刮削后转移的库监控输入目录: 库根只收本服务搬进去的成品, 不会出现外部新文件."""
+        if lib.scrape_transfer and lib.scrape_input_dir:
+            return lib.scrape_input_dir
+        return lib.path
+
     def _register_cloud(self, lib: Library) -> None:
         assert lib.id is not None
         if lib.cloud_path is None:
@@ -175,9 +181,10 @@ class WatcherService:
             try:
                 for lib in native:
                     assert lib.id is not None
-                    logger.info("watching library", library_id=lib.id, path=lib.path, recursive=lib.recursive)
+                    watch_path = self._watch_path(lib)
+                    logger.info("watching library", library_id=lib.id, path=watch_path, recursive=lib.recursive)
                     self._watcher.watch(
-                        lib.path,
+                        watch_path,
                         library_id=lib.id,
                         recursive=lib.recursive,
                         patterns=lib.patterns,
@@ -223,7 +230,7 @@ class WatcherService:
             self._register_cloud(lib)
             return
         self.add_library(
-            lib.path,
+            self._watch_path(lib),
             lib.id,
             recursive=lib.recursive,
             patterns=lib.patterns,

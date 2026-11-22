@@ -301,7 +301,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
     async def _scrape_transfer_followups(
         self, payload: ScrapePayload, *, outcome: ScrapeTransferOutcome
     ) -> list[FollowupTask]:
-        """库开启刮削后转移时描述 SCRAPE_TRANSFER 后继; 未开启或缺目的目录则不链.
+        """库开启刮削后转移时描述 SCRAPE_TRANSFER 后继; 未开启或缺落点则不链.
 
         按番号刮削没有可搬的 ``MediaFile``, 不在此列. ``priority=-1``: 转移不抢占交互提交的任务.
         整段 ``except`` 只为不让已写库的刮削任务失败: 转移是附带动作, 漏一次等于文件留在原处.
@@ -315,7 +315,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             library = await self._repo.get_library(file.library_id)
             if library is None or not library.scrape_transfer:
                 return []
-            destination = library.scrape_ok_dir if outcome == "ok" else library.scrape_fail_dir
+            destination = library.path if outcome == "ok" else library.scrape_fail_dir
             if not destination:
                 return []
             transfer = ScrapeTransferPayload(media_file_id=file.id, outcome=outcome)

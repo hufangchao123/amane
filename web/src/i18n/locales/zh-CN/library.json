@@ -89,16 +89,16 @@
   },
   "scrapeTransfer": {
     "label": "刮削后转移",
-    "hint": "刮削结束后把这个文件搬到库外目录, 库内记录跟着改指新位置",
-    "okDir": {
-      "label": "成功目录",
-      "hint": "刮削成功时搬到这里; 必须位于库外, 否则会被重新扫描入库",
-      "placeholder": "/media/scraped"
-    },
+    "hint": "开启后库根是成品目录：待整理文件放在输入目录，刮削结束成功进库根、失败进失败目录。",
     "failDir": {
       "label": "失败目录",
-      "hint": "刮削失败时搬到这里; 可只填一个目录",
-      "placeholder": "/media/scrape-failed"
+      "hint": "刮削失败的文件搬到这里；留空则留在输入目录，便于直接重试",
+      "placeholder": "/media/刮削失败"
+    },
+    "inputDir": {
+      "label": "输入目录",
+      "hint": "待整理文件放这里；须在库根之外，扫描与监控都会覆盖它",
+      "placeholder": "/media/待整理"
     }
   },
   "ingest": {

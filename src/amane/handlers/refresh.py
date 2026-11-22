@@ -14,8 +14,24 @@ from .models import RefreshPayload, RefreshResult, ScanMode, ScrapePayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
-    from ..db.models import MediaFile
+    from ..db.models import Library, MediaFile
     from ..db.repository import Repository
+
+
+def _pending_scan_dirs(library: Library | None, scan_dir: Path) -> list[Path]:
+    """开刮削后转移时返回待整理目录, 供整库扫描一并遍历.
+
+    开启后库根是成品目录, 新增文件先落在输入目录; 只跟整库扫描走, 子目录范围的刷新不重复收.
+    """
+    if library is None or not library.scrape_transfer or not library.scrape_input_dir:
+        return []
+    if nfc_path(str(scan_dir)) != nfc_path(library.path):
+        return []
+    pending = Path(library.scrape_input_dir)
+    if nfc_path(str(pending)) == nfc_path(library.path):
+        return []
+    return [pending]
+
 
 logger = structlog.get_logger()
 
@@ -109,6 +125,36 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
                         subtitles += await self._sync_external_subtitle(existing_by_path[path_key], hit)
                 if added:
                     logger.info("new files discovered", path=payload.path, count=added)
+
+                # 开刮削后转移: 待整理文件在输入目录, 整库扫描一并收进来, 否则刷新扫不到新增.
+                for pending_dir in _pending_scan_dirs(library, scan_dir):
+                    if not await path_is_dir(pending_dir):
+                        logger.info("pending dir missing", path=str(pending_dir))
+                        continue
+                    logger.info("scan walking pending dir", path=str(pending_dir))
+                    pending = await scan_inventory(
+                        pending_dir,
+                        library_id=payload.library_id,
+                        library_root=pending_dir,
+                        recursive=payload.recursive if payload.recursive is not None else True,
+                        patterns=payload.patterns or [],
+                        scan=scan,
+                        collect_media=True,
+                    )
+                    for hit in pending.media_hits:
+                        hit_path = hit.path
+                        path_key = nfc_path(str(hit_path))
+                        walked += 1
+                        if seen is not None:
+                            seen.add(path_key)
+                        if path_key not in existing_by_path:
+                            media = await register_media_file(self._repo, payload.library_id, hit_path, library=library)
+                            existing_by_path[path_key] = media
+                            added += 1
+                        else:
+                            subtitles += await self._sync_external_subtitle(existing_by_path[path_key], hit)
+                    if added:
+                        logger.info("new files discovered in pending dir", path=str(pending_dir), count=added)
 
             # 删除索引中已不存在的记录.
             if want_remove:

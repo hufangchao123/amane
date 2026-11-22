@@ -53,19 +53,20 @@ def _handler(repo: Repository) -> ScrapeHandler:
 
 
 async def _library_with_file(
-    repo: Repository, tmp_path: Path, *, ok_dir: Path | None, fail_dir: Path | None
+    repo: Repository, tmp_path: Path, *, pending: Path | None, fail_dir: Path | None
 ) -> tuple[int, int]:
-    lib_root = tmp_path / "lib"
+    lib_root, source = tmp_path / "done", pending if pending is not None else tmp_path / "lib"
     lib_root.mkdir(exist_ok=True)
+    source.mkdir(exist_ok=True)
     lib = await repo.create_library(
         name="t",
         path=str(lib_root),
-        scrape_transfer=ok_dir is not None or fail_dir is not None,
-        scrape_ok_dir=str(ok_dir) if ok_dir is not None else None,
+        scrape_transfer=pending is not None,
+        scrape_input_dir=str(source) if pending is not None else None,
         scrape_fail_dir=str(fail_dir) if fail_dir is not None else None,
     )
     assert lib.id is not None
-    media = await register_media_file(repo, lib.id, lib_root / "incoming" / "MIDV-123.mp4")
+    media = await register_media_file(repo, lib.id, source / "incoming" / "MIDV-123.mp4")
     assert media.id is not None
     return lib.id, media.id
 
@@ -75,9 +76,9 @@ def _transfers(result: TaskResult[ScrapeResult]) -> list[FollowupTask]:
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_success_chains_transfer_into_ok_dir(repo: Repository, tmp_path: Path) -> None:
-    """开关与成功目录都在时, 成功刮削为其文件描述一条转移后继."""
-    _, media_id = await _library_with_file(repo, tmp_path, ok_dir=tmp_path / "done", fail_dir=None)
+async def test_success_chains_transfer_into_library_root(repo: Repository, tmp_path: Path) -> None:
+    """开关打开时成功的落点是库根, 成功刮削为其文件描述一条转移后继."""
+    _, media_id = await _library_with_file(repo, tmp_path, pending=tmp_path / "in", fail_dir=None)
 
     result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
@@ -90,9 +91,9 @@ async def test_success_chains_transfer_into_ok_dir(repo: Repository, tmp_path: P
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_success_without_ok_dir_chains_nothing(repo: Repository, tmp_path: Path) -> None:
-    """只配了失败目录: 成功时不搬."""
-    _, media_id = await _library_with_file(repo, tmp_path, ok_dir=None, fail_dir=tmp_path / "failed")
+async def test_success_without_switch_chains_nothing(repo: Repository, tmp_path: Path) -> None:
+    """未开启时不搬."""
+    _, media_id = await _library_with_file(repo, tmp_path, pending=None, fail_dir=tmp_path / "failed")
 
     result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
@@ -103,7 +104,7 @@ async def test_success_without_ok_dir_chains_nothing(repo: Repository, tmp_path:
 @pytest.mark.asyncio(loop_scope="function")
 async def test_failure_followups_use_fail_dir(repo: Repository, tmp_path: Path) -> None:
     """刮削失败的后继由 worker 取得, outcome 是 failed."""
-    _, media_id = await _library_with_file(repo, tmp_path, ok_dir=None, fail_dir=tmp_path / "failed")
+    _, media_id = await _library_with_file(repo, tmp_path, pending=tmp_path / "in", fail_dir=tmp_path / "failed")
 
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
@@ -112,8 +113,18 @@ async def test_failure_followups_use_fail_dir(repo: Repository, tmp_path: Path) 
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_failure_followups_empty_without_fail_dir(repo: Repository, tmp_path: Path) -> None:
+    """没配失败目录时失败留在输入目录, 不描述后继."""
+    _, media_id = await _library_with_file(repo, tmp_path, pending=tmp_path / "in", fail_dir=None)
+
+    followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))
+
+    assert followups == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_failure_followups_empty_when_switch_off(repo: Repository, tmp_path: Path) -> None:
-    _, media_id = await _library_with_file(repo, tmp_path, ok_dir=None, fail_dir=None)
+    _, media_id = await _library_with_file(repo, tmp_path, pending=None, fail_dir=None)
 
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
@@ -123,7 +134,7 @@ async def test_failure_followups_empty_when_switch_off(repo: Repository, tmp_pat
 @pytest.mark.asyncio(loop_scope="function")
 async def test_failure_followups_ignore_by_number_scrape(repo: Repository, tmp_path: Path) -> None:
     """按番号刮削没有对应文件, 失败也无可搬."""
-    await _library_with_file(repo, tmp_path, ok_dir=None, fail_dir=tmp_path / "failed")
+    await _library_with_file(repo, tmp_path, pending=tmp_path / "in", fail_dir=tmp_path / "failed")
 
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=None))
 
@@ -133,7 +144,7 @@ async def test_failure_followups_ignore_by_number_scrape(repo: Repository, tmp_p
 @pytest.mark.asyncio(loop_scope="function")
 async def test_failure_followups_skip_deleted_file(repo: Repository, tmp_path: Path) -> None:
     """索引与任务不一致时静默跳过, 不让失败处理再多一层异常."""
-    _, media_id = await _library_with_file(repo, tmp_path, ok_dir=None, fail_dir=tmp_path / "failed")
+    _, media_id = await _library_with_file(repo, tmp_path, pending=tmp_path / "in", fail_dir=tmp_path / "failed")
     await repo.delete_media_file(media_id)
 
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))

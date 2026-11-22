@@ -38,21 +38,29 @@ async def list_libraries(repo: RepoDep) -> LibraryListResponse:
     return LibraryListResponse(items=[to_resp(LibraryResponse, lib) for lib in items])
 
 
-def _check_scrape_dirs(*, transfer: bool, ok_dir: str | None, fail_dir: str | None, library_path: str) -> None:
-    """刮削后转移的目的目录校验: 开启时至少给一个, 且必须落在库外.
+def _reject_overlap(path: Path, other: Path, *, field: str, other_name: str) -> None:
+    """两个目录互相包含时拒绝: 扫描与搬运会互相触发, 同一个文件被反复登记或反复搬动."""
+    if path == other or other in path.parents or path in other.parents:
+        raise HTTPException(status_code=422, detail=f"{field}不能与{other_name}重叠: {path}")
 
-    库内的目的目录会被监控重新扫到并再次入库, 形成来回搬运, 因此直接拒绝.
+
+def _check_scrape_dirs(*, transfer: bool, input_dir: str | None, fail_dir: str | None, library_path: str) -> None:
+    """刮削后转移的目录校验: 开启时输入目录必填, 三个目录互不重叠.
+
+    开启后库根是成品目录: 待整理文件先落在输入目录, 刮削结束再搬进库根或失败目录. 目录之间
+    一旦重叠, 搬运结果会被扫描重新登记, 或刚搬出的文件被扫回, 因此直接拒绝.
     """
     if not transfer:
         return
-    directories = [directory for directory in (ok_dir, fail_dir) if directory]
-    if not directories:
-        raise HTTPException(status_code=422, detail="开启刮削后转移时至少要填一个目的目录")
+    if not input_dir:
+        raise HTTPException(status_code=422, detail="开启刮削后转移时必须填输入目录")
     root = Path(library_path).resolve()
-    for directory in directories:
-        target = Path(directory).resolve()
-        if target == root or root in target.parents:
-            raise HTTPException(status_code=422, detail=f"目的目录不能位于库内: {directory}")
+    source = Path(input_dir).resolve()
+    _reject_overlap(source, root, field="输入目录", other_name="库根")
+    if fail_dir:
+        target = Path(fail_dir).resolve()
+        _reject_overlap(target, root, field="失败目录", other_name="库根")
+        _reject_overlap(target, source, field="失败目录", other_name="输入目录")
 
 
 @router.post("", status_code=201)
@@ -60,7 +68,10 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
     # 校验路径: 须存在、是目录、位于 safe_dirs 内
     await validate_directory_path(req.path, runtime.safe_dirs)
     _check_scrape_dirs(
-        transfer=req.scrape_transfer, ok_dir=req.scrape_ok_dir, fail_dir=req.scrape_fail_dir, library_path=req.path
+        transfer=req.scrape_transfer,
+        input_dir=req.scrape_input_dir,
+        fail_dir=req.scrape_fail_dir,
+        library_path=req.path,
     )
 
     name = req.name or Path(req.path).name
@@ -72,7 +83,7 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
             automation=req.automation,
             auto_organize=req.auto_organize,
             scrape_transfer=req.scrape_transfer,
-            scrape_ok_dir=req.scrape_ok_dir,
+            scrape_input_dir=req.scrape_input_dir,
             scrape_fail_dir=req.scrape_fail_dir,
             ingest=req.ingest,
             cloud_path=req.cloud_path,
@@ -160,7 +171,7 @@ async def update_library(
         raise HTTPException(status_code=404, detail="媒体库不存在")
     _check_scrape_dirs(
         transfer=updates.get("scrape_transfer", current.scrape_transfer),
-        ok_dir=updates.get("scrape_ok_dir", current.scrape_ok_dir),
+        input_dir=updates.get("scrape_input_dir", current.scrape_input_dir),
         fail_dir=updates.get("scrape_fail_dir", current.scrape_fail_dir),
         library_path=updates.get("path", current.path),
     )

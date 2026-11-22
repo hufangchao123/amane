@@ -2384,9 +2384,9 @@ export type LibraryCreateRequest = {
      */
     scrape_transfer?: boolean;
     /**
-     * Scrape Ok Dir
+     * Scrape Input Dir
      */
-    scrape_ok_dir?: string | null;
+    scrape_input_dir?: string | null;
     /**
      * Scrape Fail Dir
      */
@@ -2523,9 +2523,9 @@ export type LibraryResponse = {
      */
     scrape_transfer: boolean;
     /**
-     * Scrape Ok Dir
+     * Scrape Input Dir
      */
-    scrape_ok_dir?: string | null;
+    scrape_input_dir: string | null;
     /**
      * Scrape Fail Dir
      */
@@ -2637,9 +2637,9 @@ export type LibraryUpdateRequest = {
      */
     scrape_transfer?: boolean | null;
     /**
-     * Scrape Ok Dir
+     * Scrape Input Dir
      */
-    scrape_ok_dir?: string | null;
+    scrape_input_dir?: string | null;
     /**
      * Scrape Fail Dir
      */

@@ -4568,7 +4568,7 @@ export const LibraryCreateRequestSchema = {
             title: 'Scrape Transfer',
             default: false
         },
-        scrape_ok_dir: {
+        scrape_input_dir: {
             anyOf: [
                 {
                     type: 'string'
@@ -4577,7 +4577,7 @@ export const LibraryCreateRequestSchema = {
                     type: 'null'
                 }
             ],
-            title: 'Scrape Ok Dir'
+            title: 'Scrape Input Dir'
         },
         scrape_fail_dir: {
             anyOf: [
@@ -4843,7 +4843,7 @@ export const LibraryResponseSchema = {
             type: 'boolean',
             title: 'Scrape Transfer'
         },
-        scrape_ok_dir: {
+        scrape_input_dir: {
             anyOf: [
                 {
                     type: 'string'
@@ -4852,7 +4852,7 @@ export const LibraryResponseSchema = {
                     type: 'null'
                 }
             ],
-            title: 'Scrape Ok Dir'
+            title: 'Scrape Input Dir'
         },
         scrape_fail_dir: {
             anyOf: [
@@ -5053,6 +5053,7 @@ export const LibraryResponseSchema = {
         'automation',
         'auto_organize',
         'scrape_transfer',
+        'scrape_input_dir',
         'ingest',
         'recursive',
         'move_mode',
@@ -5124,7 +5125,7 @@ export const LibraryUpdateRequestSchema = {
             ],
             title: 'Scrape Transfer'
         },
-        scrape_ok_dir: {
+        scrape_input_dir: {
             anyOf: [
                 {
                     type: 'string'
@@ -5133,7 +5134,7 @@ export const LibraryUpdateRequestSchema = {
                     type: 'null'
                 }
             ],
-            title: 'Scrape Ok Dir'
+            title: 'Scrape Input Dir'
         },
         scrape_fail_dir: {
             anyOf: [

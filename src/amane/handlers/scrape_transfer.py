@@ -1,10 +1,10 @@
-"""SCRAPE_TRANSFER: 刮削结束后把该文件搬到成功或失败目录.
+"""SCRAPE_TRANSFER: 刮削结束后把该文件搬进库根, 或搬进失败目录.
 
 由 ``ScrapeHandler`` 扇出: 成功时随完成事务写链, 失败时由 worker 在判失败后单独入队.
-目的目录在库配置里 (``scrape_ok_dir`` / ``scrape_fail_dir``); 未开启或未配置时只记一条说明, 不算失败.
+成功的落点是库根 (``path``), 失败落点是 ``scrape_fail_dir``; 未开启或未配置时只记一条说明, 不算失败.
 
-搬运发生在库内目录, 与整理 / 删除 / 洗版共用 ``LibraryTaskLocks``. 搬走的是视频与它同前缀的附属文件,
-库内记录改指新路径, 因此文件仍在库里被跟踪 (可再次刮削、可再整理).
+搬运与整理 / 删除 / 洗版共用 ``LibraryTaskLocks``. 搬走的是视频与它同前缀的附属文件, 库内记录改指
+新路径, 因此文件仍在库里被跟踪 (可再次刮削、可再整理).
 """
 
 from pathlib import Path
@@ -40,7 +40,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         if not library.scrape_transfer:
             result.note = "该媒体库未开启刮削后转移"
             return TaskResult(success=True, result=result)
-        destination = library.scrape_ok_dir if payload.outcome == "ok" else library.scrape_fail_dir
+        destination = library.path if payload.outcome == "ok" else library.scrape_fail_dir
         if not destination:
             result.note = "未配置对应的目的目录"
             return TaskResult(success=True, result=result)

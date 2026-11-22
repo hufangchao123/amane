@@ -11925,7 +11925,7 @@
             "title": "Scrape Transfer",
             "default": false
           },
-          "scrape_ok_dir": {
+          "scrape_input_dir": {
             "anyOf": [
               {
                 "type": "string"
@@ -11934,7 +11934,7 @@
                 "type": "null"
               }
             ],
-            "title": "Scrape Ok Dir"
+            "title": "Scrape Input Dir"
           },
           "scrape_fail_dir": {
             "anyOf": [
@@ -12197,7 +12197,7 @@
             "type": "boolean",
             "title": "Scrape Transfer"
           },
-          "scrape_ok_dir": {
+          "scrape_input_dir": {
             "anyOf": [
               {
                 "type": "string"
@@ -12206,7 +12206,7 @@
                 "type": "null"
               }
             ],
-            "title": "Scrape Ok Dir"
+            "title": "Scrape Input Dir"
           },
           "scrape_fail_dir": {
             "anyOf": [
@@ -12407,6 +12407,7 @@
           "automation",
           "auto_organize",
           "scrape_transfer",
+          "scrape_input_dir",
           "ingest",
           "recursive",
           "move_mode",
@@ -12477,7 +12478,7 @@
             ],
             "title": "Scrape Transfer"
           },
-          "scrape_ok_dir": {
+          "scrape_input_dir": {
             "anyOf": [
               {
                 "type": "string"
@@ -12486,7 +12487,7 @@
                 "type": "null"
               }
             ],
-            "title": "Scrape Ok Dir"
+            "title": "Scrape Input Dir"
           },
           "scrape_fail_dir": {
             "anyOf": [

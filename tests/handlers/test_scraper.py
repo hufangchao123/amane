@@ -671,6 +671,51 @@ class TestRefreshHandler:
         assert result.result.scrape == 2
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_scan_walks_pending_dir_of_transfer_library(self, repo: Repository, tmp_path: Path):
+        """开刮削后转移时整库扫描同时收输入目录: 库根只有成品, 待整理文件在输入目录."""
+        lib_root, pending = tmp_path / "done", tmp_path / "in"
+        lib_root.mkdir()
+        (pending / "MIDV-880").mkdir(parents=True)
+        (pending / "MIDV-880" / "MIDV-880.mp4").write_bytes(b"\x00" * 100)
+        lib = await repo.create_library(
+            name="t",
+            path=str(lib_root),
+            scrape_transfer=True,
+            scrape_input_dir=str(pending),
+        )
+        assert lib.id is not None
+
+        result = await RefreshHandler(repo=repo).handle(
+            RefreshPayload(library_id=lib.id, path=str(lib_root), scrape=set())
+        )
+
+        assert result.success is True
+        assert result.result is not None
+        assert result.result.added == 1
+        media = await repo.get_media_file_by_path(str(pending / "MIDV-880" / "MIDV-880.mp4"))
+        assert media is not None
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_pending_dir_skipped_for_subdir_refresh(self, repo: Repository, tmp_path: Path):
+        """子目录范围的刷新不碰输入目录: 否则一次子目录扫描会把别处的待整理文件也收进来."""
+        lib_root, pending = tmp_path / "done", tmp_path / "in"
+        (lib_root / "keep").mkdir(parents=True)
+        pending.mkdir()
+        (pending / "MIDV-881.mp4").write_bytes(b"\x00" * 100)
+        lib = await repo.create_library(
+            name="t", path=str(lib_root), scrape_transfer=True, scrape_input_dir=str(pending)
+        )
+        assert lib.id is not None
+
+        result = await RefreshHandler(repo=repo).handle(
+            RefreshPayload(library_id=lib.id, path=str(lib_root / "keep"), scrape=set())
+        )
+
+        assert result.success is True
+        assert result.result is not None
+        assert result.result.added == 0
+
+    @pytest.mark.asyncio(loop_scope="function")
     @pytest.mark.parametrize(
         ("subtitle_extensions", "subtitle_name", "stored", "expected"),
         [

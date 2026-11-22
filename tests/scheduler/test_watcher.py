@@ -440,6 +440,34 @@ class TestWatcherService:
         assert not service.is_running
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_start_watches_pending_dir_of_transfer_library(
+        self, service, repo: Repository, tmp_path: Path
+    ) -> None:
+        """开刮削后转移的库监控输入目录: 库根只收本服务搬进去的成品, 不会出现外部新文件."""
+        lib_root, pending = tmp_path / "done", tmp_path / "in"
+        lib_root.mkdir()
+        pending.mkdir()
+        await repo.create_library(
+            name="t",
+            path=str(lib_root),
+            automation=LibraryAutomation.SCRAPE,
+            scrape_transfer=True,
+            scrape_input_dir=str(pending),
+        )
+
+        await service.start()
+        assert service.is_running
+        try:
+            video = pending / "MIDV-990.mp4"
+            video.write_bytes(b"\x00" * 100)
+
+            media = await await_for(lambda: repo.get_media_file_by_path(str(video)), timeout=LOAD_TOLERANT_TIMEOUT)
+
+            assert media is not None
+        finally:
+            await service.stop()
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_on_file_found_broadcasts_event(self, service, repo: Repository, bus, tmp_path: Path):
         """验证文件发现时发出事件"""
         lib = await repo.create_library(name="t", path=str(tmp_path))

@@ -408,15 +408,15 @@ class Library(SQLModel, table=True):
     与 `automation` 正交: none / watch 下手动刮削同样触发. 只影响新后继, 不撤销已入队的整理.
     """
     scrape_transfer: bool = Field(default=False)
-    """刮削结束后把该文件的视频与同前缀附属文件搬走: 成功进 `scrape_ok_dir`, 失败进 `scrape_fail_dir`.
+    """刮削结束后把该文件的视频与同前缀附属文件搬一次: 成功进库根, 失败进 `scrape_fail_dir`.
 
-    目的目录须在库外, 否则监控会把搬走的文件重新入库. 与 `auto_organize` 正交: 两者同时开启时
-    先搬走再整理, 整理按新路径落盘.
+    开启后 `path` 是成品目录, 待整理文件先落在 `scrape_input_dir`. 输入目录须在库外, 否则搬运
+    会与扫描互相触发. 与 `auto_organize` 正交: 两者同时开启时先搬进库根, 整理按新路径落盘.
     """
-    scrape_ok_dir: str | None = Field(default=None)
-    """刮削成功后的目的目录; 空则不搬, 文件留在原处."""
+    scrape_input_dir: str | None = Field(default=None)
+    """待整理文件的来源目录; `scrape_transfer` 为真时必填, 与库根及失败目录都不重叠."""
     scrape_fail_dir: str | None = Field(default=None)
-    """刮削失败后的目的目录; 空则失败时原地保留, 便于直接重试."""
+    """刮削失败后的目的目录; 空则失败时留在输入目录, 便于直接重试."""
 
     ingest: LibraryIngest = Field(default=LibraryIngest.NATIVE)
     """文件发现通道. clouddrive 不 schedule Observer, 由 webhook 按 cloud_path 分流."""

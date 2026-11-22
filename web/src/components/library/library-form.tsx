@@ -112,7 +112,7 @@ export interface LibraryFormState {
   automation: LibraryAutomation;
   auto_organize: boolean;
   scrape_transfer: boolean;
-  scrape_ok_dir: string;
+  scrape_input_dir: string;
   scrape_fail_dir: string;
   ingest: LibraryIngest;
   cloud_path: string;
@@ -150,7 +150,7 @@ export function emptyLibraryForm(schema?: PathTemplateSchemaResponse | null): Li
     automation: "scrape",
     auto_organize: false,
     scrape_transfer: false,
-    scrape_ok_dir: "",
+    scrape_input_dir: "",
     scrape_fail_dir: "",
     ingest: "native",
     cloud_path: "",
@@ -186,7 +186,7 @@ export function libraryFormFromResponse(lib: LibraryResponse): LibraryFormState 
     automation: lib.automation,
     auto_organize: lib.auto_organize,
     scrape_transfer: lib.scrape_transfer,
-    scrape_ok_dir: lib.scrape_ok_dir ?? "",
+    scrape_input_dir: lib.scrape_input_dir ?? "",
     scrape_fail_dir: lib.scrape_fail_dir ?? "",
     ingest: lib.ingest,
     cloud_path: lib.cloud_path ?? "",
@@ -237,7 +237,7 @@ function libraryFormValues(form: LibraryFormState): Record<string, unknown> {
     automation: form.automation,
     auto_organize: form.auto_organize,
     scrape_transfer: form.scrape_transfer,
-    scrape_ok_dir: form.scrape_ok_dir.trim(),
+    scrape_input_dir: form.scrape_input_dir.trim(),
     scrape_fail_dir: form.scrape_fail_dir.trim(),
     ingest: form.ingest,
     cloud_path: form.ingest === "clouddrive" ? form.cloud_path.trim() : "",
@@ -588,14 +588,14 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
         {value.scrape_transfer && (
           <>
             <FieldChrome
-              label={t("scrapeTransfer.okDir.label")}
-              description={t("scrapeTransfer.okDir.hint")}
+              label={t("scrapeTransfer.inputDir.label")}
+              description={t("scrapeTransfer.inputDir.hint")}
             >
               <TextInput
-                value={value.scrape_ok_dir}
-                onChange={(e) => onChange({ ...value, scrape_ok_dir: e.currentTarget.value })}
-                placeholder={t("scrapeTransfer.okDir.placeholder")}
-                aria-label={t("scrapeTransfer.okDir.label")}
+                value={value.scrape_input_dir}
+                onChange={(e) => onChange({ ...value, scrape_input_dir: e.currentTarget.value })}
+                placeholder={t("scrapeTransfer.inputDir.placeholder")}
+                aria-label={t("scrapeTransfer.inputDir.label")}
               />
             </FieldChrome>
             <FieldChrome

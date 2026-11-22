@@ -318,7 +318,7 @@ class LibraryUpdates(TypedDict, total=False):
     automation: LibraryAutomation
     auto_organize: bool
     scrape_transfer: bool
-    scrape_ok_dir: str | None
+    scrape_input_dir: str | None
     scrape_fail_dir: str | None
     ingest: LibraryIngest
     cloud_path: str | None
