@@ -55,6 +55,9 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     subtitles = hot_dump.get("subtitles")
     if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
         return True
+    notify = hot_dump.get("notify")
+    if isinstance(notify, dict) and notify.get("url"):
+        return True
 
     plugins = hot_dump.get("plugins")
     if isinstance(plugins, dict):
@@ -117,6 +120,10 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
     subtitles = out.get("subtitles")
     if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
         subtitles["assrt_token"] = REDACTION_PLACEHOLDER
+
+    notify = out.get("notify")
+    if isinstance(notify, dict) and notify.get("url"):
+        notify["url"] = REDACTION_PLACEHOLDER
 
     return out
 

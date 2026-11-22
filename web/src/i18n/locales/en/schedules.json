@@ -104,6 +104,11 @@
       "scope": "Scope",
       "allLibraries": "All libraries",
       "library": "Library {{id}}"
+    },
+    "notify_digest": {
+      "summary": "Push a digest",
+      "scope": "Scope",
+      "wholeServer": "Whole instance"
     }
   },
   "labels": {

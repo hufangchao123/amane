@@ -2,6 +2,7 @@ import {
   IconFileText,
   type Icon,
   IconArchive,
+  IconBell,
   IconBroadcast,
   IconTrash,
   IconArrowsDiagonal,
@@ -57,6 +58,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   media_refresh: IconBroadcast,
   trash_purge: IconTrash,
   nfo_patch: IconFileText,
+  notify: IconBell,
 });
 
 const EMPTY_CHILD_STATUS: Required<TaskChildStatusCounts> = {

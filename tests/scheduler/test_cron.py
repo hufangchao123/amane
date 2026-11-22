@@ -169,6 +169,23 @@ async def test_due_media_refresh_schedule_enqueues_refresh_task(repo: Repository
 
 
 @pytest.mark.asyncio
+async def test_due_notify_digest_schedule_enqueues_digest_task(repo: Repository) -> None:
+    """周报例行只入队 digest 任务, 摘要由任务现算."""
+    await repo.create_schedule(
+        cron="0 9 * * 1",
+        task_type=RoutineType.NOTIFY_DIGEST,
+        payload={"type": "notify_digest"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    tasks = await repo.list_tasks(task_types=[TaskType.NOTIFY])
+    assert len(tasks) == 1
+    assert tasks[0].payload["kind"] == "digest"
+
+
+@pytest.mark.asyncio
 async def test_due_trash_purge_schedule_enqueues_real_delete(repo: Repository) -> None:
     """例行的意图就是真删: 载荷里的 dry_run 由调度侧关掉, 不接受日程配成只统计."""
     await repo.create_schedule(

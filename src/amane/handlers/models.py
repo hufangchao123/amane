@@ -609,3 +609,25 @@ class NfoPatchResult(BaseModel):
     """读取或写入失败的文件数."""
     samples: list[str] = []
     """改动最多的前若干个文件名, 便于人工抽查."""
+
+
+# --- 通知 ---
+
+
+class NotifyPayload(BaseModel):
+    """``kind=message`` 原样转发标题与正文; ``kind=digest`` 现算一份统计摘要."""
+
+    kind: Literal["message", "digest"] = "message"
+    title: str = ""
+    body: str = ""
+
+
+class NotifyResult(BaseModel):
+    type: Literal[TaskType.NOTIFY] = TaskType.NOTIFY
+    kind: Literal["message", "digest"] = "message"
+    channel: str = ""
+    """发送时的渠道类型; 推送失败也照实回报, 便于分辨是渠道问题还是配置问题."""
+    ok: bool = False
+    status: int | None = None
+    """渠道返回的状态码; 没拿到响应时为空."""
+    digest_days: int = 0

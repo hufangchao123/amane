@@ -200,5 +200,51 @@
       "queued": "修补任务已入队",
       "runFailed": "任务入队失败"
     }
+  },
+  "notify": {
+    "title": "通知",
+    "hint": "把任务结果与每日摘要推到自建渠道。渠道类型与地址在设置页填写，这里只报有没有填。",
+    "channel": {
+      "title": "渠道",
+      "enabled": "已启用（{{kind}}）",
+      "disabled": "未启用",
+      "urlSet": "地址已填写。",
+      "urlMissing": "地址为空，推送不会发出。",
+      "hint": "Webhook 收 {\"title\", \"body\"}；Bark 走路径参数；Server 酱收表单；Telegram 收 text。"
+    },
+    "send": {
+      "title": "发一条测试消息",
+      "titleLabel": "标题",
+      "titlePlaceholder": "例如 库扫描完成",
+      "bodyLabel": "正文",
+      "bodyPlaceholder": "推送内容",
+      "run": "发送"
+    },
+    "records": {
+      "title": "最近推送",
+      "refresh": "刷新",
+      "empty": "还没有推送记录。",
+      "ok": "成功",
+      "failed": "失败",
+      "columns": {
+        "time": "时间",
+        "kind": "种类",
+        "channel": "渠道",
+        "title": "标题",
+        "result": "结果"
+      }
+    },
+    "queued": "已入队，稍后看记录",
+    "runFailed": "发送失败",
+    "kinds": {
+      "webhook": "Webhook",
+      "bark": "Bark",
+      "serverchan": "Server 酱",
+      "telegram": "Telegram"
+    },
+    "recordKinds": {
+      "message": "消息",
+      "digest": "摘要"
+    }
   }
 }

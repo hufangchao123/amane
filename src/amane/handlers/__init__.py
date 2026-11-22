@@ -7,6 +7,7 @@ from .file import *
 from .media_refresh import *
 from .models import *
 from .nfo_patch import *
+from .notify import *
 from .protocol import FollowupTask, ProgressCallback, TaskHandler, TaskResult
 from .r18_import import *
 from .refresh import *

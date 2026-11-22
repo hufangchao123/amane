@@ -93,7 +93,9 @@
     "wash_purge": "Trash purge",
     "subtitle_audit": "Subtitle audit",
     "trash_purge": "Trash cleanup",
-    "nfo_patch": "NFO patch"
+    "nfo_patch": "NFO patch",
+    "notify": "Notification",
+    "notify_digest": "Digest push"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -566,6 +568,24 @@
       "dry_run": {
         "label": "Preview only",
         "description": "Turn off to rewrite files"
+      }
+    },
+    "notify": {
+      "kind": {
+        "label": "Kind",
+        "description": "Kind",
+        "options": {
+          "message": "Send a message",
+          "digest": "Send a digest"
+        }
+      },
+      "title": {
+        "label": "Title",
+        "description": "Title"
+      },
+      "body": {
+        "label": "Body",
+        "description": "Body"
       }
     }
   },

@@ -16,6 +16,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconArchive,
+  IconBell,
   IconArrowsExchange,
   IconBook,
   IconBookmark,
@@ -120,6 +121,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/backup", labelKey: "nav.backup", icon: IconArchive },
       { to: "/trash", labelKey: "nav.trash", icon: IconTrash },
       { to: "/maintenance", labelKey: "nav.maintenance", icon: IconTool },
+      { to: "/notifications", labelKey: "nav.notify", icon: IconBell },
     ],
   },
 ];

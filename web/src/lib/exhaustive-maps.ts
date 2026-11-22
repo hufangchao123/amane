@@ -52,7 +52,8 @@ export type PanelOnlyTaskType =
   | "wash_apply"
   | "backup"
   | "trash_purge"
-  | "nfo_patch";
+  | "nfo_patch"
+  | "notify";
 
 export type ManualTaskType = Exclude<SubmittableTaskType, PanelOnlyTaskType>;
 
@@ -122,6 +123,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "media_refresh",
   "trash_purge",
   "nfo_patch",
+  "notify",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(
@@ -165,6 +167,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "backup",
   "media_refresh",
   "trash_purge",
+  "notify_digest",
 );
 
 export const FACET_KINDS = exhaustiveTuple<FacetKind>()(

@@ -49,6 +49,7 @@ class TaskType(StrEnum):
     SUBTITLE_FETCH = "subtitle_fetch"
     SUBTITLE_AUDIT = "subtitle_audit"
     NFO_PATCH = "nfo_patch"
+    NOTIFY = "notify"
     TRASH_PURGE = "trash_purge"
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
@@ -68,6 +69,7 @@ class RoutineType(StrEnum):
     TRASH_PURGE = "trash_purge"
     BACKUP = "backup"
     MEDIA_REFRESH = "media_refresh"
+    NOTIFY_DIGEST = "notify_digest"
 
 
 class TaskStatus(StrEnum):
@@ -828,6 +830,23 @@ class WashRecordState(StrEnum):
     TRASHED = "trashed"
     RESTORED = "restored"
     PURGED = "purged"
+
+
+class NotifyRecord(SQLModel, table=True):
+    """一次推送的留痕; 只记结果与摘要, 不记渠道地址 (那可能含密钥)."""
+
+    __tablename__ = "notify_records"  # type: ignore[assignment]
+
+    id: int | None = Field(default=None, primary_key=True)
+    kind: str = Field(index=True)
+    """任务种类: ``message`` 即时消息, ``digest`` 周报."""
+    channel: str = Field(default="")
+    """发送时的渠道类型快照, 便于分辨改配置前后的记录."""
+    title: str = Field(default="")
+    body: str = Field(default="")
+    ok: bool = Field(default=False)
+    error: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, index=True)
 
 
 class WashRecord(SQLModel, table=True):

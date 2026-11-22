@@ -1000,6 +1000,33 @@
         "label": "Shutdown Timeout",
         "description": "Maximum time to wait for active tasks on shutdown (seconds)"
       }
+    },
+    "notify": {
+      "enabled": {
+        "label": "Enable notifications",
+        "description": "Tasks keep running when off; nothing is pushed."
+      },
+      "kind": {
+        "label": "Channel type",
+        "description": "Decides the request shape.",
+        "options": {
+          "webhook": "Webhook",
+          "bark": "Bark",
+          "serverchan": "Server Chan",
+          "telegram": "Telegram"
+        }
+      },
+      "url": {
+        "label": "Channel URL",
+        "description": "May point to a LAN address; redacted when exporting task records."
+      },
+      "timeout_seconds": {
+        "label": "Request timeout (seconds)"
+      },
+      "max_records": {
+        "label": "Records to keep",
+        "description": "Older records are deleted on the next push."
+      }
     }
   }
 }

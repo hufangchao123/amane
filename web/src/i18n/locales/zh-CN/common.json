@@ -65,7 +65,8 @@
     "diagnostics": "体检",
     "backup": "备份",
     "trash": "回收站",
-    "maintenance": "库维护"
+    "maintenance": "库维护",
+    "notify": "通知"
   },
   "defaults": {
     "set": "设为默认",
@@ -170,5 +171,17 @@
     "description": "渲染此页面时抛出了未捕获的异常, 详情见下方",
     "retry": "重试",
     "switchServer": "切换服务器"
+  },
+  "notify": {
+    "kinds": {
+      "bark": "notify.kinds.bark",
+      "serverchan": "notify.kinds.serverchan",
+      "telegram": "notify.kinds.telegram",
+      "webhook": "notify.kinds.webhook"
+    },
+    "recordKinds": {
+      "digest": "notify.recordKinds.digest",
+      "message": "notify.recordKinds.message"
+    }
   }
 }

@@ -1000,6 +1000,33 @@
         "label": "关闭超时",
         "description": "关闭时等待活跃任务完成的最长时间 (秒)"
       }
+    },
+    "notify": {
+      "enabled": {
+        "label": "启用通知",
+        "description": "关掉后任务照常运行，只是不推送。"
+      },
+      "kind": {
+        "label": "渠道类型",
+        "description": "决定请求形状。",
+        "options": {
+          "webhook": "Webhook",
+          "bark": "Bark",
+          "serverchan": "Server 酱",
+          "telegram": "Telegram"
+        }
+      },
+      "url": {
+        "label": "渠道地址",
+        "description": "可以指向内网；导出任务记录时会被脱敏。"
+      },
+      "timeout_seconds": {
+        "label": "请求超时（秒）"
+      },
+      "max_records": {
+        "label": "保留记录条数",
+        "description": "超出的旧记录在下次发送时删除。"
+      }
     }
   }
 }

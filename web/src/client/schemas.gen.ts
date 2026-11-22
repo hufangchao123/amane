@@ -3910,6 +3910,16 @@ export const HotSettingsSchema = {
                 keep_assets: 3
             }
         },
+        notify: {
+            $ref: '#/components/schemas/NotifyConfig',
+            default: {
+                enabled: false,
+                kind: 'webhook',
+                url: '',
+                timeout_seconds: 10,
+                max_records: 50
+            }
+        },
         worker: {
             $ref: '#/components/schemas/WorkerConfig',
             default: {
@@ -7121,6 +7131,232 @@ export const NfoStatusResponseSchema = {
     description: '演员头像的库存情况; 待补条数由修补任务预演后才知道, 这里只报可用素材.'
 } as const;
 
+export const NotifyConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'webhook',
+                'bark',
+                'serverchan',
+                'telegram'
+            ],
+            title: 'Kind',
+            default: 'webhook'
+        },
+        url: {
+            type: 'string',
+            title: 'Url',
+            description: '渠道地址; 可能含密钥, 导出任务记录时脱敏',
+            default: ''
+        },
+        timeout_seconds: {
+            type: 'integer',
+            maximum: 60,
+            minimum: 1,
+            title: 'Timeout Seconds',
+            default: 10
+        },
+        max_records: {
+            type: 'integer',
+            maximum: 1000,
+            minimum: 1,
+            title: 'Max Records',
+            default: 50
+        }
+    },
+    type: 'object',
+    title: 'NotifyConfig',
+    description: '通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.'
+} as const;
+
+export const NotifyDigestRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'notify_digest',
+            title: 'Type',
+            default: 'notify_digest'
+        }
+    },
+    type: 'object',
+    title: 'NotifyDigestRoutine',
+    description: '周报例行; 摘要由任务按当前数据库现算, 因此没有参数.'
+} as const;
+
+export const NotifyRecordResponseSchema = {
+    properties: {
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        kind: {
+            type: 'string',
+            title: 'Kind'
+        },
+        channel: {
+            type: 'string',
+            title: 'Channel'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        ok: {
+            type: 'boolean',
+            title: 'Ok'
+        },
+        error: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Error'
+        }
+    },
+    type: 'object',
+    required: [
+        'created_at',
+        'kind',
+        'channel',
+        'title',
+        'ok'
+    ],
+    title: 'NotifyRecordResponse',
+    description: '一条推送留痕; 不含渠道地址.'
+} as const;
+
+export const NotifyResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'notify',
+            title: 'Type',
+            default: 'notify'
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'message',
+                'digest'
+            ],
+            title: 'Kind',
+            default: 'message'
+        },
+        channel: {
+            type: 'string',
+            title: 'Channel',
+            default: ''
+        },
+        ok: {
+            type: 'boolean',
+            title: 'Ok',
+            default: false
+        },
+        status: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Status'
+        },
+        digest_days: {
+            type: 'integer',
+            title: 'Digest Days',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'NotifyResult'
+} as const;
+
+export const NotifyStatusResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'webhook',
+                'bark',
+                'serverchan',
+                'telegram'
+            ],
+            title: 'Kind'
+        },
+        has_url: {
+            type: 'boolean',
+            title: 'Has Url'
+        },
+        records: {
+            items: {
+                $ref: '#/components/schemas/NotifyRecordResponse'
+            },
+            type: 'array',
+            title: 'Records'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'kind',
+        'has_url',
+        'records'
+    ],
+    title: 'NotifyStatusResponse'
+} as const;
+
+export const NotifySubmissionSchema = {
+    properties: {
+        kind: {
+            type: 'string',
+            enum: [
+                'message',
+                'digest'
+            ],
+            title: 'Kind',
+            default: 'message'
+        },
+        title: {
+            type: 'string',
+            title: 'Title',
+            default: ''
+        },
+        body: {
+            type: 'string',
+            title: 'Body',
+            default: ''
+        },
+        type: {
+            type: 'string',
+            const: 'notify',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'NotifySubmission',
+    description: '即时消息或周报; 正文留空时由任务现算摘要.'
+} as const;
+
 export const OptionalPathTemplateDefaultsSchema = {
     properties: {
         thumb_template: {
@@ -8163,7 +8399,8 @@ export const RoutineTypeSchema = {
         'wash_purge',
         'trash_purge',
         'backup',
-        'media_refresh'
+        'media_refresh',
+        'notify_digest'
     ],
     title: 'RoutineType'
 } as const;
@@ -8653,6 +8890,9 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/NotifyDigestRoutine'
+                },
+                {
                     $ref: '#/components/schemas/MediaRefreshRoutine'
                 },
                 {
@@ -8666,6 +8906,7 @@ export const ScheduleCreateRequestSchema = {
                     backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
+                    notify_digest: '#/components/schemas/NotifyDigestRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
@@ -8762,6 +9003,9 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/NotifyDigestRoutine'
+                },
+                {
                     $ref: '#/components/schemas/MediaRefreshRoutine'
                 },
                 {
@@ -8775,6 +9019,7 @@ export const ScheduleResponseSchema = {
                     backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
+                    notify_digest: '#/components/schemas/NotifyDigestRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
@@ -10449,6 +10694,9 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/NfoPatchSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/NotifySubmission'
                     }
                 ],
                 discriminator: {
@@ -10461,6 +10709,7 @@ export const TaskBatchSubmitRequestSchema = {
                         delete: '#/components/schemas/DeleteSubmission',
                         media_refresh: '#/components/schemas/MediaRefreshSubmission',
                         nfo_patch: '#/components/schemas/NfoPatchSubmission',
+                        notify: '#/components/schemas/NotifySubmission',
                         organize: '#/components/schemas/OrganizeSubmission',
                         r18_import: '#/components/schemas/R18ImportSubmission',
                         refresh: '#/components/schemas/RefreshSubmission',
@@ -11047,6 +11296,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/NfoPatchResult'
                         },
                         {
+                            $ref: '#/components/schemas/NotifyResult'
+                        },
+                        {
                             $ref: '#/components/schemas/WashScanResult'
                         },
                         {
@@ -11069,6 +11321,7 @@ export const TaskResponseSchema = {
                             delete: '#/components/schemas/DeleteResult',
                             media_refresh: '#/components/schemas/MediaRefreshResult',
                             nfo_patch: '#/components/schemas/NfoPatchResult',
+                            notify: '#/components/schemas/NotifyResult',
                             organize: '#/components/schemas/OrganizeResult',
                             r18_import: '#/components/schemas/R18ImportResult',
                             refresh: '#/components/schemas/RefreshResult',
@@ -11148,6 +11401,7 @@ export const TaskTypeSchema = {
         'subtitle_fetch',
         'subtitle_audit',
         'nfo_patch',
+        'notify',
         'trash_purge',
         'wash_scan',
         'wash_apply',

@@ -81,7 +81,9 @@
     "wash_purge": "回收站清理",
     "subtitle_audit": "字幕巡检",
     "trash_purge": "回收站清理",
-    "nfo_patch": "NFO 修补"
+    "nfo_patch": "NFO 修补",
+    "notify": "通知",
+    "notify_digest": "摘要推送"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -535,6 +537,24 @@
       "dry_run": {
         "label": "只预演",
         "description": "关掉后才真正改写文件"
+      }
+    },
+    "notify": {
+      "kind": {
+        "label": "种类",
+        "description": "种类",
+        "options": {
+          "message": "发一条消息",
+          "digest": "发一份摘要"
+        }
+      },
+      "title": {
+        "label": "标题",
+        "description": "标题"
+      },
+      "body": {
+        "label": "正文",
+        "description": "正文"
       }
     }
   },

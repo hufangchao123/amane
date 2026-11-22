@@ -65,7 +65,8 @@
     "diagnostics": "Diagnostics",
     "backup": "Backup",
     "trash": "Trash",
-    "maintenance": "Maintenance"
+    "maintenance": "Maintenance",
+    "notify": "Notifications"
   },
   "defaults": {
     "set": "Set as default",
@@ -180,5 +181,17 @@
     "description": "Rendering this page threw an uncaught exception; details below",
     "retry": "Retry",
     "switchServer": "Switch server"
+  },
+  "notify": {
+    "kinds": {
+      "bark": "",
+      "serverchan": "",
+      "telegram": "",
+      "webhook": ""
+    },
+    "recordKinds": {
+      "digest": "",
+      "message": ""
+    }
   }
 }

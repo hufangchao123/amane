@@ -14,6 +14,7 @@ from ..handlers import (
     BackupPayload,
     CleanupPayload,
     MediaRefreshPayload,
+    NotifyPayload,
     R18ImportPayload,
     RescrapePayload,
     SemanticIndexPayload,
@@ -119,6 +120,8 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
             case RoutineType.BACKUP:
                 await self._repo.create_task(TaskType.BACKUP, BackupPayload(kind=payload.get("kind", "all")))
+            case RoutineType.NOTIFY_DIGEST:
+                await self._repo.create_task(TaskType.NOTIFY, NotifyPayload(kind="digest"))
             case RoutineType.MEDIA_REFRESH:
                 await self._repo.create_task(TaskType.MEDIA_REFRESH, MediaRefreshPayload())
             case RoutineType.WASH_SCAN:

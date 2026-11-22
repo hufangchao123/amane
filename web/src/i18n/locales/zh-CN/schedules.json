@@ -104,6 +104,11 @@
       "scope": "范围",
       "allLibraries": "全部媒体库",
       "library": "媒体库 {{id}}"
+    },
+    "notify_digest": {
+      "summary": "推送一份摘要",
+      "scope": "范围",
+      "wholeServer": "整个实例"
     }
   },
   "labels": {

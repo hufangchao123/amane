@@ -1989,6 +1989,7 @@ export type HotSettings = {
     subtitles?: SubtitleFetchConfig;
     wash?: WashConfig;
     backup?: BackupConfig;
+    notify?: NotifyConfig;
     worker?: WorkerConfig;
     logging?: LoggingConfig;
     /**
@@ -3648,6 +3649,156 @@ export type NfoStatusResponse = {
 };
 
 /**
+ * NotifyConfig
+ *
+ * 通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.
+ */
+export type NotifyConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'webhook' | 'bark' | 'serverchan' | 'telegram';
+    /**
+     * Url
+     *
+     * 渠道地址; 可能含密钥, 导出任务记录时脱敏
+     */
+    url?: string;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+    /**
+     * Max Records
+     */
+    max_records?: number;
+};
+
+/**
+ * NotifyDigestRoutine
+ *
+ * 周报例行; 摘要由任务按当前数据库现算, 因此没有参数.
+ */
+export type NotifyDigestRoutine = {
+    /**
+     * Type
+     */
+    type?: 'notify_digest';
+};
+
+/**
+ * NotifyRecordResponse
+ *
+ * 一条推送留痕; 不含渠道地址.
+ */
+export type NotifyRecordResponse = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Channel
+     */
+    channel: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Error
+     */
+    error?: string | null;
+};
+
+/**
+ * NotifyResult
+ */
+export type NotifyResult = {
+    /**
+     * Type
+     */
+    type?: 'notify';
+    /**
+     * Kind
+     */
+    kind?: 'message' | 'digest';
+    /**
+     * Channel
+     */
+    channel?: string;
+    /**
+     * Ok
+     */
+    ok?: boolean;
+    /**
+     * Status
+     */
+    status?: number | null;
+    /**
+     * Digest Days
+     */
+    digest_days?: number;
+};
+
+/**
+ * NotifyStatusResponse
+ */
+export type NotifyStatusResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Kind
+     */
+    kind: 'webhook' | 'bark' | 'serverchan' | 'telegram';
+    /**
+     * Has Url
+     */
+    has_url: boolean;
+    /**
+     * Records
+     */
+    records: Array<NotifyRecordResponse>;
+};
+
+/**
+ * NotifySubmission
+ *
+ * 即时消息或周报; 正文留空时由任务现算摘要.
+ */
+export type NotifySubmission = {
+    /**
+     * Kind
+     */
+    kind?: 'message' | 'digest';
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Type
+     */
+    type: 'notify';
+};
+
+/**
  * OptionalPathTemplateDefaults
  *
  * 附属模板缺省 (Library 对应列为 None 时 ORGANIZE 使用; 剧照文件名在写盘时按张数渲染).
@@ -4314,7 +4465,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'backup' | 'media_refresh';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'backup' | 'media_refresh' | 'notify_digest';
 
 /**
  * RuntimePaths
@@ -4629,6 +4780,8 @@ export type ScheduleCreateRequest = {
     } & BackupSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'notify_digest';
+    } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
     } & MediaRefreshRoutine) | ({
         type: 'trash_purge';
@@ -4688,6 +4841,8 @@ export type ScheduleResponse = {
     } & BackupSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'notify_digest';
+    } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
     } & MediaRefreshRoutine) | ({
         type: 'trash_purge';
@@ -5577,7 +5732,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission>;
 };
 
 /**
@@ -5899,6 +6054,8 @@ export type TaskResponse = {
     } & TrashPurgeResult) | ({
         type: 'nfo_patch';
     } & NfoPatchResult) | ({
+        type: 'notify';
+    } & NotifyResult) | ({
         type: 'wash_scan';
     } & WashScanResult) | ({
         type: 'wash_apply';
@@ -5922,7 +6079,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10012,7 +10169,9 @@ export type SubmitTaskData = {
         type: 'trash_purge';
     } & TrashPurgeSubmission) | ({
         type: 'nfo_patch';
-    } & NfoPatchSubmission);
+    } & NfoPatchSubmission) | ({
+        type: 'notify';
+    } & NotifySubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';
@@ -11364,3 +11523,19 @@ export type GetNfoStatusResponses = {
 };
 
 export type GetNfoStatusResponse = GetNfoStatusResponses[keyof GetNfoStatusResponses];
+
+export type NotifyStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/notify/status';
+};
+
+export type NotifyStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotifyStatusResponse;
+};
+
+export type NotifyStatusResponse2 = NotifyStatusResponses[keyof NotifyStatusResponses];

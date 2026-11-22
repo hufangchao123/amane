@@ -883,6 +883,22 @@ class WashConfig(BaseModel):
     """回收站保留天数, 到期由清理任务删除."""
 
 
+NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]
+
+
+class NotifyConfig(BaseModel):
+    """通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制."""
+
+    enabled: bool = False
+
+    kind: NotifyKind = "webhook"
+    """渠道类型; 决定请求形状, 见 `notify/channels.py`."""
+    url: str = Field(default="", description="渠道地址; 可能含密钥, 导出任务记录时脱敏")
+    timeout_seconds: int = Field(default=10, ge=1, le=60)
+    max_records: int = Field(default=50, ge=1, le=1000)
+    """保留的发送记录条数, 超出部分由下一次发送删除."""
+
+
 class BackupConfig(BaseModel):
     """备份: SQLite 在线备份 + 配置打包; 不含媒体与资源缓存."""
 
@@ -955,6 +971,8 @@ class HotSettings(BaseModel):
     subtitles: SubtitleFetchConfig = SubtitleFetchConfig()
     wash: WashConfig = WashConfig()
     backup: BackupConfig = BackupConfig()
+
+    notify: NotifyConfig = NotifyConfig()
     worker: WorkerConfig = WorkerConfig()
     logging: LoggingConfig = LoggingConfig()
     plugins: dict[str, PluginConfig] = Field(default_factory=dict, json_schema_extra={"x-hidden": True})

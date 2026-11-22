@@ -18,6 +18,7 @@ from .media import router as media_router
 from .metadata import router as metadata_router
 from .network import router as network_router
 from .nfo import router as nfo_router
+from .notify import router as notify_router
 from .playback import router as playback_router
 from .plugins import router as plugins_router
 from .resources import router as resources_router
@@ -70,3 +71,4 @@ router.include_router(diagnostics_router)
 router.include_router(backup_router)
 router.include_router(trash_router)
 router.include_router(nfo_router)
+router.include_router(notify_router)

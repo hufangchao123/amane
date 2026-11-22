@@ -16,6 +16,7 @@ STATUS_CASES = [
     pytest.param("backup/status", {"enabled", "root", "entries"}, id="backup"),
     pytest.param("trash/status", {"libraries", "total_files", "total_bytes"}, id="trash"),
     pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
+    pytest.param("notify/status", {"enabled", "kind", "has_url", "records"}, id="notify"),
 ]
 
 
@@ -69,6 +70,7 @@ SUBMIT_CASES = [
     pytest.param({"type": "backup", "kind": "db"}, "backup", id="backup"),
     pytest.param({"type": "trash_purge", "keep_days": 7}, "trash_purge", id="trash-purge"),
     pytest.param({"type": "nfo_patch", "kind": "directors"}, "nfo_patch", id="nfo-patch"),
+    pytest.param({"type": "notify", "title": "测试", "body": "正文"}, "notify", id="notify"),
 ]
 
 

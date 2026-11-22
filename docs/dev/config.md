@@ -113,10 +113,10 @@ Worker 替换不取消运行中任务: `_rebuild()` 构建新 worker 后旧 work
 
 ## 媒体运维 (Hot)
 
-`transfer` / `subtitles` / `wash` / `backup` 四个 section 各自对应一个功能包 (见 [ops.md](ops.md)), UI 由 schema 自动出表单.
+`transfer` / `subtitles` / `wash` / `backup` / `notify` 五个 section 各自对应一个功能包 (见 [ops.md](ops.md)), UI 由 schema 自动出表单.
 
 - `enabled` 只管派生入口: 服务层另外要求凭据与目录齐备, 缺项报未启用而不是让任务半途失败.
-- 密钥 (115 Cookie、Assrt Token) 是普通字符串字段, 进 secrets 脱敏, 不进日志与任务 payload.
+- 密钥 (115 Cookie、Assrt Token、通知地址) 是普通字符串字段, 进 secrets 脱敏, 不进日志与任务 payload.
 - 四项都不进 `_rebuild()` 链: 服务对象在请求内按当前 section 现构造, 配置改动对下一次任务立即生效.
 
 ## `watermark` (Hot)

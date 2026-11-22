@@ -22,6 +22,7 @@ import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MetaRouteImport } from './routes/meta'
 import { Route as NetworkRouteImport } from './routes/network'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PluginsRouteImport } from './routes/plugins'
 import { Route as SavedQueriesRouteImport } from './routes/saved-queries'
 import { Route as SchedulesRouteImport } from './routes/schedules'
@@ -108,6 +109,11 @@ const MetaRoute = MetaRouteImport.update({
 const NetworkRoute = NetworkRouteImport.update({
   id: '/network',
   path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PluginsRoute = PluginsRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
+  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/maintenance': typeof MaintenanceRoute
   '/manual': typeof ManualRoute
   '/network': typeof NetworkRoute
+  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/schedules': typeof SchedulesRoute
   '/settings': typeof SettingsRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
+  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/meta'
     | '/network'
+    | '/notifications'
     | '/plugins'
     | '/saved-queries'
     | '/schedules'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/manual'
     | '/network'
+    | '/notifications'
     | '/plugins'
     | '/schedules'
     | '/settings'
@@ -411,6 +422,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/meta'
     | '/network'
+    | '/notifications'
     | '/plugins'
     | '/saved-queries'
     | '/schedules'
@@ -449,6 +461,7 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   MetaRoute: typeof MetaRouteWithChildren
   NetworkRoute: typeof NetworkRoute
+  NotificationsRoute: typeof NotificationsRoute
   PluginsRoute: typeof PluginsRoute
   SavedQueriesRoute: typeof SavedQueriesRouteWithChildren
   SchedulesRoute: typeof SchedulesRoute
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/network'
       fullPath: '/network'
       preLoaderRoute: typeof NetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plugins': {
@@ -804,6 +824,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   MetaRoute: MetaRouteWithChildren,
   NetworkRoute: NetworkRoute,
+  NotificationsRoute: NotificationsRoute,
   PluginsRoute: PluginsRoute,
   SavedQueriesRoute: SavedQueriesRouteWithChildren,
   SchedulesRoute: SchedulesRoute,

@@ -201,5 +201,51 @@
       "queued": "Patch task queued",
       "runFailed": "Could not queue the task"
     }
+  },
+  "notify": {
+    "title": "Notifications",
+    "hint": "Push task results and daily digests to your own channel. Fill the channel type and URL on the settings page; this page only reports whether they are set.",
+    "channel": {
+      "title": "Channel",
+      "enabled": "Enabled ({{kind}})",
+      "disabled": "Disabled",
+      "urlSet": "URL is set.",
+      "urlMissing": "URL is empty, so nothing will be sent.",
+      "hint": "Webhook receives {\"title\", \"body\"}; Bark takes path arguments; Server Chan receives a form; Telegram receives text."
+    },
+    "send": {
+      "title": "Send a test message",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. scan finished",
+      "bodyLabel": "Body",
+      "bodyPlaceholder": "What to push",
+      "run": "Send"
+    },
+    "records": {
+      "title": "Recent pushes",
+      "refresh": "Refresh",
+      "empty": "No pushes yet.",
+      "ok": "Delivered",
+      "failed": "Failed",
+      "columns": {
+        "time": "Time",
+        "kind": "Kind",
+        "channel": "Channel",
+        "title": "Title",
+        "result": "Result"
+      }
+    },
+    "queued": "Queued, check the records shortly",
+    "runFailed": "Send failed",
+    "kinds": {
+      "webhook": "Webhook",
+      "bark": "Bark",
+      "serverchan": "Server Chan",
+      "telegram": "Telegram"
+    },
+    "recordKinds": {
+      "message": "Message",
+      "digest": "Digest"
+    }
   }
 }

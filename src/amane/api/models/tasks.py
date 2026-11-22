@@ -22,6 +22,8 @@ from ...handlers import (
     MediaRefreshResult,
     NfoPatchPayload,
     NfoPatchResult,
+    NotifyPayload,
+    NotifyResult,
     OrganizePayload,
     OrganizeResult,
     R18ImportPayload,
@@ -82,6 +84,7 @@ TaskResultPayload = Annotated[
     | SubtitleFetchResult
     | TrashPurgeResult
     | NfoPatchResult
+    | NotifyResult
     | WashScanResult
     | WashApplyResult
     | BackupResult
@@ -338,6 +341,12 @@ class NfoPatchSubmission(NfoPatchPayload):
     type: Literal["nfo_patch"]
 
 
+class NotifySubmission(NotifyPayload):
+    """即时消息或周报; 正文留空时由任务现算摘要."""
+
+    type: Literal["notify"]
+
+
 class WashScanSubmission(WashScanPayload):
     """洗版扫描: 只出候选清单, 一律不移动文件."""
 
@@ -384,9 +393,16 @@ TaskSubmission = Annotated[
     | BackupSubmission
     | MediaRefreshSubmission
     | TrashPurgeSubmission
-    | NfoPatchSubmission,
+    | NfoPatchSubmission
+    | NotifySubmission,
     Field(discriminator="type"),
 ]
+
+
+class NotifyDigestRoutine(BaseModel):
+    """周报例行; 摘要由任务按当前数据库现算, 因此没有参数."""
+
+    type: Literal["notify_digest"] = "notify_digest"
 
 
 class WashPurgeRoutine(BaseModel):
@@ -419,6 +435,7 @@ RoutineSubmission = Annotated[
     | WashScanSubmission
     | BackupSubmission
     | WashPurgeRoutine
+    | NotifyDigestRoutine
     | MediaRefreshRoutine
     | TrashPurgeRoutine,
     Field(discriminator="type"),
