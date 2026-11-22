@@ -153,6 +153,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "rescrape",
   "semantic_index",
   "transfer_115",
+  "wash_scan",
   "wash_purge",
   "backup",
 );

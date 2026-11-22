@@ -97,13 +97,20 @@ class TestSchedules:
         assert backup.json()["task_type"] == "backup"
         assert backup.json()["payload"] == {"type": "backup", "kind": "assets"}
 
+        scan = await client.post(
+            "schedules", json={"cron": "0 2 * * *", "submission": {"type": "wash_scan", "kind": "local"}}
+        )
+        assert scan.status_code == 201
+        assert scan.json()["task_type"] == "wash_scan"
+        assert scan.json()["payload"] == {"type": "wash_scan", "kind": "local", "library_id": None}
+
         purge = await client.post("schedules", json={"cron": "0 6 * * *", "submission": {"type": "wash_purge"}})
         assert purge.status_code == 201
         assert purge.json()["task_type"] == "wash_purge"
         assert purge.json()["payload"] == {"type": "wash_purge"}
 
         listed = await client.get("schedules")
-        assert listed.json()["total"] == 8
+        assert listed.json()["total"] == 9
 
         sched = await repo.create_schedule(cron="0 0 * * *", task_type=RoutineType.CLEANUP, payload={}, name="old")
         sparse = await client.get(f"schedules/{sched.id}")

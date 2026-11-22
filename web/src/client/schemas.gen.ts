@@ -7934,6 +7934,7 @@ export const RoutineTypeSchema = {
         'rescrape',
         'semantic_index',
         'transfer_115',
+        'wash_scan',
         'wash_purge',
         'backup'
     ],
@@ -8416,6 +8417,9 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/Transfer115Submission'
                 },
                 {
+                    $ref: '#/components/schemas/WashScanSubmission'
+                },
+                {
                     $ref: '#/components/schemas/BackupSubmission'
                 },
                 {
@@ -8433,7 +8437,8 @@ export const ScheduleCreateRequestSchema = {
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
                     transfer_115: '#/components/schemas/Transfer115Submission',
                     upscale: '#/components/schemas/UpscaleSubmission',
-                    wash_purge: '#/components/schemas/WashPurgeRoutine'
+                    wash_purge: '#/components/schemas/WashPurgeRoutine',
+                    wash_scan: '#/components/schemas/WashScanSubmission'
                 }
             }
         }
@@ -8513,6 +8518,9 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/Transfer115Submission'
                 },
                 {
+                    $ref: '#/components/schemas/WashScanSubmission'
+                },
+                {
                     $ref: '#/components/schemas/BackupSubmission'
                 },
                 {
@@ -8530,7 +8538,8 @@ export const ScheduleResponseSchema = {
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
                     transfer_115: '#/components/schemas/Transfer115Submission',
                     upscale: '#/components/schemas/UpscaleSubmission',
-                    wash_purge: '#/components/schemas/WashPurgeRoutine'
+                    wash_purge: '#/components/schemas/WashPurgeRoutine',
+                    wash_scan: '#/components/schemas/WashScanSubmission'
                 }
             }
         },

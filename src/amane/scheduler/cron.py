@@ -19,6 +19,7 @@ from ..handlers import (
     Transfer115Payload,
     UpscalePayload,
     WashApplyPayload,
+    WashScanPayload,
 )
 from ..library.wash.apply import expired_record_ids
 
@@ -116,6 +117,9 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
             case RoutineType.BACKUP:
                 await self._repo.create_task(TaskType.BACKUP, BackupPayload(kind=payload.get("kind", "all")))
+            case RoutineType.WASH_SCAN:
+                # 只入队只读扫描: 洗版是破坏性动作, 定时任务只报告候选, 由人决定何时执行
+                await self._repo.create_task(TaskType.WASH_SCAN, WashScanPayload.model_validate(payload))
             case RoutineType.WASH_PURGE:
                 # 只清到期记录: 不重算候选, 免得定时任务顺手洗掉用户还想留的文件
                 ids = await expired_record_ids(self._repo)

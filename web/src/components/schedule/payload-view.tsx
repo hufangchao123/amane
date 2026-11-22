@@ -29,6 +29,32 @@ function targetLabel(t: Translate, target: RescrapeTarget): string {
   }
 }
 
+function washKindLabel(t: Translate, kind: "local" | "strm" | "all"): string {
+  switch (kind) {
+    case "local":
+      return t("tasks:submit.wash_scan.kind.options.local");
+    case "strm":
+      return t("tasks:submit.wash_scan.kind.options.strm");
+    case "all":
+      return t("tasks:submit.wash_scan.kind.options.all");
+    default:
+      return assertNever(kind, "WashKind");
+  }
+}
+
+function backupKindLabel(t: Translate, kind: "db" | "assets" | "all"): string {
+  switch (kind) {
+    case "db":
+      return t("tasks:submit.backup.kind.options.db");
+    case "assets":
+      return t("tasks:submit.backup.kind.options.assets");
+    case "all":
+      return t("tasks:submit.backup.kind.options.all");
+    default:
+      return assertNever(kind, "BackupKind");
+  }
+}
+
 function kindLabels(kinds: readonly EmbeddingKind[], t: Translate): string {
   return kinds.map((kind) => t(`tasks:submit.semantic_index.kinds.$.options.${kind}`)).join(" / ");
 }
@@ -122,10 +148,16 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
           ? t("schedules:payload.transfer_115.full")
           : t("schedules:payload.transfer_115.incremental"),
       ];
+    case "wash_scan":
+      return [
+        t("schedules:payload.wash_scan.summary", {
+          kind: washKindLabel(t, payload.kind ?? "all"),
+        }),
+      ];
     case "backup":
       return [
         t("schedules:payload.backup.kind", {
-          kind: t(`tasks:submit.backup.kind.options.${payload.kind ?? "all"}`),
+          kind: backupKindLabel(t, payload.kind ?? "all"),
         }),
       ];
     case "wash_purge":
@@ -223,11 +255,25 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
           value: yesNo(t, payload.full ?? false),
         },
       ];
+    case "wash_scan":
+      return [
+        {
+          label: t("tasks:submit.wash_scan.kind.label"),
+          value: washKindLabel(t, payload.kind ?? "all"),
+        },
+        {
+          label: t("tasks:submit.wash_scan.library_id.label"),
+          value:
+            payload.library_id == null
+              ? t("schedules:payload.unset")
+              : formatNumber(payload.library_id),
+        },
+      ];
     case "backup":
       return [
         {
           label: t("tasks:submit.backup.kind.label"),
-          value: t(`tasks:submit.backup.kind.options.${payload.kind ?? "all"}`),
+          value: backupKindLabel(t, payload.kind ?? "all"),
         },
       ];
     case "wash_purge":

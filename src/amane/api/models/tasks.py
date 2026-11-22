@@ -362,6 +362,7 @@ RoutineSubmission = Annotated[
     | RescrapeSubmission
     | SemanticIndexSubmission
     | Transfer115Submission
+    | WashScanSubmission
     | BackupSubmission
     | WashPurgeRoutine,
     Field(discriminator="type"),

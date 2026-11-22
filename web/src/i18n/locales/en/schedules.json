@@ -88,6 +88,10 @@
       "summary": "Purge expired trash records",
       "scope": "Scope",
       "expired": "Expired records"
+    },
+    "wash_scan": {
+      "summary": "Scan wash candidates ({{kind}}) and record them, no auto apply",
+      "scope": "Scan scope"
     }
   },
   "labels": {

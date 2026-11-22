@@ -74,13 +74,16 @@
 
 ## 定时入口
 
-`scheduler/cron.py::_execute_task` 的 `match` 有三个媒体运维分支, 每一支只做「把例行转成任务」:
+`scheduler/cron.py::_execute_task` 的 `match` 有四个媒体运维分支, 每一支只做「把例行转成任务」:
 
 | 例行类型 | 入队任务 | 载荷 |
 |---|---|---|
 | `transfer_115` | `TaskType.TRANSFER_115` | `Transfer115Payload(full=…)` |
+| `wash_scan` | `TaskType.WASH_SCAN` | `WashScanPayload(kind=…, library_id=…)` |
 | `backup` | `TaskType.BACKUP` | `BackupPayload(kind=…)` |
 | `wash_purge` | `TaskType.WASH_APPLY` | `WashApplyPayload(purge_ids=到期记录 id)` |
+
+`wash_scan` 只入队只读扫描: 洗版是破坏性动作, 定时任务只产出候选, 由人决定何时执行 `wash_apply`。
 
 `wash_purge` 的例行载荷为空 (`WashPurgeRoutine`), 到期范围由 `library/wash/apply.py::expired_record_ids` 判定 (只取 `state=TRASHED` 且 `expires_at` 已过), 因此定时不会重算洗版候选 —— 重算法会把用户留着不洗的分组一起洗掉。无到期记录时不入队。
 

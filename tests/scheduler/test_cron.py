@@ -7,7 +7,13 @@ import pytest
 
 from amane.db import RoutineType, TaskType
 from amane.db.models import WashRecordKind
-from amane.handlers import BackupPayload, SemanticIndexPayload, Transfer115Payload, WashApplyPayload
+from amane.handlers import (
+    BackupPayload,
+    SemanticIndexPayload,
+    Transfer115Payload,
+    WashApplyPayload,
+    WashScanPayload,
+)
 from amane.scheduler.cron import CronScheduler
 
 if TYPE_CHECKING:
@@ -78,6 +84,25 @@ async def test_due_backup_schedule_enqueues_backup_task(repo: Repository) -> Non
     tasks = await repo.list_tasks(task_types=[TaskType.BACKUP])
     assert len(tasks) == 1
     assert BackupPayload.model_validate(tasks[0].payload).kind == "db"
+
+
+@pytest.mark.asyncio
+async def test_due_wash_scan_schedule_enqueues_read_only_scan(repo: Repository) -> None:
+    """定时扫描只读候选: 到点入队的是 wash_scan, 不是 wash_apply."""
+    await repo.create_schedule(
+        cron="0 2 * * *",
+        task_type=RoutineType.WASH_SCAN,
+        payload={"type": "wash_scan", "kind": "strm"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    assert await repo.list_tasks(task_types=[TaskType.WASH_APPLY]) == [], "定时扫描不得顺手执行洗版"
+    tasks = await repo.list_tasks(task_types=[TaskType.WASH_SCAN])
+    assert len(tasks) == 1
+    payload = WashScanPayload.model_validate(tasks[0].payload)
+    assert (payload.kind, payload.library_id) == ("strm", None)
 
 
 @pytest.mark.asyncio

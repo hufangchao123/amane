@@ -59,6 +59,7 @@ class RoutineType(StrEnum):
     RESCRAPE = "rescrape"
     SEMANTIC_INDEX = "semantic_index"
     TRANSFER_115 = "transfer_115"
+    WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
     BACKUP = "backup"
 

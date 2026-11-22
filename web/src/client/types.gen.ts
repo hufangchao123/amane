@@ -4148,7 +4148,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_purge' | 'backup';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'backup';
 
 /**
  * RuntimePaths
@@ -4457,6 +4457,8 @@ export type ScheduleCreateRequest = {
     } & SemanticIndexSubmission) | ({
         type: 'transfer_115';
     } & Transfer115Submission) | ({
+        type: 'wash_scan';
+    } & WashScanSubmission) | ({
         type: 'backup';
     } & BackupSubmission) | ({
         type: 'wash_purge';
@@ -4510,6 +4512,8 @@ export type ScheduleResponse = {
     } & SemanticIndexSubmission) | ({
         type: 'transfer_115';
     } & Transfer115Submission) | ({
+        type: 'wash_scan';
+    } & WashScanSubmission) | ({
         type: 'backup';
     } & BackupSubmission) | ({
         type: 'wash_purge';

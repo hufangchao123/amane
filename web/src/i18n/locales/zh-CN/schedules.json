@@ -88,6 +88,10 @@
       "summary": "清理到期的回收站记录",
       "scope": "清理范围",
       "expired": "已到期的记录"
+    },
+    "wash_scan": {
+      "summary": "扫描洗版候选 ({{kind}}) 并记录, 不自动执行",
+      "scope": "扫描范围"
     }
   },
   "labels": {
