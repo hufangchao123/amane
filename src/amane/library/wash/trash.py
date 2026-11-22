@@ -67,15 +67,37 @@ class MoveOutcome:
     error: str | None = None
 
 
+PurgeStatus = Literal["purged", "missing", "failed"]
+
+
+@dataclass(frozen=True)
+class PurgeOutcome:
+    """一条路径的真删结果.
+
+    ``missing`` (文件早已不在) 与 ``purged`` 都是「这行记录再也还原不回来」, 区别只在于空间
+    是不是这次腾出来的; ``failed`` 则相反: 文件仍在回收站里, 记录必须留在原地等下一轮重试.
+    """
+
+    path: str
+    status: PurgeStatus
+    size: int = 0
+    error: str | None = None
+
+
 @dataclass
 class PurgeReport:
-    """一批过期记录的清理结果."""
+    """一批过期记录的清理结果.
+
+    ``outcomes`` 与输入路径一一对应、顺序相同: 调用方按位置把结果映射回记录, 因此不能用
+    「按路径字符串查表」这种写法来替代 —— 同一个路径重复出现时字符串会撞在一起.
+    """
 
     purged: int = 0
     missing: int = 0
     failed: int = 0
     freed_bytes: int = 0
     errors: list[str] = field(default_factory=list)
+    outcomes: list[PurgeOutcome] = field(default_factory=list)
 
 
 def trash_root(library_root: str | Path) -> Path:
@@ -190,10 +212,13 @@ def restore_from_trash(removed_path: str | Path, *, library_root: str | Path, ki
 
 @in_thread
 def purge_trash_paths(paths: Sequence[str | Path]) -> PurgeReport:
-    """删除一批已到期的回收站文件并回收变空的目录.
+    """删除一批已到期的回收站文件, 逐条给出结果并回收变空的目录.
 
     整批一次性进线程池: 到期清理动辄上百个文件, 逐个 ``await`` 会把事件循环切碎
     (``docs/dev/ops.md`` 的 5 ms 预算). 调用方保证这些记录已经到期.
+
+    ``outcomes`` 与 ``paths`` 等长同序, 一条路径至少产出一个结果 —— 调用方靠它区分「删掉了」
+    与「没删掉」, 前者才能把记录推进到 ``purged``.
     """
     report = PurgeReport()
     purged_paths: list[Path] = []
@@ -201,10 +226,13 @@ def purge_trash_paths(paths: Sequence[str | Path]) -> PurgeReport:
         path = existing_disk_path(raw, follow_symlinks=False)
         if path is None:
             report.missing += 1
+            report.outcomes.append(PurgeOutcome(path=str(raw), status="missing"))
             continue
         if not is_trash_path(path):
             report.failed += 1
-            report.errors.append(f"not a wash trash path: {path}")
+            error = f"not a wash trash path: {path}"
+            report.errors.append(error)
+            report.outcomes.append(PurgeOutcome(path=str(path), status="failed", error=error))
             continue
         try:
             size = _freed_size(path)
@@ -216,9 +244,11 @@ def purge_trash_paths(paths: Sequence[str | Path]) -> PurgeReport:
             logger.warning("wash purge failed", path=str(path), error=str(exc))
             report.failed += 1
             report.errors.append(f"{path}: {exc}")
+            report.outcomes.append(PurgeOutcome(path=str(path), status="failed", error=str(exc)))
             continue
         report.purged += 1
         report.freed_bytes += size
+        report.outcomes.append(PurgeOutcome(path=str(path), status="purged", size=size))
         purged_paths.append(path)
     _prune_purged_dirs(purged_paths)
     return report

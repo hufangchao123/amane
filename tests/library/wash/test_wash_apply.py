@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -368,3 +369,45 @@ async def test_purge_prunes_emptied_trash_dirs(wash_lib: WashLibrary) -> None:
     root = trash_root(wash_lib.root)
     assert not (root / "local" / "deep").exists()
     assert (wash_lib.root.parent / ".amane_wash").is_dir()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_keeps_record_when_unlink_fails(wash_lib: WashLibrary) -> None:
+    """删失败的文件还在回收站里: 记录必须留在 trashed, 既不能假成功也要留着重试."""
+    if os.geteuid() == 0:
+        pytest.skip("root 无视目录权限, 造不出 unlink 失败")
+    record = await make_record(wash_lib, relative="locked/ABC-123-720p.mp4", expires_in=timedelta(days=-1))
+    removed = Path(record.removed_path)
+    removed.parent.chmod(0o500)
+    try:
+        report = await purge_records(wash_lib.repo, [record])
+    finally:
+        removed.parent.chmod(0o700)
+
+    assert (report.done, report.failed) == (0, 1)
+    assert report.errors
+    assert removed.exists()
+    assert record.id is not None
+    (stored,) = await wash_lib.repo.get_wash_records([record.id])
+    assert stored.state is WashRecordState.TRASHED
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_advances_only_cleared_records(wash_lib: WashLibrary) -> None:
+    """一批里删成功与删失败混在一起时, 只有成功的那条能被推进到 purged."""
+    if os.geteuid() == 0:
+        pytest.skip("root 无视目录权限, 造不出 unlink 失败")
+    good = await make_record(wash_lib, relative="ok/ABC-123-720p.mp4", expires_in=timedelta(days=-1))
+    bad = await make_record(wash_lib, relative="locked/ABC-124-720p.mp4", expires_in=timedelta(days=-1))
+    locked = Path(bad.removed_path).parent
+    locked.chmod(0o500)
+    try:
+        report = await purge_records(wash_lib.repo, [good, bad])
+    finally:
+        locked.chmod(0o700)
+
+    assert (report.done, report.failed, report.bytes) == (1, 1, 42)
+    assert good.id is not None
+    assert bad.id is not None
+    states = {record.id: record.state for record in await wash_lib.repo.get_wash_records([good.id, bad.id])}
+    assert states == {good.id: WashRecordState.PURGED, bad.id: WashRecordState.TRASHED}
