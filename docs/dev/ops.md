@@ -68,9 +68,19 @@
 
 `handlers/models.py` 里的 Payload / Result 与 `handlers/*.py` 里的 handler 分离, 结果模型带 `type: Literal[TaskType.X]` 判别字段。新增任务类型要同步五处, 少一处就有编译期或测试期报错挡着: `TaskSubmission` 联合、`TaskResultPayload` 联合、`api/support/task_resolve.py::resolve_submission` 的 `match`、`web/src/lib/exhaustive-maps.ts` 的 `TASK_TYPES`、`web/src/lib/task/display.ts` 的 `TASK_ICONS`; 另有 i18n 的 `settings.json`(配置字段) 与 `tasks.json`(提交字段 + `filters.*`) 两处编译期穷举检查。
 
-## 与上游习惯的偏差
+## 定时入口
 
-- 五个功能暂不挂 `RoutineType` 定时入口: 需要周期触发的 (中转轮询、洗版扫描、备份) 在二期接入 `scheduler/cron.py::_execute_task` 的 `match` 分支, 那是共享文件的单点改动。
+`scheduler/cron.py::_execute_task` 的 `match` 有三个媒体运维分支, 每一支只做「把例行转成任务」:
+
+| 例行类型 | 入队任务 | 载荷 |
+|---|---|---|
+| `transfer_115` | `TaskType.TRANSFER_115` | `Transfer115Payload(full=…)` |
+| `backup` | `TaskType.BACKUP` | `BackupPayload(kind=…)` |
+| `wash_purge` | `TaskType.WASH_APPLY` | `WashApplyPayload(purge_ids=到期记录 id)` |
+
+`wash_purge` 的例行载荷为空 (`WashPurgeRoutine`), 到期范围由 `library/wash/apply.py::expired_record_ids` 判定 (只取 `state=TRASHED` 且 `expires_at` 已过), 因此定时不会重算洗版候选 —— 重算法会把用户留着不洗的分组一起洗掉。无到期记录时不入队。
+
+`RoutineType` 与 `TaskType` 的取值都按 VARCHAR 存储, 新增枚举成员不需要迁移; 前端 `ROUTINE_TYPES` 的穷举与 `RoutineSubmission` 判别联合共同约束取值集合。
 
 ## 禁止事项
 

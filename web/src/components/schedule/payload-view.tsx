@@ -116,6 +116,20 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       }
       return parts;
     }
+    case "transfer_115":
+      return [
+        payload.full
+          ? t("schedules:payload.transfer_115.full")
+          : t("schedules:payload.transfer_115.incremental"),
+      ];
+    case "backup":
+      return [
+        t("schedules:payload.backup.kind", {
+          kind: t(`tasks:submit.backup.kind.options.${payload.kind ?? "all"}`),
+        }),
+      ];
+    case "wash_purge":
+      return [t("schedules:payload.wash_purge.summary")];
     default:
       return assertNever(payload, "SchedulePayload");
   }
@@ -202,6 +216,27 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         },
       ];
     }
+    case "transfer_115":
+      return [
+        {
+          label: t("tasks:submit.transfer_115.full.label"),
+          value: yesNo(t, payload.full ?? false),
+        },
+      ];
+    case "backup":
+      return [
+        {
+          label: t("tasks:submit.backup.kind.label"),
+          value: t(`tasks:submit.backup.kind.options.${payload.kind ?? "all"}`),
+        },
+      ];
+    case "wash_purge":
+      return [
+        {
+          label: t("schedules:payload.wash_purge.scope"),
+          value: t("schedules:payload.wash_purge.expired"),
+        },
+      ];
     default:
       return assertNever(payload, "SchedulePayload");
   }

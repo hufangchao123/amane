@@ -293,4 +293,18 @@ async def _prune(root: Path, directories: Collection[Path]) -> None:
         logger.warning("wash prune failed", library_root=str(root), error=str(exc))
 
 
-__all__ = ["ApplyReport", "LockGetter", "ProgressFn", "purge_records", "restore_records", "wash_groups"]
+async def expired_record_ids(repo: Repository, *, now: datetime | None = None) -> list[int]:
+    """到期可清理的回收站记录 id; 定时清理据此入队, 无到期记录时为空表."""
+    records = await repo.list_expired_wash_records(now or datetime.now(UTC))
+    return [record.id for record in records if record.id is not None]
+
+
+__all__ = [
+    "ApplyReport",
+    "LockGetter",
+    "ProgressFn",
+    "expired_record_ids",
+    "purge_records",
+    "restore_records",
+    "wash_groups",
+]

@@ -152,6 +152,9 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "r18_import",
   "rescrape",
   "semantic_index",
+  "transfer_115",
+  "wash_purge",
+  "backup",
 );
 
 export const FACET_KINDS = exhaustiveTuple<FacetKind>()(

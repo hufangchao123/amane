@@ -88,7 +88,8 @@
     "subtitle_fetch": "Subtitle fetch",
     "wash_scan": "Wash scan",
     "wash_apply": "Wash apply",
-    "backup": "Backup"
+    "backup": "Backup",
+    "wash_purge": "Trash purge"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",

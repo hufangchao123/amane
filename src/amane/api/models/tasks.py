@@ -349,8 +349,21 @@ TaskSubmission = Annotated[
 ]
 
 
+class WashPurgeRoutine(BaseModel):
+    """回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数."""
+
+    type: Literal["wash_purge"] = "wash_purge"
+
+
 RoutineSubmission = Annotated[
-    CleanupSubmission | UpscaleSubmission | R18ImportSubmission | RescrapeSubmission | SemanticIndexSubmission,
+    CleanupSubmission
+    | UpscaleSubmission
+    | R18ImportSubmission
+    | RescrapeSubmission
+    | SemanticIndexSubmission
+    | Transfer115Submission
+    | BackupSubmission
+    | WashPurgeRoutine,
     Field(discriminator="type"),
 ]
 

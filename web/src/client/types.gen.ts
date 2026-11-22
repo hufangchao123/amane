@@ -4148,7 +4148,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_purge' | 'backup';
 
 /**
  * RuntimePaths
@@ -4454,7 +4454,13 @@ export type ScheduleCreateRequest = {
         type: 'rescrape';
     } & RescrapeSubmission) | ({
         type: 'semantic_index';
-    } & SemanticIndexSubmission);
+    } & SemanticIndexSubmission) | ({
+        type: 'transfer_115';
+    } & Transfer115Submission) | ({
+        type: 'backup';
+    } & BackupSubmission) | ({
+        type: 'wash_purge';
+    } & WashPurgeRoutine);
 };
 
 /**
@@ -4501,7 +4507,13 @@ export type ScheduleResponse = {
         type: 'rescrape';
     } & RescrapeSubmission) | ({
         type: 'semantic_index';
-    } & SemanticIndexSubmission);
+    } & SemanticIndexSubmission) | ({
+        type: 'transfer_115';
+    } & Transfer115Submission) | ({
+        type: 'backup';
+    } & BackupSubmission) | ({
+        type: 'wash_purge';
+    } & WashPurgeRoutine);
     /**
      * Enabled
      */
@@ -6437,6 +6449,18 @@ export type WashConfig = {
      * Keep Days
      */
     keep_days?: number;
+};
+
+/**
+ * WashPurgeRoutine
+ *
+ * 回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数.
+ */
+export type WashPurgeRoutine = {
+    /**
+     * Type
+     */
+    type?: 'wash_purge';
 };
 
 /**

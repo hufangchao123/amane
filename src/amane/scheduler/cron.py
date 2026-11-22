@@ -10,7 +10,17 @@ from croniter import croniter
 from structlog.contextvars import bound_contextvars
 
 from ..db import RoutineType, TaskType
-from ..handlers import CleanupPayload, R18ImportPayload, RescrapePayload, SemanticIndexPayload, UpscalePayload
+from ..handlers import (
+    BackupPayload,
+    CleanupPayload,
+    R18ImportPayload,
+    RescrapePayload,
+    SemanticIndexPayload,
+    Transfer115Payload,
+    UpscalePayload,
+    WashApplyPayload,
+)
+from ..library.wash.apply import expired_record_ids
 
 if TYPE_CHECKING:
     from ..db.repository import Repository
@@ -102,5 +112,16 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.RESCRAPE, RescrapePayload.model_validate(payload))
             case RoutineType.SEMANTIC_INDEX:
                 await self._repo.create_task(TaskType.SEMANTIC_INDEX, SemanticIndexPayload.model_validate(payload))
+            case RoutineType.TRANSFER_115:
+                await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
+            case RoutineType.BACKUP:
+                await self._repo.create_task(TaskType.BACKUP, BackupPayload(kind=payload.get("kind", "all")))
+            case RoutineType.WASH_PURGE:
+                # 只清到期记录: 不重算候选, 免得定时任务顺手洗掉用户还想留的文件
+                ids = await expired_record_ids(self._repo)
+                if not ids:
+                    logger.info("wash purge skipped", reason="无到期记录")
+                    return
+                await self._repo.create_task(TaskType.WASH_APPLY, WashApplyPayload(purge_ids=ids))
             case _:
                 logger.warning("unknown task type", task_type=task_type)

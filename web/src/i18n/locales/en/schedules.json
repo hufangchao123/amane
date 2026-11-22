@@ -76,6 +76,18 @@
       "force": "Re-encode everything",
       "limit": "Up to {{limit}} entries",
       "kinds": "Sources {{kinds}}"
+    },
+    "transfer_115": {
+      "full": "Rescan everything",
+      "incremental": "Only files not moved yet"
+    },
+    "backup": {
+      "kind": "Scope {{kind}}"
+    },
+    "wash_purge": {
+      "summary": "Purge expired trash records",
+      "scope": "Scope",
+      "expired": "Expired records"
     }
   },
   "labels": {

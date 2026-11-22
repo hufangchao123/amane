@@ -58,6 +58,9 @@ class RoutineType(StrEnum):
     R18_IMPORT = "r18_import"
     RESCRAPE = "rescrape"
     SEMANTIC_INDEX = "semantic_index"
+    TRANSFER_115 = "transfer_115"
+    WASH_PURGE = "wash_purge"
+    BACKUP = "backup"
 
 
 class TaskStatus(StrEnum):

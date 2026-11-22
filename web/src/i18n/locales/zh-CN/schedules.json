@@ -76,6 +76,18 @@
       "force": "全部重新编码",
       "limit": "最多 {{limit}} 条",
       "kinds": "索引范围 {{kinds}}"
+    },
+    "transfer_115": {
+      "full": "全量重扫",
+      "incremental": "只搬运未搬过的文件"
+    },
+    "backup": {
+      "kind": "备份范围 {{kind}}"
+    },
+    "wash_purge": {
+      "summary": "清理到期的回收站记录",
+      "scope": "清理范围",
+      "expired": "已到期的记录"
     }
   },
   "labels": {

@@ -7932,7 +7932,10 @@ export const RoutineTypeSchema = {
         'upscale',
         'r18_import',
         'rescrape',
-        'semantic_index'
+        'semantic_index',
+        'transfer_115',
+        'wash_purge',
+        'backup'
     ],
     title: 'RoutineType'
 } as const;
@@ -8408,17 +8411,29 @@ export const ScheduleCreateRequestSchema = {
                 },
                 {
                     $ref: '#/components/schemas/SemanticIndexSubmission'
+                },
+                {
+                    $ref: '#/components/schemas/Transfer115Submission'
+                },
+                {
+                    $ref: '#/components/schemas/BackupSubmission'
+                },
+                {
+                    $ref: '#/components/schemas/WashPurgeRoutine'
                 }
             ],
             title: 'Submission',
             discriminator: {
                 propertyName: 'type',
                 mapping: {
+                    backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
-                    upscale: '#/components/schemas/UpscaleSubmission'
+                    transfer_115: '#/components/schemas/Transfer115Submission',
+                    upscale: '#/components/schemas/UpscaleSubmission',
+                    wash_purge: '#/components/schemas/WashPurgeRoutine'
                 }
             }
         }
@@ -8493,17 +8508,29 @@ export const ScheduleResponseSchema = {
                 },
                 {
                     $ref: '#/components/schemas/SemanticIndexSubmission'
+                },
+                {
+                    $ref: '#/components/schemas/Transfer115Submission'
+                },
+                {
+                    $ref: '#/components/schemas/BackupSubmission'
+                },
+                {
+                    $ref: '#/components/schemas/WashPurgeRoutine'
                 }
             ],
             title: 'Payload',
             discriminator: {
                 propertyName: 'type',
                 mapping: {
+                    backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
-                    upscale: '#/components/schemas/UpscaleSubmission'
+                    transfer_115: '#/components/schemas/Transfer115Submission',
+                    upscale: '#/components/schemas/UpscaleSubmission',
+                    wash_purge: '#/components/schemas/WashPurgeRoutine'
                 }
             }
         },
@@ -11883,6 +11910,20 @@ export const WashConfigSchema = {
     type: 'object',
     title: 'WashConfig',
     description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.'
+} as const;
+
+export const WashPurgeRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'wash_purge',
+            title: 'Type',
+            default: 'wash_purge'
+        }
+    },
+    type: 'object',
+    title: 'WashPurgeRoutine',
+    description: '回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数.'
 } as const;
 
 export const WashRecordActionRequestSchema = {

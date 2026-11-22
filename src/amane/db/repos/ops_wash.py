@@ -118,6 +118,16 @@ class WashRepoMixin(RepositoryMixinBase):
             total = (await session.exec(count_stmt)).one()
         return items, int(total)
 
+    async def list_expired_wash_records(self, now: datetime) -> list[WashRecord]:
+        """回收站里已到期的记录: 定时清理据此入队, 无到期记录时返回空表."""
+        stmt = select(WashRecord).where(
+            col(WashRecord.state) == WashRecordState.TRASHED,
+            col(WashRecord.expires_at).is_not(None),
+            col(WashRecord.expires_at) <= now,
+        )
+        async with self._session() as session:
+            return list((await session.exec(stmt.order_by(col(WashRecord.id).asc()))).all())
+
     async def set_wash_record_state(self, ids: Sequence[int], state: WashRecordState) -> int:
         """把一批记录推进到新状态, 返回实际改动的行数."""
         if not ids:

@@ -83,8 +83,27 @@ class TestSchedules:
             "kinds": ["cover", "still"],
         }
 
+        transfer = await client.post(
+            "schedules", json={"cron": "0 5 * * *", "submission": {"type": "transfer_115", "full": True}}
+        )
+        assert transfer.status_code == 201
+        assert transfer.json()["task_type"] == "transfer_115"
+        assert transfer.json()["payload"] == {"type": "transfer_115", "full": True}
+
+        backup = await client.post(
+            "schedules", json={"cron": "0 4 * * *", "submission": {"type": "backup", "kind": "assets"}}
+        )
+        assert backup.status_code == 201
+        assert backup.json()["task_type"] == "backup"
+        assert backup.json()["payload"] == {"type": "backup", "kind": "assets"}
+
+        purge = await client.post("schedules", json={"cron": "0 6 * * *", "submission": {"type": "wash_purge"}})
+        assert purge.status_code == 201
+        assert purge.json()["task_type"] == "wash_purge"
+        assert purge.json()["payload"] == {"type": "wash_purge"}
+
         listed = await client.get("schedules")
-        assert listed.json()["total"] == 5
+        assert listed.json()["total"] == 8
 
         sched = await repo.create_schedule(cron="0 0 * * *", task_type=RoutineType.CLEANUP, payload={}, name="old")
         sparse = await client.get(f"schedules/{sched.id}")
