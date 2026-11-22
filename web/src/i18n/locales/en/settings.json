@@ -6,13 +6,20 @@
     "actor_scraping": "Actor Scraping",
     "agent": "Agent",
     "network": "Network",
-    "worker": "Task Engine",
-    "watcher": "File Monitoring",
-    "logging": "Logging",
     "sr": "Super Resolution",
-    "llm": "LLM Translation",
+    "semantic": "Semantic Search",
     "watermark": "Watermark",
-    "semantic": "Semantic Search"
+    "llm": "LLM Translation",
+    "r18": "R18 Data Source",
+    "transfer": "115 Transfer",
+    "subtitles": "Subtitle Fill",
+    "wash": "Wash",
+    "backup": "Backup",
+    "notify": "Notification",
+    "watcher": "File Monitoring",
+    "worker": "Task Engine",
+    "logging": "Logging",
+    "plugins": "Plugins"
   },
   "config": {
     "loadError": "Failed to load configuration"
@@ -1021,7 +1028,8 @@
         "description": "May point to a LAN address; redacted when exporting task records."
       },
       "timeout_seconds": {
-        "label": "Request timeout (seconds)"
+        "label": "Request timeout (seconds)",
+        "description": "Request timeout in seconds. Raise it when the local network or the channel is slow."
       },
       "max_records": {
         "label": "Records to keep",

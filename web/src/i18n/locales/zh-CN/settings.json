@@ -6,13 +6,20 @@
     "actor_scraping": "演员刮削",
     "agent": "智能体",
     "network": "网络",
-    "worker": "任务引擎",
-    "watcher": "文件监控",
-    "logging": "日志",
     "sr": "图像超分",
-    "llm": "LLM 翻译",
+    "semantic": "语义检索",
     "watermark": "水印",
-    "semantic": "语义检索"
+    "llm": "LLM 翻译",
+    "r18": "R18 数据源",
+    "transfer": "115 中转",
+    "subtitles": "字幕补全",
+    "wash": "洗版",
+    "backup": "备份",
+    "notify": "通知",
+    "watcher": "文件监控",
+    "worker": "任务引擎",
+    "logging": "日志",
+    "plugins": "插件"
   },
   "config": {
     "loadError": "加载配置失败"
@@ -1021,7 +1028,8 @@
         "description": "可以指向内网；导出任务记录时会被脱敏。"
       },
       "timeout_seconds": {
-        "label": "请求超时（秒）"
+        "label": "请求超时（秒）",
+        "description": "请求超时（秒）。本地网络慢或渠道响应慢时调大。"
       },
       "max_records": {
         "label": "保留记录条数",
