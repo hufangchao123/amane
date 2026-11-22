@@ -782,6 +782,10 @@ export type AvatarCheckResult = {
      */
     cleared?: number;
     /**
+     * Failed
+     */
+    failed?: number;
+    /**
      * Samples
      */
     samples?: Array<string>;

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from ..db.models import TaskStatus
+from ..db.models import TaskStatus, TransferItemState, WashRecordState
 from ..notify import Notifier
 from .models import NotifyPayload, NotifyResult
 from .protocol import TaskHandler, TaskResult
@@ -70,9 +70,9 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
         running = await self._repo.count_tasks(statuses=[TaskStatus.RUNNING])
         done = await self._repo.count_tasks(statuses=[TaskStatus.DONE])
         failed = await self._repo.count_tasks(statuses=[TaskStatus.FAILED])
-        wash_count, wash_bytes = await self._repo.count_wash_records(state=_trashed_state())
+        wash_count, wash_bytes = await self._repo.count_wash_records(state=WashRecordState.TRASHED)
         transfer = await self._repo.transfer_state_counts()
-        pending = transfer.get(_pending_state(), 0)
+        pending = transfer.get(TransferItemState.PENDING, 0)
         lines = [
             f"最近 {DIGEST_DAYS} 天的队列: 排队 {queued}, 执行中 {running}, 完成 {done}, 失败 {failed}",
             f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB",
@@ -83,15 +83,3 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
             detail = (task.error or "").splitlines()[0][:120] if task.error else "无错误文案"
             lines.append(f"失败 #{task.id} {task.type}: {detail}")
         return "\n".join(lines)
-
-
-def _trashed_state():
-    from ..db.models import WashRecordState
-
-    return WashRecordState.TRASHED
-
-
-def _pending_state():
-    from ..db.models import TransferItemState
-
-    return TransferItemState.PENDING

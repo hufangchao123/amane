@@ -67,7 +67,10 @@ def _stats(files: list[_File]) -> TrashStats:
 
 @in_thread
 def scan(trash_dir: Path) -> TrashStats:
-    """统计一个回收站目录, 不动文件."""
+    """统计一个回收站目录, 不动文件.
+
+    走完整目录树, 成本与文件数成正比; 状态端点因此把它放在线程里, 但仍是随点随扫, 大回收站下会慢.
+    """
     if not trash_dir.is_dir():
         return TrashStats(files=0, bytes=0, oldest_days=None)
     return _stats(_walk(trash_dir, datetime.now(UTC)))

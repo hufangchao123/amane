@@ -12,9 +12,14 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from uuid import uuid4
+
+import structlog
 
 from ...utils.threads import in_thread
 from ..rules import is_in_trash
+
+logger = structlog.get_logger(__name__)
 
 NFO_SUFFIX = ".nfo"
 MAX_SAMPLES = 10
@@ -62,21 +67,26 @@ def fill_actor_thumbs(paths: Sequence[str], images: dict[str, str], *, dry_run: 
             outcome.failed += 1
             continue
         patched, filled, missing = _fill_actor_thumbs(text, images)
+        if filled == 0:
+            outcome.missing_image += missing
+            continue
+        if not dry_run and not _write_atomically(nfo_path, patched):
+            outcome.failed += 1
+            continue
         outcome.filled += filled
         outcome.missing_image += missing
-        if filled == 0:
-            continue
         outcome.changed += 1
         if len(outcome.samples) < MAX_SAMPLES:
             outcome.samples.append(nfo_path.name)
-        if not dry_run and not _write_atomically(nfo_path, patched):
-            outcome.failed += 1
     return outcome
 
 
 @in_thread
 def strip_directors(paths: Sequence[str], *, dry_run: bool) -> NfoPatchOutcome:
-    """删掉 ``<director>`` 行; 该标签只有一个值, 整行删除不影响其它元素."""
+    """删掉全部 ``<director>`` 行.
+
+    写入端可能给出多个导演, 因此逐行删除而不是只删第一条; 删空不影响其它元素.
+    """
     outcome = NfoPatchOutcome()
     for nfo_path in _iter_nfo(paths):
         outcome.files += 1
@@ -88,24 +98,14 @@ def strip_directors(paths: Sequence[str], *, dry_run: bool) -> NfoPatchOutcome:
         patched, removed = _DIRECTOR_LINE.subn("", text)
         if removed == 0:
             continue
+        if not dry_run and not _write_atomically(nfo_path, patched):
+            outcome.failed += 1
+            continue
         outcome.removed += removed
         outcome.changed += 1
         if len(outcome.samples) < MAX_SAMPLES:
             outcome.samples.append(nfo_path.name)
-        if not dry_run and not _write_atomically(nfo_path, patched):
-            outcome.failed += 1
     return outcome
-
-
-def count_directors(paths: Sequence[str]) -> int:
-    """只数 ``<director>`` 的条数, 供状态端点报出待清理规模."""
-    total = 0
-    for nfo_path in _iter_nfo(paths):
-        try:
-            total += len(_DIRECTOR_LINE.findall(nfo_path.read_text(encoding="utf-8")))
-        except OSError, UnicodeDecodeError:
-            continue
-    return total
 
 
 def _fill_actor_thumbs(text: str, images: dict[str, str]) -> tuple[str, int, int]:
@@ -149,14 +149,14 @@ def _iter_nfo(paths: Iterable[str]) -> Iterable[Path]:
 
 
 def _write_atomically(nfo_path: Path, text: str) -> bool:
-    temporary = nfo_path.with_name(nfo_path.name + ".patch-tmp")
+    """同目录临时文件加 ``replace``; 失败也清掉临时文件, 不留 ``*.patch-tmp`` 残骸."""
+    temporary = nfo_path.with_name(f"{nfo_path.name}.{uuid4().hex}.patch-tmp")
     try:
         temporary.write_text(text, encoding="utf-8")
-    except OSError:
-        return False
-    try:
         temporary.replace(nfo_path)
     except OSError:
-        temporary.unlink(missing_ok=True)
+        logger.warning("nfo write failed", path=str(nfo_path))
         return False
+    finally:
+        temporary.unlink(missing_ok=True)
     return True

@@ -3103,6 +3103,8 @@ export const notifyStatusOptions = (options?: Options<NotifyStatusData>) => quer
  * Clear Audit
  *
  * 清空全部留痕; 不做分批, 由调用方自行确认.
+ *
+ * 清空动作本身会被留痕中间件记一条, 但那样看不出被清掉多少: 这里另记一条含条数的日志.
  */
 export const clearAuditMutation = (options?: Partial<Options<ClearAuditData>>): UseMutationOptions<ClearAuditResponse, DefaultError, Options<ClearAuditData>> => {
     const mutationOptions: UseMutationOptions<ClearAuditResponse, DefaultError, Options<ClearAuditData>> = {

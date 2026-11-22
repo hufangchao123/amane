@@ -1344,6 +1344,11 @@ export const AvatarCheckResultSchema = {
             title: 'Cleared',
             default: 0
         },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
         samples: {
             items: {
                 type: 'string'
@@ -7294,6 +7299,7 @@ export const NotifyConfigSchema = {
         },
         url: {
             type: 'string',
+            maxLength: 2000,
             title: 'Url',
             description: '渠道地址; 可能含密钥, 导出任务记录时脱敏',
             default: ''
@@ -7478,11 +7484,13 @@ export const NotifySubmissionSchema = {
         },
         title: {
             type: 'string',
+            maxLength: 200,
             title: 'Title',
             default: ''
         },
         body: {
             type: 'string',
+            maxLength: 2000,
             title: 'Body',
             default: ''
         },

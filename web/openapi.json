@@ -7452,7 +7452,7 @@
           "audit"
         ],
         "summary": "Clear Audit",
-        "description": "清空全部留痕; 不做分批, 由调用方自行确认.",
+        "description": "清空全部留痕; 不做分批, 由调用方自行确认.\n\n清空动作本身会被留痕中间件记一条, 但那样看不出被清掉多少: 这里另记一条含条数的日志.",
         "operationId": "clear_audit",
         "responses": {
           "204": {
@@ -8773,6 +8773,11 @@
           "cleared": {
             "type": "integer",
             "title": "Cleared",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
             "default": 0
           },
           "samples": {
@@ -14605,6 +14610,7 @@
           },
           "url": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Url",
             "description": "渠道地址; 可能含密钥, 导出任务记录时脱敏",
             "default": ""
@@ -14784,11 +14790,13 @@
           },
           "title": {
             "type": "string",
+            "maxLength": 200,
             "title": "Title",
             "default": ""
           },
           "body": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Body",
             "default": ""
           },

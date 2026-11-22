@@ -11,8 +11,6 @@ from urllib.parse import quote
 
 from ..config.manager import NotifyKind
 
-REQUEST_TIMEOUT_FLOOR = 1.0
-
 
 @dataclass(frozen=True)
 class NotifyRequest:

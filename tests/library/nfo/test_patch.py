@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from amane.library.nfo.patch import count_directors, fill_actor_thumbs, strip_directors
+from amane.library.nfo.patch import fill_actor_thumbs, strip_directors
 from amane.library.rules import WASH_TRASH_DIRNAME
 
 pytestmark = pytest.mark.asyncio(loop_scope="function")
@@ -100,12 +100,37 @@ async def test_strip_directors_removes_lines(tmp_path: Path) -> None:
     assert (again.changed, again.removed) == (0, 0)
 
 
-async def test_count_directors(tmp_path: Path) -> None:
-    """状态端点用的计数与实际条数一致."""
+async def test_strips_every_director_line(tmp_path: Path) -> None:
+    """写入端可能给出多个导演: 逐行删除, 不能只删第一条."""
+    root = tmp_path / "media"
+    _write_nfo(
+        root,
+        "MULTI-001.nfo",
+        NFO_TEMPLATE.replace("<director>片商</director>", "<director>甲</director>\n  <director>乙</director>"),
+    )
+    outcome = await strip_directors([str(root)], dry_run=False)
+    assert (outcome.changed, outcome.removed) == (1, 2)
+    text = (root / "MULTI-001.nfo").read_text(encoding="utf-8")
+    assert "<director>" not in text
+
+
+async def test_write_failure_leaves_no_temp_file(tmp_path: Path) -> None:
+    """写失败不该留下 ``*.patch-tmp``, 也不该把没写进去的改动计入结果."""
     root = tmp_path / "media"
     _write_nfo(root)
-    _write_nfo(root, "DEF-456.nfo", NFO_TEMPLATE.replace("<director>片商</director>", ""))
-    assert count_directors([str(root)]) == 1
+    nfo = root / "ABC-123.nfo"
+    nfo.chmod(0o400)
+    root.chmod(0o500)
+    try:
+        outcome = await strip_directors([str(root)], dry_run=False)
+    finally:
+        root.chmod(0o700)
+        nfo.chmod(0o600)
+    if os.geteuid() == 0:
+        pytest.skip("root 无视文件权限")
+    assert outcome.failed == 1
+    assert (outcome.changed, outcome.removed) == (0, 0)
+    assert [item.name for item in root.iterdir() if item.name.endswith(".patch-tmp")] == []
 
 
 async def test_unreadable_files_are_counted(tmp_path: Path) -> None:

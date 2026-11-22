@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import type { OrganizeResult, SiteOutcomeKind, SiteOutcomeRecord } from "@/client/types.gen";
 import { assertNever } from "@/lib/exhaustive";
 import { SITE_OUTCOME_KINDS } from "@/lib/exhaustive-maps";
+import { formatFileSize } from "@/lib/utils";
 import type { TaskResult } from "@/lib/task/display";
 
 interface TaskResultPanelProps {
@@ -25,13 +26,14 @@ export function TaskResultPanel({ result, headline, failed }: TaskResultPanelPro
   return (
     <Stack gap="md">
       <ResultHeadline headline={headline} failed={failed} />
-      {result == null ? null : resultBranch(result, failed)}
+      {result == null ? null : <ResultBranch result={result} failed={failed} />}
     </Stack>
   );
 }
 
 /** 结果成员 → 面板分支: 新增成员时 `assertNever` 处编译报错. */
-function resultBranch(result: TaskResult, failed: boolean): ReactNode {
+function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean }): ReactNode {
+  const { t } = useTranslation("tasks");
   switch (result.type) {
     case "scrape": {
       const outcomes = result.outcomes ?? [];
@@ -81,6 +83,164 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
       return <BenchmarkFigures result={result} />;
     case "actor_push":
       return <ActorPushSummary result={result} />;
+    case "transfer_115":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.scanned"), value: result.scanned ?? 0, tone: "gray" },
+            { label: t("result.counts.moved"), value: result.moved ?? 0, tone: "teal" },
+            { label: t("result.counts.skipped"), value: result.skipped ?? 0, tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
+    case "subtitle_fetch":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.fetched"), value: result.fetched ?? 0, tone: "teal" },
+            { label: t("result.counts.missing"), value: result.missing ?? 0, tone: "yellow" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
+    case "subtitle_audit":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.videos"), value: result.videos ?? 0, tone: "gray" },
+            { label: t("result.counts.subtitles"), value: result.subtitles ?? 0, tone: "gray" },
+            { label: t("result.counts.missing"), value: result.missing ?? 0, tone: "yellow" },
+            { label: t("result.counts.orphans"), value: result.orphans ?? 0, tone: "yellow" },
+          ]}
+        />
+      );
+    case "wash_scan":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.groups"), value: result.groups ?? 0, tone: "blue" },
+            { label: t("result.counts.droppable"), value: result.droppable ?? 0, tone: "yellow" },
+            {
+              label: t("result.counts.freed"),
+              value: formatFileSize(result.bytes_freed),
+              tone: "gray",
+            },
+          ]}
+        />
+      );
+    case "wash_apply":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.trashed"), value: result.trashed ?? 0, tone: "yellow" },
+            { label: t("result.counts.restored"), value: result.restored ?? 0, tone: "teal" },
+            { label: t("result.counts.purged"), value: result.purged ?? 0, tone: "gray" },
+            {
+              label: t("result.counts.freed"),
+              value: formatFileSize(result.bytes_freed),
+              tone: "gray",
+            },
+            { label: t("result.counts.skipped"), value: result.skipped ?? 0, tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
+    case "trash_purge":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.scanned"), value: result.scanned ?? 0, tone: "gray" },
+            { label: t("result.counts.purged"), value: result.purged ?? 0, tone: "teal" },
+            { label: t("result.counts.kept"), value: result.kept ?? 0, tone: "gray" },
+            {
+              label: t("result.counts.freed"),
+              value: formatFileSize(result.bytes_freed),
+              tone: "gray",
+            },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+            ...(result.dry_run
+              ? [{ label: t("result.counts.dryRun"), value: "—", tone: "gray" as const }]
+              : []),
+          ]}
+        />
+      );
+    case "nfo_patch":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.files"), value: result.files ?? 0, tone: "gray" },
+            { label: t("result.counts.changed"), value: result.changed ?? 0, tone: "teal" },
+            { label: t("result.counts.filled"), value: result.filled ?? 0, tone: "teal" },
+            {
+              label: t("result.counts.missingImage"),
+              value: result.missing_image ?? 0,
+              tone: "yellow",
+            },
+            { label: t("result.counts.removed"), value: result.removed ?? 0, tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+            ...(result.dry_run
+              ? [{ label: t("result.counts.dryRun"), value: "—", tone: "gray" as const }]
+              : []),
+          ]}
+        />
+      );
+    case "avatar_check":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.checked"), value: result.checked ?? 0, tone: "gray" },
+            { label: t("result.counts.ok"), value: result.ok ?? 0, tone: "teal" },
+            { label: t("result.counts.broken"), value: result.broken ?? 0, tone: "yellow" },
+            { label: t("result.counts.unknown"), value: result.unknown ?? 0, tone: "gray" },
+            { label: t("result.counts.cleared"), value: result.cleared ?? 0, tone: "blue" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
+    case "backup":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.files"), value: result.files?.length ?? 0, tone: "teal" },
+            {
+              label: t("result.counts.written"),
+              value: formatFileSize(result.bytes_written),
+              tone: "gray",
+            },
+            { label: t("result.counts.pruned"), value: result.pruned ?? 0, tone: "gray" },
+          ]}
+        />
+      );
+    case "media_refresh":
+      return (
+        <Stack gap="xs">
+          <Text size="sm">{t("result.counts.refreshed", { kind: result.kind })}</Text>
+          <Text size="sm" c="dimmed">
+            {result.url}
+          </Text>
+          <EmptyHint visible={!failed} />
+        </Stack>
+      );
+    case "notify":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.channel"), value: result.channel || "—", tone: "blue" },
+            { label: t("result.counts.status"), value: result.status ?? "—", tone: "gray" },
+          ]}
+        />
+      );
     case "refresh":
     case "cleanup":
     case "upscale":
@@ -88,21 +248,33 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
     case "rescrape":
     case "scan_invalid":
     case "delete":
-    case "transfer_115":
-    case "subtitle_fetch":
-    case "subtitle_audit":
-    case "wash_scan":
-    case "wash_apply":
-    case "backup":
-    case "media_refresh":
-    case "trash_purge":
-    case "nfo_patch":
-    case "avatar_check":
-    case "notify":
       return <EmptyHint visible={!failed} />;
     default:
       return assertNever(result, "TaskResult");
   }
+}
+
+interface CountEntry {
+  label: string;
+  value: number | string;
+  tone: "teal" | "gray" | "yellow" | "red" | "blue";
+}
+
+/** 计数徽标: 零值不显示, 全零时回落到「没有需要处理的」提示. */
+function CountBadges({ entries, failed }: { entries: CountEntry[]; failed: boolean }) {
+  const shown = entries.filter((entry) => entry.value !== 0);
+  return (
+    <>
+      <Group gap="xs">
+        {shown.map((entry) => (
+          <Badge key={entry.label} variant="light" color={entry.tone}>
+            {`${entry.label} ${entry.value}`}
+          </Badge>
+        ))}
+      </Group>
+      <EmptyHint visible={!failed && shown.length === 0} />
+    </>
+  );
 }
 
 function SemanticCounts({ result }: { result: Extract<TaskResult, { type: "semantic_index" }> }) {

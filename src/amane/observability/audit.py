@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger("amane.audit")
 
-#: 留痕表保留条数; 超过后按时间倒序修剪最旧的一批.
+#: 留痕表保留条数; 每攒够这么多次留痕修剪最旧的一批, 因此表实际可达两倍.
 AUDIT_KEEP = 5000
 
 #: 需要留痕的方法; 读方法与 OPTIONS 不记.
@@ -55,11 +55,13 @@ class AuditLog:
             return False
         self._since_prune += 1
         if self._since_prune >= self._keep:
-            self._since_prune = 0
             try:
                 await self._repo.prune_audit_records(self._keep)
             except Exception:
+                # 修剪失败不清零: 下一条留痕会再试, 否则表会一直涨到下次重启
                 logger.exception("audit prune failed")
+            else:
+                self._since_prune = 0
         return True
 
 

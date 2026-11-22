@@ -37,7 +37,7 @@ class TrashPurgeHandler(TaskHandler[TrashPurgePayload, TrashPurgeResult]):
         result = TrashPurgeResult(dry_run=payload.dry_run)
         for library in libraries:
             await self._tally(library, payload, result)
-        return TaskResult(success=True, result=result)
+        return TaskResult(success=result.failed == 0, result=result)
 
     async def _tally(self, library: Library, payload: TrashPurgePayload, result: TrashPurgeResult) -> None:
         trash_dir = Path(library.path) / TRASH_DIRNAME

@@ -1250,6 +1250,8 @@ export const notifyStatus = <ThrowOnError extends boolean = false>(options?: Opt
  * Clear Audit
  *
  * 清空全部留痕; 不做分批, 由调用方自行确认.
+ *
+ * 清空动作本身会被留痕中间件记一条, 但那样看不出被清掉多少: 这里另记一条含条数的日志.
  */
 export const clearAudit = <ThrowOnError extends boolean = false>(options?: Options<ClearAuditData, ThrowOnError>): RequestResult<ClearAuditResponses, unknown, ThrowOnError> => (options?.client ?? client).delete<ClearAuditResponses, unknown, ThrowOnError>({ url: '/api/audit', ...options });
 

@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter
 
 from ..deps import ConfigDep, RepoDep
 from ..models.notify import NotifyRecordResponse, NotifyStatusResponse
-
-if TYPE_CHECKING:
-    pass
 
 router = APIRouter(prefix="/notify", tags=["notify"])
 
