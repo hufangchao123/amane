@@ -303,8 +303,8 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
     }
   };
 
-  // 整理相关字段只服务落盘: 自动整理关掉时它们仍会被手动整理用到, 但不需要在这里调, 因此锁住并说明.
-  const organizeLocked = !value.auto_organize;
+  // 整理相关字段只服务落盘: 自动整理关掉时不提示一句, 免得以为改了模板就会自动生效.
+  const organizeInactive = !value.auto_organize;
 
   return (
     <Stack gap="md">
@@ -394,8 +394,8 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
         </SimpleGrid>
       </Stack>
 
-      <Fieldset legend={t("organizeGroup")} variant="default" disabled={organizeLocked}>
-        {organizeLocked && (
+      <Fieldset legend={t("organizeGroup")} variant="default">
+        {organizeInactive && (
           <Text size="xs" c="dimmed" mb="sm">
             {t("organizeLocked")}
           </Text>
@@ -426,7 +426,6 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             />
             <div className={classes.c2}>
               <EnumToggle
-                disabled={organizeLocked}
                 options={MOVE_MODES}
                 value={value.move_mode}
                 onChange={(move_mode) => onChange({ ...value, move_mode })}
@@ -457,7 +456,6 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             </Group>
           </Checkbox.Group>
           <TemplateInput
-            disabled={organizeLocked}
             label={t("fieldVideoTemplate")}
             description={t("fieldVideoTemplateHint")}
             catalog={catalog}
@@ -465,7 +463,6 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             onChange={(e) => onChange({ ...value, video_template: e.currentTarget.value })}
           />
           <TemplateInput
-            disabled={organizeLocked}
             label={t("fieldLinkTemplate")}
             description={t("fieldLinkTemplateHint")}
             placeholder={t("fieldLinkTemplatePlaceholder")}
@@ -476,7 +473,6 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
           {value.link_template.trim() !== "" && (
             <FieldChrome label={t("fieldLinkMode")}>
               <EnumToggle
-                disabled={organizeLocked}
                 options={LINK_MODES}
                 value={value.link_mode}
                 onChange={(link_mode) => onChange({ ...value, link_mode })}
@@ -486,7 +482,6 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
           )}
           {value.link_template.trim() !== "" && value.link_mode === "strm" && (
             <TemplateInput
-              disabled={organizeLocked}
               label={t("fieldStrmContentTemplate")}
               description={t("fieldStrmContentTemplateHint")}
               catalog={catalog}
@@ -563,7 +558,7 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
                 {OPTIONAL_TEMPLATE_KEYS.map((key) => (
                   <TemplateInput
                     key={key}
-                    disabled={organizeLocked}
+
                     label={t(TPL_I18N[key])}
                     description={
                       optionalDefaults?.[key]
