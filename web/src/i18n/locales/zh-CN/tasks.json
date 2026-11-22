@@ -77,6 +77,7 @@
     "wash_scan": "洗版扫描",
     "wash_apply": "洗版执行",
     "backup": "备份",
+    "media_refresh": "媒体库刷新",
     "wash_purge": "回收站清理"
   },
   "loadMoreChildren": "加载更多 ({{count}})",

@@ -1,6 +1,7 @@
 import {
   type Icon,
   IconArchive,
+  IconBroadcast,
   IconArrowsDiagonal,
   IconArrowsExchange,
   IconCloudDownload,
@@ -50,6 +51,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   wash_scan: IconArrowsExchange,
   wash_apply: IconArrowsExchange,
   backup: IconArchive,
+  media_refresh: IconBroadcast,
 });
 
 const EMPTY_CHILD_STATUS: Required<TaskChildStatusCounts> = {

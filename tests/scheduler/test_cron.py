@@ -151,3 +151,18 @@ async def test_wash_purge_schedule_without_expired_records_enqueues_nothing(repo
     await CronScheduler(repo)._tick()
 
     assert await repo.list_tasks(task_types=[TaskType.WASH_APPLY]) == []
+
+
+@pytest.mark.asyncio
+async def test_due_media_refresh_schedule_enqueues_refresh_task(repo: Repository) -> None:
+    await repo.create_schedule(
+        cron="0 5 * * *",
+        task_type=RoutineType.MEDIA_REFRESH,
+        payload={"type": "media_refresh"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    tasks = await repo.list_tasks(task_types=[TaskType.MEDIA_REFRESH])
+    assert len(tasks) == 1

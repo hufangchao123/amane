@@ -17,6 +17,7 @@
 | `SEMANTIC_INDEX` | 遍历 Metadata 编码封面与剧照, 对账写 `{data_dir}/embeddings.db`; 首次运行会下载模型 | 不动文件、不写 Metadata |
 | `SEMANTIC_BENCHMARK` | 抽样本地封面与剧照测嵌入吞吐与文本查询延迟, 不写索引 | 不动文件、不写 Metadata / 向量 |
 | `ACTOR_PUSH` | 读取演员与已落盘头像, 匹配媒体服务器的同名人物并写回字段 / 主图 | 创建人物、修改影片、补下载头像 |
+| `MEDIA_REFRESH` | 向媒体服务器发整库刷新, 让服务器自行重扫 | 触碰库文件、读写 Metadata |
 
 `TRANSFER_115` / `SUBTITLE_FETCH` / `WASH_SCAN` / `WASH_APPLY` / `BACKUP` 属媒体运维, 边界与库文件约束见 [ops.md](ops.md). `CLEANUP` / `UPSCALE` 扫描 DB / Resource; `ACTOR_SCRAPE` 刮人物; `ACTOR_PUSH` 写媒体服务器; `R18_IMPORT` 导入 dump. 上述类型均不执行影片落盘.
 
@@ -173,7 +174,7 @@ handler 之间复用的阶段逻辑, 不是一条可跳步的总管线:
 
 **即时** (`POST /tasks`): 接收 `TaskSubmission` (含全部即时 type), 经 `resolve_submission` 得到 `(TaskType, Payload)` 后建 Task. REFRESH / ORGANIZE / SCAN_INVALID 只接受 `library_id`, resolve 时由 library 派生 `path` (submission 可显式覆盖) 与 `recursive` / `patterns`; ORGANIZE 还可带 `media_file_ids`, 与显式 `path` 互斥且不含扫描字段. SCRAPE 采用 number / media_id, 二者可同时提交; **`content_type` 可空**, 为空时仅 media_id 按文件路径解析, 有 number 时按番号推断. 覆盖只作用于这一次 `POST /tasks`. ACTOR_SCRAPE 采用 `actor_id`.
 
-**定时** (`Schedule`): 仅接受 `RoutineSubmission` (`cleanup` / `upscale` / `r18_import` / `rescrape` / `semantic_index`). 触发时由 `CronScheduler` 用对应 Payload 的 `model_validate` 入队; 编辑只修改 name / cron / enabled, 修改任务类型或 payload 须删除后重建 (见 [api.md](api.md)).
+**定时** (`Schedule`): 仅接受 `RoutineSubmission` (`cleanup` / `upscale` / `r18_import` / `rescrape` / `semantic_index` / `transfer_115` / `wash_scan` / `wash_purge` / `backup` / `media_refresh`). 触发时由 `CronScheduler` 用对应 Payload 的 `model_validate` 入队; 编辑只修改 name / cron / enabled, 修改任务类型或 payload 须删除后重建 (见 [api.md](api.md)).
 
 ## ACTOR_SCRAPE
 

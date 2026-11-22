@@ -2747,6 +2747,48 @@ export type MediaListResponse = {
 };
 
 /**
+ * MediaRefreshResult
+ */
+export type MediaRefreshResult = {
+    /**
+     * Type
+     */
+    type?: 'media_refresh';
+    /**
+     * Kind
+     */
+    kind?: string;
+    /**
+     * Url
+     */
+    url?: string;
+};
+
+/**
+ * MediaRefreshRoutine
+ *
+ * 媒体库刷新的例行; 目标服务器由 ``media_server`` 配置决定, 因此没有参数.
+ */
+export type MediaRefreshRoutine = {
+    /**
+     * Type
+     */
+    type?: 'media_refresh';
+};
+
+/**
+ * MediaRefreshSubmission
+ *
+ * 媒体库刷新: 目标服务器由 ``media_server`` 配置决定.
+ */
+export type MediaRefreshSubmission = {
+    /**
+     * Type
+     */
+    type: 'media_refresh';
+};
+
+/**
  * MediaServerConfig
  *
  * Emby / Jellyfin 人物推送; url 与 api_key 齐备才启用.
@@ -4148,7 +4190,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'backup';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'backup' | 'media_refresh';
 
 /**
  * RuntimePaths
@@ -4462,7 +4504,9 @@ export type ScheduleCreateRequest = {
         type: 'backup';
     } & BackupSubmission) | ({
         type: 'wash_purge';
-    } & WashPurgeRoutine);
+    } & WashPurgeRoutine) | ({
+        type: 'media_refresh';
+    } & MediaRefreshRoutine);
 };
 
 /**
@@ -4517,7 +4561,9 @@ export type ScheduleResponse = {
         type: 'backup';
     } & BackupSubmission) | ({
         type: 'wash_purge';
-    } & WashPurgeRoutine);
+    } & WashPurgeRoutine) | ({
+        type: 'media_refresh';
+    } & MediaRefreshRoutine);
     /**
      * Enabled
      */
@@ -5351,7 +5397,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission>;
 };
 
 /**
@@ -5672,7 +5718,9 @@ export type TaskResponse = {
         type: 'wash_apply';
     } & WashApplyResult) | ({
         type: 'backup';
-    } & BackupResult) | null;
+    } & BackupResult) | ({
+        type: 'media_refresh';
+    } & MediaRefreshResult) | null;
 };
 
 /**
@@ -5688,7 +5736,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'wash_scan' | 'wash_apply' | 'backup';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -9628,7 +9676,9 @@ export type SubmitTaskData = {
         type: 'wash_apply';
     } & WashApplySubmission) | ({
         type: 'backup';
-    } & BackupSubmission);
+    } & BackupSubmission) | ({
+        type: 'media_refresh';
+    } & MediaRefreshSubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';

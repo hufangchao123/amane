@@ -13,6 +13,7 @@ from ..db import RoutineType, TaskType
 from ..handlers import (
     BackupPayload,
     CleanupPayload,
+    MediaRefreshPayload,
     R18ImportPayload,
     RescrapePayload,
     SemanticIndexPayload,
@@ -117,6 +118,8 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
             case RoutineType.BACKUP:
                 await self._repo.create_task(TaskType.BACKUP, BackupPayload(kind=payload.get("kind", "all")))
+            case RoutineType.MEDIA_REFRESH:
+                await self._repo.create_task(TaskType.MEDIA_REFRESH, MediaRefreshPayload())
             case RoutineType.WASH_SCAN:
                 # 只入队只读扫描: 洗版是破坏性动作, 定时任务只报告候选, 由人决定何时执行
                 await self._repo.create_task(TaskType.WASH_SCAN, WashScanPayload.model_validate(payload))

@@ -19,6 +19,7 @@ from amane.handlers.models import (
     BackupResult,
     CleanupResult,
     DeleteResult,
+    MediaRefreshResult,
     OrganizeResult,
     R18ImportResult,
     RefreshResult,
@@ -151,6 +152,7 @@ RESULT_CASES = [
     pytest.param(WashScanResult(groups=4, droppable=6, bytes_freed=1024), id="wash_scan"),
     pytest.param(WashApplyResult(trashed=6, bytes_freed=1024, skipped=1, failed=0), id="wash_apply"),
     pytest.param(BackupResult(files=["db-1.sqlite"], bytes_written=2048, pruned=1), id="backup"),
+    pytest.param(MediaRefreshResult(kind="emby", url="http://emby.local:8096"), id="media_refresh"),
 ]
 
 

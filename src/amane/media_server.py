@@ -112,6 +112,16 @@ class MediaServerClientLike(Protocol):
     async def upload_primary_image(self, person_id: str, data: bytes, *, content_type: str) -> None: ...
 
 
+class MediaRefreshClientLike(Protocol):
+    """刷新只用一个方法, 单独成契约: 沿用整人物契约会让只做刷新的替身多出四个空方法."""
+
+    async def __aenter__(self) -> Self: ...
+
+    async def __aexit__(self, *_: object) -> None: ...
+
+    async def refresh_library(self) -> None: ...
+
+
 class MediaPerson(BaseModel):
     """服务器上的人物条目与写回所需的当前 DTO."""
 
@@ -291,6 +301,10 @@ class MediaServerClient:
             content=b64encode(data),
             headers={"Content-Type": content_type},
         )
+
+    async def refresh_library(self) -> None:
+        """让媒体服务器重新扫描全部媒体库; 两家都不提供按库刷新的接口, 也没有返回内容."""
+        await self._post("/Library/Refresh", json={})
 
     async def _get_json(self, path: str, params: Mapping[str, str | int]) -> dict[str, Any]:
         try:

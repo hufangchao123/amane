@@ -5217,6 +5217,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/BackupSubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MediaRefreshSubmission"
                   }
                 ],
                 "discriminator": {
@@ -5239,7 +5242,8 @@
                     "subtitle_fetch": "#/components/schemas/SubtitleFetchSubmission",
                     "wash_scan": "#/components/schemas/WashScanSubmission",
                     "wash_apply": "#/components/schemas/WashApplySubmission",
-                    "backup": "#/components/schemas/BackupSubmission"
+                    "backup": "#/components/schemas/BackupSubmission",
+                    "media_refresh": "#/components/schemas/MediaRefreshSubmission"
                   }
                 },
                 "title": "Req"
@@ -12683,6 +12687,56 @@
         ],
         "title": "MediaListResponse"
       },
+      "MediaRefreshResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "media_refresh",
+            "title": "Type",
+            "default": "media_refresh"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": ""
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "MediaRefreshResult"
+      },
+      "MediaRefreshRoutine": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "media_refresh",
+            "title": "Type",
+            "default": "media_refresh"
+          }
+        },
+        "type": "object",
+        "title": "MediaRefreshRoutine",
+        "description": "媒体库刷新的例行; 目标服务器由 ``media_server`` 配置决定, 因此没有参数."
+      },
+      "MediaRefreshSubmission": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "media_refresh",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "MediaRefreshSubmission",
+        "description": "媒体库刷新: 目标服务器由 ``media_server`` 配置决定."
+      },
       "MediaServerConfig": {
         "properties": {
           "kind": {
@@ -15054,7 +15108,8 @@
           "transfer_115",
           "wash_scan",
           "wash_purge",
-          "backup"
+          "backup",
+          "media_refresh"
         ],
         "title": "RoutineType"
       },
@@ -15528,6 +15583,9 @@
               },
               {
                 "$ref": "#/components/schemas/WashPurgeRoutine"
+              },
+              {
+                "$ref": "#/components/schemas/MediaRefreshRoutine"
               }
             ],
             "title": "Submission",
@@ -15536,6 +15594,7 @@
               "mapping": {
                 "backup": "#/components/schemas/BackupSubmission",
                 "cleanup": "#/components/schemas/CleanupSubmission",
+                "media_refresh": "#/components/schemas/MediaRefreshRoutine",
                 "r18_import": "#/components/schemas/R18ImportSubmission",
                 "rescrape": "#/components/schemas/RescrapeSubmission",
                 "semantic_index": "#/components/schemas/SemanticIndexSubmission",
@@ -15627,6 +15686,9 @@
               },
               {
                 "$ref": "#/components/schemas/WashPurgeRoutine"
+              },
+              {
+                "$ref": "#/components/schemas/MediaRefreshRoutine"
               }
             ],
             "title": "Payload",
@@ -15635,6 +15697,7 @@
               "mapping": {
                 "backup": "#/components/schemas/BackupSubmission",
                 "cleanup": "#/components/schemas/CleanupSubmission",
+                "media_refresh": "#/components/schemas/MediaRefreshRoutine",
                 "r18_import": "#/components/schemas/R18ImportSubmission",
                 "rescrape": "#/components/schemas/RescrapeSubmission",
                 "semantic_index": "#/components/schemas/SemanticIndexSubmission",
@@ -17188,6 +17251,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/BackupSubmission"
+                },
+                {
+                  "$ref": "#/components/schemas/MediaRefreshSubmission"
                 }
               ],
               "discriminator": {
@@ -17198,6 +17264,7 @@
                   "backup": "#/components/schemas/BackupSubmission",
                   "cleanup": "#/components/schemas/CleanupSubmission",
                   "delete": "#/components/schemas/DeleteSubmission",
+                  "media_refresh": "#/components/schemas/MediaRefreshSubmission",
                   "organize": "#/components/schemas/OrganizeSubmission",
                   "r18_import": "#/components/schemas/R18ImportSubmission",
                   "refresh": "#/components/schemas/RefreshSubmission",
@@ -17771,6 +17838,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/BackupResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MediaRefreshResult"
                   }
                 ],
                 "discriminator": {
@@ -17781,6 +17851,7 @@
                     "backup": "#/components/schemas/BackupResult",
                     "cleanup": "#/components/schemas/CleanupResult",
                     "delete": "#/components/schemas/DeleteResult",
+                    "media_refresh": "#/components/schemas/MediaRefreshResult",
                     "organize": "#/components/schemas/OrganizeResult",
                     "r18_import": "#/components/schemas/R18ImportResult",
                     "refresh": "#/components/schemas/RefreshResult",
@@ -17855,7 +17926,8 @@
           "subtitle_fetch",
           "wash_scan",
           "wash_apply",
-          "backup"
+          "backup",
+          "media_refresh"
         ],
         "title": "TaskType"
       },

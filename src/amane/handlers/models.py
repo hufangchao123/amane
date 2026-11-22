@@ -523,3 +523,18 @@ class BackupResult(BaseModel):
     files: list[str] = []
     bytes_written: int = 0
     pruned: int = 0
+
+
+# --- 媒体库刷新 ---
+
+
+class MediaRefreshPayload(BaseModel):
+    """刷新的范围; Emby 与 Jellyfin 都只提供整库刷新, 因此没有字段."""
+
+
+class MediaRefreshResult(BaseModel):
+    type: Literal[TaskType.MEDIA_REFRESH] = TaskType.MEDIA_REFRESH
+    kind: str = ""
+    """`media_server.kind`, 说明刷新发去了哪一家."""
+    url: str = ""
+    """刷新请求的目标地址; 不含密钥, 可直接展示."""

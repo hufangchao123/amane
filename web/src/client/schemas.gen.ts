@@ -5516,6 +5516,59 @@ export const MediaListResponseSchema = {
     title: 'MediaListResponse'
 } as const;
 
+export const MediaRefreshResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'media_refresh',
+            title: 'Type',
+            default: 'media_refresh'
+        },
+        kind: {
+            type: 'string',
+            title: 'Kind',
+            default: ''
+        },
+        url: {
+            type: 'string',
+            title: 'Url',
+            default: ''
+        }
+    },
+    type: 'object',
+    title: 'MediaRefreshResult'
+} as const;
+
+export const MediaRefreshRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'media_refresh',
+            title: 'Type',
+            default: 'media_refresh'
+        }
+    },
+    type: 'object',
+    title: 'MediaRefreshRoutine',
+    description: '媒体库刷新的例行; 目标服务器由 ``media_server`` 配置决定, 因此没有参数.'
+} as const;
+
+export const MediaRefreshSubmissionSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'media_refresh',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'MediaRefreshSubmission',
+    description: '媒体库刷新: 目标服务器由 ``media_server`` 配置决定.'
+} as const;
+
 export const MediaServerConfigSchema = {
     properties: {
         kind: {
@@ -7937,7 +7990,8 @@ export const RoutineTypeSchema = {
         'transfer_115',
         'wash_scan',
         'wash_purge',
-        'backup'
+        'backup',
+        'media_refresh'
     ],
     title: 'RoutineType'
 } as const;
@@ -8425,6 +8479,9 @@ export const ScheduleCreateRequestSchema = {
                 },
                 {
                     $ref: '#/components/schemas/WashPurgeRoutine'
+                },
+                {
+                    $ref: '#/components/schemas/MediaRefreshRoutine'
                 }
             ],
             title: 'Submission',
@@ -8433,6 +8490,7 @@ export const ScheduleCreateRequestSchema = {
                 mapping: {
                     backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
+                    media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
@@ -8526,6 +8584,9 @@ export const ScheduleResponseSchema = {
                 },
                 {
                     $ref: '#/components/schemas/WashPurgeRoutine'
+                },
+                {
+                    $ref: '#/components/schemas/MediaRefreshRoutine'
                 }
             ],
             title: 'Payload',
@@ -8534,6 +8595,7 @@ export const ScheduleResponseSchema = {
                 mapping: {
                     backup: '#/components/schemas/BackupSubmission',
                     cleanup: '#/components/schemas/CleanupSubmission',
+                    media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
@@ -10121,6 +10183,9 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/BackupSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/MediaRefreshSubmission'
                     }
                 ],
                 discriminator: {
@@ -10131,6 +10196,7 @@ export const TaskBatchSubmitRequestSchema = {
                         backup: '#/components/schemas/BackupSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
+                        media_refresh: '#/components/schemas/MediaRefreshSubmission',
                         organize: '#/components/schemas/OrganizeSubmission',
                         r18_import: '#/components/schemas/R18ImportSubmission',
                         refresh: '#/components/schemas/RefreshSubmission',
@@ -10713,6 +10779,9 @@ export const TaskResponseSchema = {
                         },
                         {
                             $ref: '#/components/schemas/BackupResult'
+                        },
+                        {
+                            $ref: '#/components/schemas/MediaRefreshResult'
                         }
                     ],
                     discriminator: {
@@ -10723,6 +10792,7 @@ export const TaskResponseSchema = {
                             backup: '#/components/schemas/BackupResult',
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
+                            media_refresh: '#/components/schemas/MediaRefreshResult',
                             organize: '#/components/schemas/OrganizeResult',
                             r18_import: '#/components/schemas/R18ImportResult',
                             refresh: '#/components/schemas/RefreshResult',
@@ -10800,7 +10870,8 @@ export const TaskTypeSchema = {
         'subtitle_fetch',
         'wash_scan',
         'wash_apply',
-        'backup'
+        'backup',
+        'media_refresh'
     ],
     title: 'TaskType'
 } as const;

@@ -4,6 +4,7 @@ from .actor_scrape import *
 from .backup import *
 from .delete import *
 from .file import *
+from .media_refresh import *
 from .models import *
 from .protocol import FollowupTask, ProgressCallback, TaskHandler, TaskResult
 from .r18_import import *

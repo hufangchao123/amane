@@ -18,6 +18,8 @@ from ...handlers import (
     CleanupResult,
     DeletePayload,
     DeleteResult,
+    MediaRefreshPayload,
+    MediaRefreshResult,
     OrganizePayload,
     OrganizeResult,
     R18ImportPayload,
@@ -73,7 +75,8 @@ TaskResultPayload = Annotated[
     | SubtitleFetchResult
     | WashScanResult
     | WashApplyResult
-    | BackupResult,
+    | BackupResult
+    | MediaRefreshResult,
     Field(discriminator="type"),
 ]
 """任务结果按任务类型判别; 各成员自带 `type` 字面量, 前端据此收窄."""
@@ -326,6 +329,12 @@ class BackupSubmission(BackupPayload):
     type: Literal["backup"]
 
 
+class MediaRefreshSubmission(MediaRefreshPayload):
+    """媒体库刷新: 目标服务器由 ``media_server`` 配置决定."""
+
+    type: Literal["media_refresh"]
+
+
 TaskSubmission = Annotated[
     RefreshSubmission
     | OrganizeSubmission
@@ -344,7 +353,8 @@ TaskSubmission = Annotated[
     | SubtitleFetchSubmission
     | WashScanSubmission
     | WashApplySubmission
-    | BackupSubmission,
+    | BackupSubmission
+    | MediaRefreshSubmission,
     Field(discriminator="type"),
 ]
 
@@ -353,6 +363,12 @@ class WashPurgeRoutine(BaseModel):
     """回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数."""
 
     type: Literal["wash_purge"] = "wash_purge"
+
+
+class MediaRefreshRoutine(BaseModel):
+    """媒体库刷新的例行; 目标服务器由 ``media_server`` 配置决定, 因此没有参数."""
+
+    type: Literal["media_refresh"] = "media_refresh"
 
 
 RoutineSubmission = Annotated[
@@ -364,7 +380,8 @@ RoutineSubmission = Annotated[
     | Transfer115Submission
     | WashScanSubmission
     | BackupSubmission
-    | WashPurgeRoutine,
+    | WashPurgeRoutine
+    | MediaRefreshRoutine,
     Field(discriminator="type"),
 ]
 
