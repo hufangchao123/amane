@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.backup import BackupManager
-from amane.backup.manager import _stamp
+from amane.backup.manager import ROOT_MARKER, BackupRootError, _stamp
 from amane.config.manager import BackupConfig
 from amane.handlers.backup import BackupHandler
 from amane.handlers.models import BackupPayload, BackupResult
@@ -143,3 +143,91 @@ async def test_handler_returns_outcome(tmp_path: Path) -> None:
     assert result.success is True
     assert isinstance(result.result, BackupResult)
     assert result.result and len(result.result.files) == 1
+
+
+def _manager_at(tmp_path: Path, root: Path, **overrides: object) -> BackupManager:
+    """指定备份根的管理器; ``data_dir`` 固定为 ``<tmp>/data``."""
+    return BackupManager(BackupConfig(enabled=True, dir=str(root), **overrides), tmp_path / "data")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_root_equal_to_data_dir_is_rejected(tmp_path: Path) -> None:
+    """把库目录本身当备份根等于把修剪目标指向库里, 动手前就拒绝."""
+    (tmp_path / "data").mkdir()
+    _make_db(tmp_path / "data" / "amane.db", 1)
+
+    with pytest.raises(BackupRootError, match="data_dir"):
+        await _manager_at(tmp_path, tmp_path / "data").run("db")
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_root_above_data_dir_is_rejected(tmp_path: Path) -> None:
+    """上级目录同样不行: 修剪会波及 data_dir 旁边的任何目录."""
+    (tmp_path / "data").mkdir()
+    _make_db(tmp_path / "data" / "amane.db", 1)
+
+    with pytest.raises(BackupRootError, match="data_dir"):
+        await _manager_at(tmp_path, tmp_path).run("db")
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_external_root_with_foreign_files_needs_marker(tmp_path: Path) -> None:
+    """外部目录里已有无关文件时停下来要标记, 不在这类目录里删任何东西."""
+    (tmp_path / "data").mkdir()
+    _make_db(tmp_path / "data" / "amane.db", 1)
+    root = tmp_path / "elsewhere"
+    root.mkdir()
+    (root / "notes.txt").write_text("keep me", encoding="utf-8")
+    stale = _stamp(datetime.now(UTC) - timedelta(days=30))
+    (root / f"amane-db-{stale}.sqlite").write_bytes(b"stale")
+
+    with pytest.raises(BackupRootError, match=ROOT_MARKER):
+        await _manager_at(tmp_path, root).run("db")
+
+    assert (root / "notes.txt").exists()
+    assert (root / f"amane-db-{stale}.sqlite").exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_marker_grants_external_root(tmp_path: Path) -> None:
+    """放了标记文件即视为声明归属, 该备份照常进行, 目录里其它文件不受影响."""
+    (tmp_path / "data").mkdir()
+    _make_db(tmp_path / "data" / "amane.db", 1)
+    root = tmp_path / "elsewhere"
+    root.mkdir()
+    (root / "notes.txt").write_text("keep me", encoding="utf-8")
+    (root / ROOT_MARKER).write_text("", encoding="utf-8")
+
+    outcome = await _manager_at(tmp_path, root).run("db")
+
+    assert len(outcome.files) == 1
+    assert (root / "notes.txt").exists()
+    assert (root / outcome.files[0]).exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_root_with_only_backup_products_is_allowed(tmp_path: Path) -> None:
+    """历史备份目录只装自己的产物, 不需要额外标记就能继续用."""
+    (tmp_path / "data").mkdir()
+    _make_db(tmp_path / "data" / "amane.db", 1)
+    root = tmp_path / "elsewhere"
+    root.mkdir()
+    stale = _stamp(datetime.now(UTC) - timedelta(days=30))
+    _make_db(root / f"amane-db-{stale}.sqlite", 1)
+
+    outcome = await _manager_at(tmp_path, root, keep_db=1).run("db")
+
+    assert len(outcome.files) == 1
+    assert not (root / f"amane-db-{stale}.sqlite").exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_handler_surfaces_root_error(tmp_path: Path) -> None:
+    """边界校验失败走任务结果的 ``error``, 与其它备份失败同一出口."""
+    (tmp_path / "data").mkdir()
+    handler = BackupHandler(_manager_at(tmp_path, tmp_path / "data"))
+
+    result = await handler.handle(BackupPayload(kind="db"))
+
+    assert result.success is False
+    assert result.error is not None and "data_dir" in result.error
