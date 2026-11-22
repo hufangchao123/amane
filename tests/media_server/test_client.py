@@ -251,3 +251,20 @@ def test_matching_uses_display_name_and_aliases() -> None:
 
     assert [person.id for person in match_persons(["ありす"], [alice, alice_alias, bob])] == ["p2"]
     assert match_persons([], [alice]) == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_refresh_library_posts_empty_body_to_library_refresh() -> None:
+    requests: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        assert request.url.path == "/Library/Refresh"
+        return httpx2.Response(204)
+
+    async with MediaServerClient(_CONFIG, client=_transport(handler)) as client:
+        await client.refresh_library()
+
+    assert len(requests) == 1
+    assert requests[0].content in (b"", b"{}")
+    assert requests[0].headers["Authorization"] == 'MediaBrowser Token="secret"'

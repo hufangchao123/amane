@@ -162,6 +162,8 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       ];
     case "wash_purge":
       return [t("schedules:payload.wash_purge.summary")];
+    case "media_refresh":
+      return [t("schedules:payload.media_refresh.summary")];
     default:
       return assertNever(payload, "SchedulePayload");
   }
@@ -281,6 +283,13 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         {
           label: t("schedules:payload.wash_purge.scope"),
           value: t("schedules:payload.wash_purge.expired"),
+        },
+      ];
+    case "media_refresh":
+      return [
+        {
+          label: t("schedules:payload.media_refresh.scope"),
+          value: t("schedules:payload.media_refresh.wholeServer"),
         },
       ];
     default:

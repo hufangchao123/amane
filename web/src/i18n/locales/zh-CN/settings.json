@@ -272,6 +272,10 @@
       "verify_tls": {
         "label": "校验证书",
         "description": "校验 HTTPS 证书; 自签名证书可关闭"
+      },
+      "auto_refresh": {
+        "label": "整理后自动刷新",
+        "description": "整理落盘后自动让媒体服务器重扫媒体库"
       }
     },
     "network": {

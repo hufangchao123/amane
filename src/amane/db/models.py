@@ -50,6 +50,7 @@ class TaskType(StrEnum):
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
     BACKUP = "backup"
+    MEDIA_REFRESH = "media_refresh"
 
 
 class RoutineType(StrEnum):
@@ -62,6 +63,7 @@ class RoutineType(StrEnum):
     WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
     BACKUP = "backup"
+    MEDIA_REFRESH = "media_refresh"
 
 
 class TaskStatus(StrEnum):

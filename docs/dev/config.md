@@ -90,6 +90,9 @@ Worker 替换不取消运行中任务: `_rebuild()` 构建新 worker 后旧 work
 
 单服务器, `url` 与 `api_key` 齐备才启用; `kind` 标识 Emby / Jellyfin, 两家接口同源. 客户端不读 `network.proxy`, 单请求超时固定 30s; `api_key` 与其他密钥一样进 secrets 脱敏. 配置变更经 `_rebuild()` 重建 handler 后对新任务生效, 运行中的推送继续使用旧客户端.
 
+- **`auto_refresh`**: ORGANIZE 有文件落盘时链式入队一次 `MEDIA_REFRESH` (优先级 -1); 只在 url / api_key 齐备且开关打开时入队, 刷新失败不回溯父任务.
+- **刷新范围**: 两家都只有整库刷新, 请求 `POST /Library/Refresh` 不带入参, 也没有返回内容.
+
 ## `actor_scraping` (Hot)
 
 演员刮削与影片 `scraping` 分 section: 影片管线不读演员站列表, 演员任务也不读 `field_priority` / `field_blacklist`. 契约 (实现见 `ActorScrapeHandler` / `aggregate.actor`):

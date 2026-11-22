@@ -9,6 +9,7 @@ from ...handlers import (
     BackupPayload,
     CleanupPayload,
     DeletePayload,
+    MediaRefreshPayload,
     OrganizePayload,
     R18ImportPayload,
     RefreshPayload,
@@ -29,6 +30,7 @@ from ..models import (
     BackupSubmission,
     CleanupSubmission,
     DeleteSubmission,
+    MediaRefreshSubmission,
     OrganizeSubmission,
     R18ImportSubmission,
     RefreshSubmission,
@@ -67,6 +69,7 @@ ResolvedPayload = (
     | WashScanPayload
     | WashApplyPayload
     | BackupPayload
+    | MediaRefreshPayload
 )
 
 
@@ -126,5 +129,7 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             )
         case BackupSubmission():
             return TaskType.BACKUP, BackupPayload(kind=req.kind)
+        case MediaRefreshSubmission():
+            return TaskType.MEDIA_REFRESH, MediaRefreshPayload()
         case _:
             assert_never(req)

@@ -89,6 +89,7 @@
     "wash_scan": "Wash scan",
     "wash_apply": "Wash apply",
     "backup": "Backup",
+    "media_refresh": "Media library refresh",
     "wash_purge": "Trash purge"
   },
   "loadMoreChildren": "Load more ({{count}})",

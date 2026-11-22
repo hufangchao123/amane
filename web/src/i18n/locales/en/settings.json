@@ -272,6 +272,10 @@
       "verify_tls": {
         "label": "Verify certificate",
         "description": "Verify HTTPS certificates; disable for self-signed"
+      },
+      "auto_refresh": {
+        "label": "Refresh after organize",
+        "description": "Ask the media server to rescan its libraries after files are organized"
       }
     },
     "network": {

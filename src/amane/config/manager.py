@@ -770,6 +770,7 @@ class MediaServerConfig(BaseModel):
     url: str | None = Field(default=None, description="服务器地址, 含协议、端口与可选子路径")
     api_key: str | None = Field(default=None, description="管理员 API Key")
     verify_tls: bool = Field(default=True, description="校验 HTTPS 证书; 自签名证书可关闭")
+    auto_refresh: bool = Field(default=False, description="整理落盘后自动让媒体服务器重扫媒体库")
 
     @field_validator("url")
     @classmethod

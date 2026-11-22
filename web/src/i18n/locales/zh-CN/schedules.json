@@ -84,6 +84,11 @@
     "backup": {
       "kind": "备份范围 {{kind}}"
     },
+    "media_refresh": {
+      "summary": "让媒体服务器重新扫描媒体库",
+      "scope": "刷新范围",
+      "wholeServer": "全部媒体库"
+    },
     "wash_purge": {
       "summary": "清理到期的回收站记录",
       "scope": "清理范围",

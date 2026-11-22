@@ -1474,3 +1474,55 @@ async def test_organize_other_modes_leave_source_dir(
     assert result.result.pruned_dirs == 0
     assert src.exists()
     assert src_dir.is_dir()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+@pytest.mark.parametrize(
+    ("configured", "auto_refresh", "organized", "expected"),
+    [
+        (True, True, 1, ["media_refresh"]),
+        (True, False, 1, []),
+        (False, True, 1, []),
+        (True, True, 0, []),
+    ],
+)
+async def test_media_refresh_followup_follows_config(
+    repo: Repository,
+    resource_store: ResourceStore,
+    tmp_path: Path,
+    *,
+    configured: bool,
+    auto_refresh: bool,
+    organized: int,
+    expected: list[str],
+) -> None:
+    """只有配置齐备、开关打开且有文件落盘时, 整理才链式入队一次媒体库刷新."""
+    lib_root = tmp_path / "lib"
+    src_dir = lib_root / "incoming"
+    src_dir.mkdir(parents=True)
+    src = src_dir / "NSFS-045.mp4"
+    src.write_bytes(b"video")
+
+    lib = await repo.create_library(
+        name="t", path=str(lib_root), write_nfo=False, video_template="{studio}/{number}/{number}.mp4"
+    )
+    assert lib.id is not None
+    if organized:
+        meta = await repo.upsert_metadata(number="NSFS-045", studio="Studio")
+        assert meta.id is not None
+        await repo.create_media_file(
+            lib.id, path=str(src), number="NSFS-045", status=MediaFileStatus.SCRAPED, metadata_id=meta.id
+        )
+
+    hot = HotSettings()
+    if configured:
+        hot.media_server.url = "http://media.local:8096"
+        hot.media_server.api_key = "key"
+    hot.media_server.auto_refresh = auto_refresh
+
+    result = await OrganizeHandler(repo, hot, resource_store).handle(
+        OrganizePayload(library_id=lib.id, path=str(src_dir))
+    )
+
+    assert result.result is not None and result.result.organized == organized
+    assert [followup.task_type.value for followup in result.followups] == expected

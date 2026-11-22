@@ -26,6 +26,7 @@ from ..handlers import (
     CleanupHandler,
     DeleteHandler,
     LibraryTaskLocks,
+    MediaRefreshHandler,
     OrganizeHandler,
     R18ImportHandler,
     RefreshHandler,
@@ -616,6 +617,7 @@ def build_handlers(
     handlers[TaskType.BACKUP] = BackupHandler(
         BackupManager(hot.backup, state_dir if state_dir is not None else Path("./data"))
     )
+    handlers[TaskType.MEDIA_REFRESH] = MediaRefreshHandler(hot)
     # state_dir 缺省回退 cwd/data (精简构造场景).
     handlers[TaskType.R18_IMPORT] = R18ImportHandler(
         config=hot.r18, web_client=web_client, state_dir=state_dir if state_dir is not None else Path("./data")

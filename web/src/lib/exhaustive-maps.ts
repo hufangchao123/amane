@@ -115,6 +115,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "wash_scan",
   "wash_apply",
   "backup",
+  "media_refresh",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(
@@ -156,6 +157,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "wash_scan",
   "wash_purge",
   "backup",
+  "media_refresh",
 );
 
 export const FACET_KINDS = exhaustiveTuple<FacetKind>()(
@@ -216,6 +218,7 @@ export const MANUAL_TASK_TYPES = exhaustiveTuple<ManualTaskType>()(
   "rescrape",
   "semantic_index",
   "actor_push",
+  "media_refresh",
 );
 
 /** 刮削站点结果分组顺序. */

@@ -86,6 +86,8 @@
 
 `wash_scan` 只入队只读扫描: 洗版是破坏性动作, 定时任务只产出候选, 由人决定何时执行 `wash_apply`。
 
+`media_refresh` 的例行有独立分支 (`RoutineType.MEDIA_REFRESH` → `TaskType.MEDIA_REFRESH`), 只让媒体服务器重扫, 不触碰库文件, 因此不列在上表。
+
 `wash_purge` 的例行载荷为空 (`WashPurgeRoutine`), 到期范围由 `library/wash/apply.py::expired_record_ids` 判定 (只取 `state=TRASHED` 且 `expires_at` 已过), 因此定时不会重算洗版候选 —— 重算法会把用户留着不洗的分组一起洗掉。无到期记录时不入队。
 
 `RoutineType` 与 `TaskType` 的取值都按 VARCHAR 存储, 新增枚举成员不需要迁移; 前端 `ROUTINE_TYPES` 的穷举与 `RoutineSubmission` 判别联合共同约束取值集合。

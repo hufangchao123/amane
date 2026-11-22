@@ -84,6 +84,11 @@
     "backup": {
       "kind": "Scope {{kind}}"
     },
+    "media_refresh": {
+      "summary": "Ask the media server to rescan its libraries",
+      "scope": "Scope",
+      "wholeServer": "All libraries"
+    },
     "wash_purge": {
       "summary": "Purge expired trash records",
       "scope": "Scope",
