@@ -92,6 +92,7 @@ def _handler(
     *,
     enabled: bool = True,
     ad_action: Literal["skip", "trash"] = "skip",
+    max_moves: int | None = None,
 ) -> Transfer115Handler:
     hot = HotSettings(
         transfer=TransferConfig(
@@ -103,7 +104,8 @@ def _handler(
             ad_action=ad_action,
         )
     )
-    return Transfer115Handler(repo, hot, client_factory=lambda cookies: fake)
+    extra: dict[str, int] = {} if max_moves is None else {"max_moves": max_moves}
+    return Transfer115Handler(repo, hot, client_factory=lambda cookies: fake, **extra)
 
 
 async def _states(repo: Repository) -> dict[str, TransferItemState]:
@@ -338,3 +340,27 @@ async def test_empty_source_is_a_noop(transfer_repo: Repository) -> None:
     assert result.success is True
     assert result.result is not None
     assert (result.result.scanned, result.result.moved, result.result.failed) == (0, 0, 0)
+
+
+async def test_single_run_cap_can_be_set_per_handler(
+    transfer_repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """单轮上限是部署侧的取舍: 网盘容易被限流时调小它, 一轮只搬指定条数."""
+    monkeypatch.setattr(transfer115, "MIN_AGE_SECONDS", 0)
+    fake = _FakeCloud({SOURCE: [_file(f"f{index}", f"IPX-{index:03d}.mp4") for index in range(3)]})
+    handler = _handler(transfer_repo, fake, max_moves=1)
+
+    await handler.handle(Transfer115Payload())
+    result = await handler.handle(Transfer115Payload())
+
+    assert result.result is not None
+    assert (result.result.moved, result.result.skipped) == (1, 2)
+    assert len(fake.moves) == 1
+
+
+async def test_zero_single_run_cap_is_rejected(transfer_repo: Repository) -> None:
+    """上限为 0 等于每轮空转: 那种配置只会让任务一直成功却什么都不搬."""
+    hot = HotSettings(transfer=TransferConfig(enabled=True, cookies=COOKIE, source_cid=SOURCE, target_cid=TARGET))
+
+    with pytest.raises(ValueError, match="max_moves"):
+        Transfer115Handler(transfer_repo, hot, client_factory=_no_client, max_moves=0)

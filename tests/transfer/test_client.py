@@ -240,3 +240,56 @@ def test_empty_cookie_is_not_configured() -> None:
 def test_cloud_entry_key_prefers_fid() -> None:
     assert CloudEntry(name="a.mp4", fid="1", cid=None, size=0, is_dir=False).key == "1"
     assert CloudEntry(name="夹", fid=None, cid="9", size=0, is_dir=True).key == "9"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"page_limit": 0}, "page_limit"),
+        ({"page_limit": -1}, "page_limit"),
+        ({"max_entries": 0}, "max_entries"),
+        ({"max_retry": -1}, "max_retry"),
+        ({"retry_base": -0.5}, "retry_base"),
+    ],
+)
+def test_absurd_limits_are_rejected(overrides: dict[str, object], message: str) -> None:
+    """越界参数不会立刻报错, 只会在跑起来之后把分页卡死或把限流关掉: 构造时就挡住."""
+    kwargs: dict[str, object] = {"transport": httpx2.MockTransport(lambda request: _ok([])), **overrides}
+
+    with pytest.raises(ValueError, match=message):
+        Transfer115Client(COOKIE, sleep=lambda _: None, clock=lambda: 0.0, **kwargs)  # type: ignore[arg-type]
+
+
+def test_page_limit_is_capped_by_total_window() -> None:
+    """单页比总量上限还大等于白要: 一页就够满, 请求里的 ``limit`` 收到上限为止."""
+    seen: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request.url.params["limit"])
+        return _ok([_file("1", "a.mp4"), _file("2", "b.mp4")])
+
+    client = _client(handler, [], page_limit=50, max_entries=2)
+    entries = client.list_dir("100")
+    client.close()
+
+    assert [entry.key for entry in entries] == ["1", "2"]
+    assert seen == ["2"], "单页窗口被夹到总量上限, 且读满上限就不再翻页"
+
+
+def test_empty_page_ends_paging_even_when_previous_page_was_full() -> None:
+    """网盘在还有条目时也可能回一个空页; 空页即终点, 否则这个循环会一直转."""
+    seen: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        offset = request.url.params["offset"]
+        seen.append(offset)
+        if offset == "0":
+            return _ok([_file("1", "a.mp4"), _file("2", "b.mp4")])
+        return _ok([])
+
+    client = _client(handler, [], page_limit=2, max_entries=10)
+    entries = client.list_dir("100")
+    client.close()
+
+    assert [entry.key for entry in entries] == ["1", "2"]
+    assert seen == ["0", "2"], "空页之后就停, 不再按 offset 往上加"
