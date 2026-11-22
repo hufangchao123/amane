@@ -3871,7 +3871,8 @@ export const HotSettingsSchema = {
                 target_cid: '',
                 ad_keywords: [],
                 ad_action: 'skip',
-                interval_minutes: 10
+                interval_minutes: 10,
+                max_moves_per_run: 5
             }
         },
         subtitles: {
@@ -11156,6 +11157,13 @@ export const TransferConfigSchema = {
             minimum: 1,
             title: 'Interval Minutes',
             default: 10
+        },
+        max_moves_per_run: {
+            type: 'integer',
+            minimum: 1,
+            title: 'Max Moves Per Run',
+            description: '单轮最多搬移的文件数',
+            default: 5
         }
     },
     type: 'object',

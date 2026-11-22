@@ -609,7 +609,7 @@ def build_handlers(
         TaskType.SEMANTIC_BENCHMARK: SemanticBenchmarkHandler(semantic),
     }
     # 中转 / 字幕 / 洗版 / 备份: 二期实现, 此处先占位, 入队后立即失败而不是找不到 handler.
-    handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot)
+    handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot, max_moves=hot.transfer.max_moves_per_run)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)

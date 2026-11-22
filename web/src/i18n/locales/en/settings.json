@@ -911,6 +911,10 @@
       "interval_minutes": {
         "label": "Interval (minutes)",
         "description": "How often the scheduled transfer runs"
+      },
+      "max_moves_per_run": {
+        "label": "Moves per run",
+        "description": "Maximum files moved in one run; the rest continue next round"
       }
     },
     "wash": {

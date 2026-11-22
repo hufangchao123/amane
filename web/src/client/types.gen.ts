@@ -5951,6 +5951,12 @@ export type TransferConfig = {
      * Interval Minutes
      */
     interval_minutes?: number;
+    /**
+     * Max Moves Per Run
+     *
+     * 单轮最多搬移的文件数
+     */
+    max_moves_per_run?: number;
 };
 
 /**
