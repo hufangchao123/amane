@@ -6423,6 +6423,46 @@ export type TransferConfig = {
 };
 
 /**
+ * TransferDirEntry
+ *
+ * 网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录.
+ */
+export type TransferDirEntry = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * TransferDirListResponse
+ *
+ * 一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``.
+ */
+export type TransferDirListResponse = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Cid
+     */
+    cid: string;
+    /**
+     * Items
+     */
+    items: Array<TransferDirEntry>;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+};
+
+/**
  * TransferItemListResponse
  */
 export type TransferItemListResponse = {
@@ -11437,6 +11477,36 @@ export type PollTransferQrcodeResponses = {
 };
 
 export type PollTransferQrcodeResponse = PollTransferQrcodeResponses[keyof PollTransferQrcodeResponses];
+
+export type TransferDirsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Cid
+         */
+        cid?: string;
+    };
+    url: '/api/transfer/dirs';
+};
+
+export type TransferDirsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TransferDirsError = TransferDirsErrors[keyof TransferDirsErrors];
+
+export type TransferDirsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TransferDirListResponse;
+};
+
+export type TransferDirsResponse = TransferDirsResponses[keyof TransferDirsResponses];
 
 export type TransferQrcodeImageData = {
     body?: never;

@@ -11922,6 +11922,65 @@ export const TransferConfigSchema = {
     description: '115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.\n\n``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,\n本地出现文件靠 STRM 生成流程接续.'
 } as const;
 
+export const TransferDirEntrySchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        }
+    },
+    type: 'object',
+    required: [
+        'id',
+        'name'
+    ],
+    title: 'TransferDirEntry',
+    description: '网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录.'
+} as const;
+
+export const TransferDirListResponseSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled'
+        },
+        cid: {
+            type: 'string',
+            title: 'Cid'
+        },
+        items: {
+            items: {
+                $ref: '#/components/schemas/TransferDirEntry'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        reason: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Reason'
+        }
+    },
+    type: 'object',
+    required: [
+        'enabled',
+        'cid',
+        'items'
+    ],
+    title: 'TransferDirListResponse',
+    description: '一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``.'
+} as const;
+
 export const TransferItemListResponseSchema = {
     properties: {
         items: {

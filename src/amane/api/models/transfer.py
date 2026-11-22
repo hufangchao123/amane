@@ -30,6 +30,22 @@ class TransferItemResponse(BaseModel):
     updated_at: datetime
 
 
+class TransferDirEntry(BaseModel):
+    """网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录."""
+
+    id: str
+    name: str
+
+
+class TransferDirListResponse(BaseModel):
+    """一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``."""
+
+    enabled: bool
+    cid: str
+    items: list[TransferDirEntry]
+    reason: str | None = None
+
+
 class TransferQrStartRequest(BaseModel):
     """要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口."""
 

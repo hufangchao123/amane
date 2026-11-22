@@ -6948,6 +6948,50 @@
         }
       }
     },
+    "/api/transfer/dirs": {
+      "get": {
+        "tags": [
+          "transfer"
+        ],
+        "summary": "Transfer Dirs",
+        "description": "列出一层网盘文件夹, 供界面选源目录与目标目录.\n\n115 的目录列表是同步客户端, 因此放线程里跑; 只回文件夹, 不回文件.",
+        "operationId": "transfer_dirs",
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "title": "Cid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDirListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/transfer/qrcode/image": {
       "get": {
         "tags": [
@@ -19247,6 +19291,63 @@
         "type": "object",
         "title": "TransferConfig",
         "description": "115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.\n\n``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,\n本地出现文件靠 STRM 生成流程接续."
+      },
+      "TransferDirEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TransferDirEntry",
+        "description": "网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录."
+      },
+      "TransferDirListResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "cid": {
+            "type": "string",
+            "title": "Cid"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransferDirEntry"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "cid",
+          "items"
+        ],
+        "title": "TransferDirListResponse",
+        "description": "一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``."
       },
       "TransferItemListResponse": {
         "properties": {

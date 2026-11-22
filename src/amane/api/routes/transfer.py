@@ -3,6 +3,7 @@
 "立即中转"走 ``POST /tasks``: 搬移要几十秒到几分钟, 路由里跑长循环会占住事件循环, 也没法取消.
 """
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response
@@ -10,10 +11,13 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from ...db.models import TransferItemState
 from ...enums import TransferLoginClient
 from ...transfer import TransferService, TransferSummary
+from ...transfer.client import Transfer115Client, TransferClientLike, TransferError
 from ...transfer.login import QrLoginError, TransferQrLogin
 from ...utils.model import to_resp
 from ..deps import ConfigDep, RepoDep, RuntimeDep
 from ..models.transfer import (
+    TransferDirEntry,
+    TransferDirListResponse,
     TransferItemListResponse,
     TransferItemResponse,
     TransferQrPollResponse,
@@ -31,6 +35,11 @@ async def transfer_status(config: ConfigDep, repo: RepoDep) -> TransferStatusRes
     summary = TransferSummary.from_counts(await repo.transfer_state_counts())
     reason = None if service.enabled else service.unavailable_reason()
     return TransferStatusResponse(enabled=service.enabled, reason=reason, **summary.model_dump())
+
+
+def _cloud_client(cookies: str) -> TransferClientLike:
+    """单独成函数, 测试替换这一层就能拦下真实网络调用."""
+    return Transfer115Client(cookies)
 
 
 def _qr_login() -> TransferQrLogin:
@@ -75,6 +84,30 @@ async def poll_transfer_qrcode(
     config.update({"transfer": {"cookies": poll.cookies}})
     await runtime.apply_rebuild()
     return TransferQrPollResponse(status="confirmed", saved=True)
+
+
+@router.get("/dirs")
+async def transfer_dirs(
+    config: ConfigDep,
+    cid: Annotated[str, Query()] = "0",
+) -> TransferDirListResponse:
+    """列出一层网盘文件夹, 供界面选源目录与目标目录.
+
+    115 的目录列表是同步客户端, 因此放线程里跑; 只回文件夹, 不回文件.
+    """
+    cookies = config.hot.transfer.cookies
+    if not cookies:
+        return TransferDirListResponse(enabled=False, cid=cid, items=[], reason="115 中转未配置 Cookie")
+    client = _cloud_client(cookies)
+    try:
+        entries = await asyncio.to_thread(client.list_dir, cid)
+    except TransferError as error:
+        raise HTTPException(status_code=502, detail=f"读取目录失败: {error}") from error
+    finally:
+        client.close()
+    items = [TransferDirEntry(id=entry.cid, name=entry.name) for entry in entries if entry.is_dir and entry.cid]
+    items.sort(key=lambda item: item.name)
+    return TransferDirListResponse(enabled=True, cid=cid, items=items)
 
 
 @router.get("/qrcode/image")

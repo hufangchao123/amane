@@ -49,6 +49,24 @@
         "linux": "Linux",
         "tv": "TV 端"
       }
+    },
+    "dirs": {
+      "title": "网盘目录",
+      "hint": "115 的源目录与目标目录只认目录 ID。点进文件夹后用下面两个按钮填入，也可以直接记下 ID 去设置里手填。",
+      "root": "根目录",
+      "backToRoot": "回到根目录",
+      "current": "当前目录",
+      "id": "ID {{id}}",
+      "asSource": "设为源目录",
+      "asTarget": "设为目标目录",
+      "sourceNow": "源目录 {{id}}",
+      "targetNow": "目标目录 {{id}}",
+      "unset": "未设置",
+      "needsCookie": "先登录或填 Cookie 才能读目录",
+      "loadFailed": "读取目录失败，检查 Cookie 是否过期",
+      "columnName": "文件夹",
+      "columnId": "目录 ID",
+      "empty": "这一层没有子文件夹"
     }
   },
   "subtitles": {

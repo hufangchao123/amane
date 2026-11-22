@@ -49,6 +49,24 @@
         "linux": "Linux",
         "tv": "TV"
       }
+    },
+    "dirs": {
+      "title": "Cloud folders",
+      "hint": "115 only accepts folder IDs for source and target. Enter a folder, then use the buttons below; you can also copy the ID into settings.",
+      "root": "Root",
+      "backToRoot": "Back to root",
+      "current": "Current",
+      "id": "ID {{id}}",
+      "asSource": "Set as source",
+      "asTarget": "Set as target",
+      "sourceNow": "Source {{id}}",
+      "targetNow": "Target {{id}}",
+      "unset": "unset",
+      "needsCookie": "Sign in or set a cookie first",
+      "loadFailed": "Failed to read folders, check whether the cookie expired",
+      "columnName": "Folder",
+      "columnId": "Folder ID",
+      "empty": "No subfolders here"
     }
   },
   "subtitles": {
