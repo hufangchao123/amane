@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { isHidden, resolveSchema } from "@/components/schema-form/schema";
 import { AuditPanel } from "@/features/audit/audit-panel";
+import { NotifyPanel } from "@/features/notify/notify-panel";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { useConfig, useConfigSchema, useUpdateConfig } from "@/hooks/use-config";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
@@ -124,6 +125,7 @@ function SettingsPage() {
               }
               const sectionSchema = resolvedSchema.properties?.[key];
               if (!sectionSchema || typeof sectionSchema === "boolean") return null;
+              const intro = key === "worker" ? t("workerIntro") : null;
               // Schema 顶层 key 运行时才知; 桥接到按 section 切分的表单 values.
               const sectionValues = (values as Record<string, Record<string, unknown>>)[key] ?? {};
               return (
@@ -132,6 +134,11 @@ function SettingsPage() {
                     {/* Schema 顶层分组名运行时才知, 动态表单例外. */}
                     {t(`tabs.${key}` as never, { defaultValue: key })}
                   </Text>
+                  {intro && (
+                    <Text size="sm" c="dimmed" mb="md">
+                      {intro}
+                    </Text>
+                  )}
                   <SchemaForm
                     schema={sectionSchema}
                     prefix={key}
@@ -141,6 +148,11 @@ function SettingsPage() {
                     onSave={(patch) => saveMutation.mutate({ body: { [key]: patch } })}
                     saving={saveMutation.isPending}
                   />
+                  {key === "notify" && (
+                    <Box mt="md">
+                      <NotifyPanel />
+                    </Box>
+                  )}
                 </Paper>
               );
             })}

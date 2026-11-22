@@ -18,8 +18,11 @@ if TYPE_CHECKING:
     from amane.db.repository import Repository
 
 
-def _hot(*, enabled: bool = False, url: str = "") -> HotSettings:
-    return HotSettings(notify=NotifyConfig(enabled=enabled, url=url))
+def _hot(*, enabled: bool = False, url: str = "", sections: list[str] | None = None) -> HotSettings:
+    notify = NotifyConfig(enabled=enabled, url=url)
+    if sections is not None:
+        notify = notify.model_copy(update={"sections": sections})
+    return HotSettings(notify=notify)
 
 
 def _factory(outcome: NotifyOutcome) -> tuple[Callable[[NotifyConfig], Notifier], list[tuple[str, str]]]:
@@ -83,6 +86,34 @@ async def test_digest_builds_summary_from_repository(repo: Repository) -> None:
     assert "115 中转" in body
     assert result.result is not None
     assert result.result.digest_days == 7
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_digest_only_includes_selected_sections(repo: Repository) -> None:
+    """周报内容按配置裁剪: 只要媒体库那一段时, 队列与洗版都不该出现."""
+    await repo.create_library(name="日韩", path="/media/日韩")
+    factory, sent = _factory(NotifyOutcome(ok=True, channel="webhook", status=200))
+    handler = NotifyHandler(
+        repo,
+        _hot(enabled=True, url="https://hook.test/a", sections=["library"]),
+        notifier_factory=factory,
+    )
+    assert (await handler.handle(NotifyPayload(kind="digest"))).success
+    body = sent[0][1]
+    assert body == "媒体库: 0 份文件, 其中缺外挂字幕 0 份"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_digest_without_sections_is_empty(repo: Repository) -> None:
+    """全部关掉时只留标题, 正文为空."""
+    factory, sent = _factory(NotifyOutcome(ok=True, channel="webhook", status=200))
+    handler = NotifyHandler(
+        repo,
+        _hot(enabled=True, url="https://hook.test/a", sections=[]),
+        notifier_factory=factory,
+    )
+    assert (await handler.handle(NotifyPayload(kind="digest"))).success
+    assert sent[0][1] == ""
 
 
 def test_payload_rejects_over_long_title() -> None:

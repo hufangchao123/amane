@@ -94,32 +94,43 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
         return TaskResult(success=outcome.ok, result=result, error=outcome.error)
 
     async def _digest_body(self) -> str:
-        """窗口内的队列与类型分布, 加上库、洗版、中转的现状; 只查库, 不碰磁盘."""
+        """按 ``notify.sections`` 拼周报: 只查库, 不碰磁盘, 因此能在例行里跑."""
         since = datetime.now(UTC) - timedelta(days=DIGEST_DAYS)
+        sections = set(self._hot.notify.sections)
+        lines: list[str] = []
+        if "queue" in sections:
+            lines.append(await self._queue_line(since))
+        if "types" in sections:
+            by_type = await self._repo.count_tasks_by_type(since=since)
+            if by_type:
+                lines.append(f"按类型: {_type_breakdown(by_type)}")
+        if "library" in sections:
+            files = await self._repo.count_media_files()
+            missing = await self._repo.count_media_files(has_subtitle=False)
+            lines.append(f"媒体库: {files} 份文件, 其中缺外挂字幕 {missing} 份")
+        if "wash" in sections:
+            wash_count, wash_bytes = await self._repo.count_wash_records(state=WashRecordState.TRASHED)
+            lines.append(f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB")
+        if "transfer" in sections:
+            pending = (await self._repo.transfer_state_counts()).get(TransferItemState.PENDING, 0)
+            lines.append(f"115 中转: {pending} 个文件等待成熟")
+        if "queue" in sections:
+            lines.extend(await self._failure_lines(since))
+        return "\n".join(lines)
+
+    async def _queue_line(self, since: datetime) -> str:
         queued = await self._repo.count_tasks(statuses=[TaskStatus.QUEUED])
         running = await self._repo.count_tasks(statuses=[TaskStatus.RUNNING])
         done = await self._repo.count_tasks(statuses=[TaskStatus.DONE], since=since)
         failed = await self._repo.count_tasks(statuses=[TaskStatus.FAILED], since=since)
-        lines = [f"最近 {DIGEST_DAYS} 天: 完成 {done}, 失败 {failed}; 当前排队 {queued}, 执行中 {running}"]
+        return f"最近 {DIGEST_DAYS} 天: 完成 {done}, 失败 {failed}; 当前排队 {queued}, 执行中 {running}"
 
-        by_type = await self._repo.count_tasks_by_type(since=since)
-        if by_type:
-            lines.append(f"按类型: {_type_breakdown(by_type)}")
-
-        files = await self._repo.count_media_files()
-        missing = await self._repo.count_media_files(has_subtitle=False)
-        lines.append(f"媒体库: {files} 份文件, 其中缺外挂字幕 {missing} 份")
-
-        wash_count, wash_bytes = await self._repo.count_wash_records(state=WashRecordState.TRASHED)
-        pending = (await self._repo.transfer_state_counts()).get(TransferItemState.PENDING, 0)
-        lines.append(f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB")
-        lines.append(f"115 中转: {pending} 个文件等待成熟")
-
+    async def _failure_lines(self, since: datetime) -> list[str]:
         recent = await self._repo.list_tasks(statuses=[TaskStatus.FAILED], limit=DIGEST_FAILED_SAMPLES, since=since)
-        for task in recent:
-            detail = (task.error or "").splitlines()[0][:120] if task.error else "无错误文案"
-            lines.append(f"失败 #{task.id} {_type_label(task.type)}: {detail}")
-        return "\n".join(lines)
+        return [
+            f"失败 #{task.id} {_type_label(task.type)}: {(task.error or '').splitlines()[0][:120] or '无错误文案'}"
+            for task in recent
+        ]
 
 
 def _type_label(task_type: TaskType) -> str:

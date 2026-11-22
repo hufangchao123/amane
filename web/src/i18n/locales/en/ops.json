@@ -102,34 +102,6 @@
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected"
   },
-  "diagnostics": {
-    "title": "Diagnostics",
-    "hint": "Read-only probes; deep checks and dry runs execute as tasks, this page lists the checks for the current configuration.",
-    "refresh": "Run again",
-    "allPassed": "All checks passed",
-    "summary": "{{failed}} of {{total}} checks failed",
-    "passed": "Passed",
-    "failed": "Failed",
-    "loadFailed": "Failed to load diagnostics",
-    "columns": {
-      "check": "Check",
-      "state": "State",
-      "detail": "Detail"
-    },
-    "checks": {
-      "data_dir": "Data directory",
-      "disk": "Free space",
-      "db": "Database",
-      "libraries": "Library paths",
-      "safe_dirs": "Safe directories",
-      "token": "API token",
-      "transfer": "115 transfer",
-      "subtitles": "Subtitle sources",
-      "wash": "Wash",
-      "backup": "Backup",
-      "queue": "Task queue"
-    }
-  },
   "trash": {
     "title": "Trash",
     "hint": "Size and cleanup of the legacy trash directory (.amane_trash); cleanup runs as a task and only counts by default.",
@@ -191,15 +163,13 @@
     }
   },
   "notify": {
-    "title": "Notifications",
-    "hint": "Push task results and daily digests to your own channel. Fill the channel type and URL on the settings page; this page only reports whether they are set.",
     "channel": {
       "title": "Channel",
       "enabled": "Enabled ({{kind}})",
       "disabled": "Disabled",
       "urlSet": "URL is set.",
       "urlMissing": "URL is empty, so nothing will be sent.",
-      "hint": "Webhook receives {\"title\", \"body\"}; Bark takes path arguments; Server Chan receives a form; Telegram receives text."
+      "hint": "Webhook receives {\"title\", \"body\"}; Bark takes path parameters; Server Chan takes a form; Telegram takes text. Pick digest sections above."
     },
     "send": {
       "title": "Send a test message",

@@ -12,7 +12,6 @@ STATUS_CASES = [
     pytest.param("transfer/status", {"enabled", "pending", "moved", "skipped", "failed"}, id="transfer"),
     pytest.param("subtitles/status", {"enabled", "missing", "queued"}, id="subtitles"),
     pytest.param("wash/status", {"enabled", "groups", "trashed", "restorable_bytes"}, id="wash"),
-    pytest.param("diagnostics/status", {"items", "failed"}, id="diagnostics"),
     pytest.param("trash/status", {"libraries", "total_files", "total_bytes"}, id="trash"),
     pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
     pytest.param("notify/status", {"enabled", "kind", "has_url", "records"}, id="notify"),

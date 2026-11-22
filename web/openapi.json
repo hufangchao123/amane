@@ -7267,27 +7267,6 @@
         }
       }
     },
-    "/api/diagnostics/status": {
-      "get": {
-        "tags": [
-          "diagnostics"
-        ],
-        "summary": "Diagnostics Status",
-        "operationId": "diagnostics_status",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DiagnosticsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/trash/status": {
       "get": {
         "tags": [
@@ -9027,29 +9006,6 @@
         "title": "CancelledRow",
         "description": "回合被显式终止."
       },
-      "CheckItemResponse": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "title": "Key"
-          },
-          "ok": {
-            "type": "boolean",
-            "title": "Ok"
-          },
-          "detail": {
-            "type": "string",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "ok",
-          "detail"
-        ],
-        "title": "CheckItemResponse"
-      },
       "CleanupResult": {
         "properties": {
           "type": {
@@ -9590,27 +9546,6 @@
           "data_dir"
         ],
         "title": "DesktopResponse"
-      },
-      "DiagnosticsResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/CheckItemResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "failed": {
-            "type": "integer",
-            "title": "Failed"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "failed"
-        ],
-        "title": "DiagnosticsResponse"
       },
       "DownloadableResource": {
         "type": "string",
@@ -11243,7 +11178,8 @@
               "local": true,
               "strm": true,
               "min_size_mb": 300,
-              "keep_days": 30
+              "keep_days": 30,
+              "prefer": "quality"
             }
           },
           "notify": {
@@ -11253,7 +11189,14 @@
               "kind": "webhook",
               "url": "",
               "timeout_seconds": 10,
-              "max_records": 50
+              "max_records": 50,
+              "sections": [
+                "queue",
+                "types",
+                "library",
+                "wash",
+                "transfer"
+              ]
             }
           },
           "worker": {
@@ -14540,6 +14483,20 @@
             "minimum": 1.0,
             "title": "Max Records",
             "default": 50
+          },
+          "sections": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "queue",
+                "types",
+                "library",
+                "wash",
+                "transfer"
+              ]
+            },
+            "type": "array",
+            "title": "Sections"
           }
         },
         "type": "object",
@@ -20044,11 +20001,26 @@
             "minimum": 1.0,
             "title": "Keep Days",
             "default": 30
+          },
+          "prefer": {
+            "$ref": "#/components/schemas/WashPrefer",
+            "default": "quality"
           }
         },
         "type": "object",
         "title": "WashConfig",
         "description": "洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站."
+      },
+      "WashPrefer": {
+        "type": "string",
+        "enum": [
+          "quality",
+          "largest",
+          "newest",
+          "oldest"
+        ],
+        "title": "WashPrefer",
+        "description": "洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度."
       },
       "WashPurgeRoutine": {
         "properties": {

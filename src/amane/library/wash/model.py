@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ...db.models import WashRecordKind
+from ...enums import WashPrefer
 from ...parsing import DEFINITION_VALUES, canonical_definition
 
 if TYPE_CHECKING:
@@ -89,6 +90,7 @@ class WashEntry:
     definition: str | None = None
     mosaic: Mosaic | None = None
     cd: int | None = None
+    mtime: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,17 +149,25 @@ def container_rank(path: str | Path) -> int:
         return len(CONTAINER_PRIORITY)
 
 
-def local_sort_key(entry: WashEntry) -> tuple[int, float, int, int, str]:
-    """本地组的排序键 (升序即优先级从高到低), 见模块文档的五档."""
+def local_sort_key(
+    entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY
+) -> tuple[int, float, int, int, str]:
+    """本地组的排序键 (升序即优先级从高到低).
+
+    默认的五档见模块文档; 其余三种策略只按一个维度比较, 再用容器与路径做决定性兜底 ——
+    用户选了「按体积」就是要体积最大的那份, 不能又被分辨率翻盘.
+    """
+    container = container_rank(entry.path)
+    if prefer is WashPrefer.LARGEST:
+        return (0, 0.0, -entry.size, container, entry.path)
+    if prefer is WashPrefer.NEWEST:
+        return (0, -(entry.mtime if entry.mtime is not None else 0.0), 0, container, entry.path)
+    if prefer is WashPrefer.OLDEST:
+        # 缺少修改时间的排在最后: 拿不出时间就不该被当成「更旧」.
+        age = entry.mtime if entry.mtime is not None else float("inf")
+        return (0, age, 0, container, entry.path)
     bitrate = entry.size / entry.duration if entry.duration is not None and entry.duration > 0 else 0.0
-    bitrate_key = -bitrate
-    return (
-        definition_rank(entry.definition),
-        bitrate_key,
-        -entry.size,
-        container_rank(entry.path),
-        entry.path,
-    )
+    return (definition_rank(entry.definition), -bitrate, -entry.size, container, entry.path)
 
 
 def strm_sort_key(entry: WashEntry) -> tuple[int, str]:
@@ -170,7 +180,9 @@ def sort_key(entry: WashEntry) -> tuple[int, float, int, int, str] | tuple[int, 
     return strm_sort_key(entry) if entry.kind is WashRecordKind.STRM else local_sort_key(entry)
 
 
-def build_groups(entries: Iterable[WashEntry], *, min_size_bytes: int) -> list[WashGroup]:
+def build_groups(
+    entries: Iterable[WashEntry], *, min_size_bytes: int, prefer: WashPrefer = WashPrefer.QUALITY
+) -> list[WashGroup]:
     """按 ``group_key`` 归并并选出保留者, 只返回至少两份候选的组.
 
     ``min_size_bytes`` 只作用于本地文件: 低于它的多半是样片 / 花絮 / 残片, 回收收益小而动它
@@ -189,7 +201,10 @@ def build_groups(entries: Iterable[WashEntry], *, min_size_bytes: int) -> list[W
     for (kind, key), members in buckets.items():
         if len(members) < 2:
             continue
-        ordered = sorted(members, key=strm_sort_key if kind is WashRecordKind.STRM else local_sort_key)
+        ordered = sorted(
+            members,
+            key=strm_sort_key if kind is WashRecordKind.STRM else lambda entry: local_sort_key(entry, prefer),
+        )
         groups.append(
             WashGroup(
                 group_key=key,

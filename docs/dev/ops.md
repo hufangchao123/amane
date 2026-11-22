@@ -1,6 +1,6 @@
-# 媒体运维功能 (中转 / 字幕 / 洗版 / 体检)
+# 媒体运维功能 (中转 / 字幕 / 洗版)
 
-> 四个阶段包: `src/amane/transfer`、`src/amane/subtitles`、`src/amane/library/wash`、`src/amane/diagnostics`。
+> 三个阶段包: `src/amane/transfer`、`src/amane/subtitles`、`src/amane/library/wash`。
 > 本文只写跨模块契约与仍生效的禁止事项; 端点形状、字段与默认值读源码或 `web/openapi.json`。
 > 路由见 [api.md](api.md), 任务边界见 [task-system.md](task-system.md), 库文件与回收站见 [data-model.md](data-model.md)。
 
@@ -11,7 +11,6 @@
 | `transfer` | 网盘侧增量搬移与逐文件状态 | 只读网盘、只写 STRM 根目录; 不生成 STRM 内容 (`organize/strm_content.py` 负责) |
 | `subtitles` | 从字幕来源取回字幕文件 | 放置一律经 `organize.subtitles`; 不直接改库内路径 |
 | `library/wash` | 同组多份文件择一保留, 其余入回收站 | 移动必须持 `LibraryTaskLocks`; 落选只搬进 `.amane_wash`, 不 `os.remove`; 真删只发生在到期的清理 |
-| `diagnostics` | 只读探针 | 不写库、不改文件; 超时长的深检走任务 |
 
 `library/wash` **不**并入 `amane.library` 的公共导出面: 配置层 (`config/manager.py`) 依赖 `library`, 汇入会形成循环导入。路由与 handler 直接用完整包路径导入。
 
@@ -27,9 +26,7 @@
 - 后继任务只经 `TaskResult.followups` 进入完成事务, 不直接写队列; 任务判失败或崩溃时仍要排的后继走 `TaskHandler.failure_followups`, 由 worker 单独入队 (它们不属于失败任务的子任务)。
 - `wash_apply` 与 `delete` / `organize` 争用同一库路径, 必须共享 `LibraryTaskLocks`。
 
-## 体检的判据
-
-体检只覆盖「当前配置下一定出问题」的项, 未启用的功能一律通过; 三项约束是不写库、不修改文件、不发网络请求, 因此可以在请求内运行 (`SelfCheck` 的全部探测都在线程池内)。判据随功能演进只能新增「静默失败」类型: 如果某项在出错时用户仍能完成任务, 就不该让体检失败。
+## 数据与备份
 
 **不做数据备份**: 全部状态都在 `data_dir` (容器里的 `/data`), 由部署方用宿主快照或自己拷该目录负责; 应用只保留迁移前的 `amane.db.pre-migrate-*.bak` (`db/sqlite_migrate.py`)。运行中直接 `cp amane.db` 不安全 (WAL 未合并), 手工备份须用 online backup 接口。
 
@@ -64,11 +61,15 @@
 
 ## 端点与提交
 
-四个功能各有 `GET /api/{transfer|subtitles|wash|diagnostics}/status` 只读端点, 任务入队统一走 `POST /api/tasks` 的判别联合。
+三个功能各有 `GET /api/{transfer|subtitles|wash}/status` 只读端点, 任务入队统一走 `POST /api/tasks` 的判别联合。
 
 四个提交模型 (`Transfer115Submission` / `SubtitleFetchSubmission` / `WashScanSubmission` / `WashApplySubmission`) 存在, 是为了满足 `tests/api/test_tasks.py` 的两条不变量: 每个 `TaskType` 都必须有提交模型 (`TaskSubmission`) 与结果模型 (`TaskResultPayload`)。前端把它们列为 `PanelOnlyTaskType`, 不出现在通用提交弹窗里 — 由各自页面按钮直接调 SDK。
 
 `handlers/models.py` 里的 Payload / Result 与 `handlers/*.py` 里的 handler 分离, 结果模型带 `type: Literal[TaskType.X]` 判别字段。新增任务类型要同步五处, 少一处就有编译期或测试期报错挡着: `TaskSubmission` 联合、`TaskResultPayload` 联合、`api/support/task_resolve.py::resolve_submission` 的 `match`、`web/src/lib/exhaustive-maps.ts` 的 `TASK_TYPES`、`web/src/lib/task/display.ts` 的 `TASK_ICONS`; 另有 i18n 的 `settings.json`(配置字段) 与 `tasks.json`(提交字段 + `filters.*`) 两处编译期穷举检查。
+
+### 洗版择一的策略
+
+`wash.prefer` 决定同组留哪一份: `quality` (默认) 依次比分辨率档位、码率、体积、容器、路径; `largest` 只比体积, `newest` / `oldest` 只比修改时间 (拿不到时间的排在最后), 两者都用容器与路径做决定性兜底。选了单维度就按单维度走 —— 用户要「留最大的那份」时不能被分辨率翻盘。STRM 组不受此配置影响: 指针没有画质与体积, 仍只比容器与路径。
 
 ### 字幕巡检的判据
 
@@ -135,6 +136,8 @@
 
 ## 通知
 
+渠道表单、测试发送与最近推送都在设置页的「通知」分段里 (该分段由 `notify` schema 自动生成表单, 面板挂在表单下方), 没有独立页面。
+
 `NOTIFY` 把一段标题与正文推到 `notify` 配置里的渠道, 四种渠道只在请求形状上不同 (`notify/channels.py` 一张表); `kind=digest` 时正文留空则由任务现算摘要: 队列计数、洗版回收站可用量与占用、115 中转待搬条数、最近五条失败任务。摘要只查库, 不扫盘, 因此可以挂在例行上 (`NOTIFY_DIGEST`)。
 
 地址由使用者在配置里填写, 常常指向内网 (自建 Bark / Server 酱代理), 因此这里**不放内网出站限制** —— 与抓站点的出站策略不同, 也不该相同。地址里可能带密钥, 所以 `notify.url` 进脱敏名单, 导出任务记录时会被替换。
@@ -142,7 +145,7 @@
 每次推送写一行 `notify_records` (种类、渠道快照、标题、正文摘要、结果), 保留条数由 `notify.max_records` 决定, 超出部分在下一次推送时删除。推送失败只把任务标为失败并带上渠道返回码, 不回滚任何业务动作; 未启用或地址为空时不发请求, 直接失败并写明原因。
 
 推送标题上限 200 字、正文上限 2000 字 (`handlers/models.py` 的 `NOTIFY_TITLE_LIMIT` / `NOTIFY_BODY_LIMIT`): 载荷整体进任务表的 JSON 列, 批量提交时若不设限会被写成几 MB。记录层另有 `BODY_LIMIT` 截断, 两者不同 —— 前者拒收, 后者只是留痕时缩短。渠道地址 (`notify.url`) 在配置阶段校验: 非空必须是 http(s) 且不超过 2000 字, 免得推送时才报错。
-摘要 (`kind=digest`) 只报最近 7 天的队列与失败、按任务类型的条数分布 (原有刮削整理与移植来的运维任务同列, 按条数取前 6 类)、媒体库文件数与缺外挂字幕数、洗版回收站占用、115 待搬条数; 时间窗靠 `count_tasks(since=…)` 与 `count_tasks_by_type(since=…)`, 不扫盘也不读日志。
+摘要 (`kind=digest`) 按 `notify.sections` 逐段拼: `queue` 报最近 7 天的完成与失败、当前排队与执行中, 并附最近五条失败任务; `types` 报按任务类型的条数分布 (原有刮削整理与移植来的运维任务同列, 按条数取前 6 类); `library` 报媒体库文件数与缺外挂字幕数; `wash` 报洗版回收站条数与占用; `transfer` 报 115 待搬条数。勾空的段不查库, 全不选时只发标题。时间窗靠 `count_tasks(since=…)` 与 `count_tasks_by_type(since=…)`, 不扫盘也不读日志。
 
 
 ## NFO 修补

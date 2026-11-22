@@ -949,24 +949,6 @@ export type CancelledRow = {
 };
 
 /**
- * CheckItemResponse
- */
-export type CheckItemResponse = {
-    /**
-     * Key
-     */
-    key: string;
-    /**
-     * Ok
-     */
-    ok: boolean;
-    /**
-     * Detail
-     */
-    detail: string;
-};
-
-/**
  * CleanupResult
  */
 export type CleanupResult = {
@@ -1337,20 +1319,6 @@ export type DesktopResponse = {
      * Supervised
      */
     supervised?: boolean;
-};
-
-/**
- * DiagnosticsResponse
- */
-export type DiagnosticsResponse = {
-    /**
-     * Items
-     */
-    items: Array<CheckItemResponse>;
-    /**
-     * Failed
-     */
-    failed: number;
 };
 
 /**
@@ -3717,6 +3685,10 @@ export type NotifyConfig = {
      * Max Records
      */
     max_records?: number;
+    /**
+     * Sections
+     */
+    sections?: Array<'queue' | 'types' | 'library' | 'wash' | 'transfer'>;
 };
 
 /**
@@ -7085,7 +7057,15 @@ export type WashConfig = {
      * Keep Days
      */
     keep_days?: number;
+    prefer?: WashPrefer;
 };
+
+/**
+ * WashPrefer
+ *
+ * 洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度.
+ */
+export type WashPrefer = 'quality' | 'largest' | 'newest' | 'oldest';
 
 /**
  * WashPurgeRoutine
@@ -11554,22 +11534,6 @@ export type PurgeWashRecordsResponses = {
 };
 
 export type PurgeWashRecordsResponse = PurgeWashRecordsResponses[keyof PurgeWashRecordsResponses];
-
-export type DiagnosticsStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/diagnostics/status';
-};
-
-export type DiagnosticsStatusResponses = {
-    /**
-     * Successful Response
-     */
-    200: DiagnosticsResponse;
-};
-
-export type DiagnosticsStatusResponse = DiagnosticsStatusResponses[keyof DiagnosticsStatusResponses];
 
 export type GetTrashStatusData = {
     body?: never;

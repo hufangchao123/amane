@@ -32,6 +32,7 @@ from ..enums import (
     Language,
     MetadataField,
     SiteName,
+    WashPrefer,
     WatermarkCorner,
     WatermarkKind,
 )
@@ -881,9 +882,15 @@ class WashConfig(BaseModel):
     """小于此体积不参与, 避免误删样片."""
     keep_days: int = Field(default=30, ge=1, le=365)
     """回收站保留天数, 到期由清理任务删除."""
+    prefer: WashPrefer = WashPrefer.QUALITY
+    """同组留哪一份: 默认按画质 (分辨率 → 码率 → 体积); 其余三种只比一个维度."""
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]
+NotifySection = Literal["queue", "types", "library", "wash", "transfer"]
+"""周报里可选的段: 队列与失败 / 类型分布 / 媒体库缺口 / 洗版回收站 / 115 中转."""
+
+DEFAULT_NOTIFY_SECTIONS: list[NotifySection] = ["queue", "types", "library", "wash", "transfer"]
 
 
 class NotifyConfig(BaseModel):
@@ -897,6 +904,8 @@ class NotifyConfig(BaseModel):
     timeout_seconds: int = Field(default=10, ge=1, le=60)
     max_records: int = Field(default=50, ge=1, le=1000)
     """保留的发送记录条数, 超出部分由下一次发送删除."""
+    sections: list[NotifySection] = Field(default_factory=lambda: list(DEFAULT_NOTIFY_SECTIONS))
+    """周报包含哪几段; 空列表表示只发标题."""
 
     @field_validator("url")
     @classmethod

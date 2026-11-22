@@ -88,6 +88,15 @@ class LinkMode(StrEnum):
     SYMLINK = "symlink"
 
 
+class WashPrefer(StrEnum):
+    """洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度."""
+
+    QUALITY = "quality"
+    LARGEST = "largest"
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class LibraryAutomation(StrEnum):
     """媒体库自动化级别 (只控制发现侧). 含更低级别的行为; 自动整理由 `Library.auto_organize` 单独控制."""
 

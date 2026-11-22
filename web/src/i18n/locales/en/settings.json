@@ -14,7 +14,7 @@
     "transfer": "115 Transfer",
     "subtitles": "Subtitle Fill",
     "wash": "Wash",
-    "notify": "Notify channel",
+    "notify": "Notification",
     "watcher": "File Monitoring",
     "worker": "Task Engine",
     "logging": "Logging",
@@ -910,26 +910,36 @@
     },
     "wash": {
       "label": "Wash",
-      "description": "Keep the best copy when a number has several files",
+      "description": "Keep the best copy when one number has several files",
       "enabled": {
         "label": "Enabled",
-        "description": "Skip wash tasks while off"
+        "description": "Turned off, wash tasks are skipped"
       },
       "local": {
         "label": "Local files",
-        "description": "Include local video files"
+        "description": "Local files take part in wash"
       },
       "strm": {
         "label": "STRM files",
-        "description": "Include STRM files"
+        "description": "STRM pointer files take part in wash"
       },
       "min_size_mb": {
-        "label": "Min size (MB)",
-        "description": "Smaller files are ignored so samples survive"
+        "label": "Minimum size (MB)",
+        "description": "Smaller files are left alone to protect samples"
       },
       "keep_days": {
         "label": "Keep days",
-        "description": "How long moved files stay before cleanup"
+        "description": "How long moved files stay before being purged"
+      },
+      "prefer": {
+        "label": "Which copy to keep",
+        "description": "Quality compares resolution then bitrate. The other three compare a single dimension.",
+        "options": {
+          "quality": "Best quality (recommended)",
+          "largest": "Largest file",
+          "newest": "Newest modified",
+          "oldest": "Oldest modified"
+        }
       }
     },
     "watcher": {
@@ -1014,7 +1024,21 @@
       "max_records": {
         "label": "Records to keep",
         "description": "Older records are deleted on the next push."
+      },
+      "sections": {
+        "label": "Digest content",
+        "description": "Which parts the digest includes. Empty means title only.",
+        "$": {
+          "options": {
+            "queue": "Queue and failures",
+            "types": "By task type",
+            "library": "Library gaps",
+            "wash": "Wash trash",
+            "transfer": "115 transfer"
+          }
+        }
       }
     }
-  }
+  },
+  "workerIntro": "Task engine: every action becomes a task row (queued, running, done or failed) that background workers claim up to the concurrency limit. Page buttons, the API and schedules only enqueue tasks. A finished task may queue the next one (for example organize after scrape); a failure never stops other tasks, and retrying creates a new task."
 }

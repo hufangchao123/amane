@@ -60,6 +60,14 @@ def index_row(media: MediaFile) -> IndexRow:
     )
 
 
+def _mtime_of(path: str) -> float | None:
+    """文件的修改时间; 读不到就返回 None, 让排序把它排到「没有时间」那一侧."""
+    try:
+        return Path(path).stat().st_mtime
+    except OSError:
+        return None
+
+
 @in_thread
 def entries_from_rows(rows: Sequence[IndexRow], *, library_id: int) -> list[WashEntry]:
     """把一批索引行变成参与比较的条目; 磁盘上已经不存在的本地文件直接丢弃.
@@ -98,6 +106,7 @@ def entries_from_rows(rows: Sequence[IndexRow], *, library_id: int) -> list[Wash
                 library_id=library_id,
                 number=number,
                 size=size,
+                mtime=_mtime_of(path),
                 duration=row.duration,
                 definition=row.definition or info.definition,
                 mosaic=row.mosaic or info.mosaic,

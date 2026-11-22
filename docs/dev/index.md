@@ -25,7 +25,7 @@
 | 排障 / 回放刮削 | [observability.md](observability.md) |
 | RSS/Atom 远程发现 | [feeds.md](feeds.md) |
 | 文件发现 / CloudDrive webhook | [watcher.md](watcher.md) |
-| 媒体运维 (中转 / 字幕 / 洗版 / 体检) | [ops.md](ops.md) |
+| 媒体运维 (中转 / 字幕 / 洗版 / 通知 / 回收站 / 维护) | [ops.md](ops.md) |
 | 桌面菜单栏 / 托盘 / 打包 | [desktop.md](desktop.md) |
 | Android 壳 (WebView / APK) | [android.md](android.md) |
 | 后端测试 | [testing.md](testing.md) |

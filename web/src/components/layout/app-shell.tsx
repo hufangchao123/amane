@@ -15,7 +15,6 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  IconBell,
   IconArrowsExchange,
   IconBook,
   IconBookmark,
@@ -38,7 +37,6 @@ import {
   IconRss,
   IconSearch,
   IconSettings,
-  IconStethoscope,
   IconSubtitles,
   IconSun,
   IconSunMoon,
@@ -117,9 +115,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/transfer", labelKey: "nav.transfer", icon: IconCloudDownload },
       { to: "/subtitles", labelKey: "nav.subtitles", icon: IconSubtitles },
       { to: "/wash", labelKey: "nav.wash", icon: IconArrowsExchange },
-      { to: "/diagnostics", labelKey: "nav.diagnostics", icon: IconStethoscope },
       { to: "/maintenance", labelKey: "nav.maintenance", icon: IconTool },
-      { to: "/notifications", labelKey: "nav.notify", icon: IconBell },
     ],
   },
 ];

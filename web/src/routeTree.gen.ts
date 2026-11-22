@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorsRouteImport } from './routes/actors'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ClientRouteImport } from './routes/client'
-import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as LibrariesRouteImport } from './routes/libraries'
 import { Route as LogsRouteImport } from './routes/logs'
@@ -21,7 +20,6 @@ import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MetaRouteImport } from './routes/meta'
 import { Route as NetworkRouteImport } from './routes/network'
-import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PluginsRouteImport } from './routes/plugins'
 import { Route as SavedQueriesRouteImport } from './routes/saved-queries'
 import { Route as SchedulesRouteImport } from './routes/schedules'
@@ -65,11 +63,6 @@ const ClientRoute = ClientRouteImport.update({
   path: '/client',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DiagnosticsRoute = DiagnosticsRouteImport.update({
-  id: '/diagnostics',
-  path: '/diagnostics',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const FeedsRoute = FeedsRouteImport.update({
   id: '/feeds',
   path: '/feeds',
@@ -103,11 +96,6 @@ const MetaRoute = MetaRouteImport.update({
 const NetworkRoute = NetworkRouteImport.update({
   id: '/network',
   path: '/network',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PluginsRoute = PluginsRouteImport.update({
@@ -226,7 +214,6 @@ export interface FileRoutesByFullPath {
   '/actors': typeof ActorsRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
-  '/diagnostics': typeof DiagnosticsRoute
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
@@ -234,7 +221,6 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
-  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
@@ -261,12 +247,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/client': typeof ClientRoute
-  '/diagnostics': typeof DiagnosticsRoute
   '/logs': typeof LogsRoute
   '/maintenance': typeof MaintenanceRoute
   '/manual': typeof ManualRoute
   '/network': typeof NetworkRoute
-  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/schedules': typeof SchedulesRoute
   '/settings': typeof SettingsRoute
@@ -295,7 +279,6 @@ export interface FileRoutesById {
   '/actors': typeof ActorsRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
-  '/diagnostics': typeof DiagnosticsRoute
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
@@ -303,7 +286,6 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
-  '/notifications': typeof NotificationsRoute
   '/plugins': typeof PluginsRoute
   '/saved-queries': typeof SavedQueriesRouteWithChildren
   '/schedules': typeof SchedulesRoute
@@ -334,7 +316,6 @@ export interface FileRouteTypes {
     | '/actors'
     | '/catalog'
     | '/client'
-    | '/diagnostics'
     | '/feeds'
     | '/libraries'
     | '/logs'
@@ -342,7 +323,6 @@ export interface FileRouteTypes {
     | '/manual'
     | '/meta'
     | '/network'
-    | '/notifications'
     | '/plugins'
     | '/saved-queries'
     | '/schedules'
@@ -369,12 +349,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/client'
-    | '/diagnostics'
     | '/logs'
     | '/maintenance'
     | '/manual'
     | '/network'
-    | '/notifications'
     | '/plugins'
     | '/schedules'
     | '/settings'
@@ -402,7 +380,6 @@ export interface FileRouteTypes {
     | '/actors'
     | '/catalog'
     | '/client'
-    | '/diagnostics'
     | '/feeds'
     | '/libraries'
     | '/logs'
@@ -410,7 +387,6 @@ export interface FileRouteTypes {
     | '/manual'
     | '/meta'
     | '/network'
-    | '/notifications'
     | '/plugins'
     | '/saved-queries'
     | '/schedules'
@@ -440,7 +416,6 @@ export interface RootRouteChildren {
   ActorsRoute: typeof ActorsRouteWithChildren
   CatalogRoute: typeof CatalogRouteWithChildren
   ClientRoute: typeof ClientRoute
-  DiagnosticsRoute: typeof DiagnosticsRoute
   FeedsRoute: typeof FeedsRouteWithChildren
   LibrariesRoute: typeof LibrariesRouteWithChildren
   LogsRoute: typeof LogsRoute
@@ -448,7 +423,6 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   MetaRoute: typeof MetaRouteWithChildren
   NetworkRoute: typeof NetworkRoute
-  NotificationsRoute: typeof NotificationsRoute
   PluginsRoute: typeof PluginsRoute
   SavedQueriesRoute: typeof SavedQueriesRouteWithChildren
   SchedulesRoute: typeof SchedulesRoute
@@ -488,13 +462,6 @@ declare module '@tanstack/react-router' {
       path: '/client'
       fullPath: '/client'
       preLoaderRoute: typeof ClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/diagnostics': {
-      id: '/diagnostics'
-      path: '/diagnostics'
-      fullPath: '/diagnostics'
-      preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feeds': {
@@ -544,13 +511,6 @@ declare module '@tanstack/react-router' {
       path: '/network'
       fullPath: '/network'
       preLoaderRoute: typeof NetworkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plugins': {
@@ -795,7 +755,6 @@ const rootRouteChildren: RootRouteChildren = {
   ActorsRoute: ActorsRouteWithChildren,
   CatalogRoute: CatalogRouteWithChildren,
   ClientRoute: ClientRoute,
-  DiagnosticsRoute: DiagnosticsRoute,
   FeedsRoute: FeedsRouteWithChildren,
   LibrariesRoute: LibrariesRouteWithChildren,
   LogsRoute: LogsRoute,
@@ -803,7 +762,6 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   MetaRoute: MetaRouteWithChildren,
   NetworkRoute: NetworkRoute,
-  NotificationsRoute: NotificationsRoute,
   PluginsRoute: PluginsRoute,
   SavedQueriesRoute: SavedQueriesRouteWithChildren,
   SchedulesRoute: SchedulesRoute,

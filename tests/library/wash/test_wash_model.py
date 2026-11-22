@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 from amane.db.models import WashRecordKind
+from amane.enums import WashPrefer
 from amane.library.wash.model import (
     WashEntry,
     build_groups,
@@ -33,6 +34,7 @@ def entry(
     definition: str | None = None,
     mosaic: Mosaic | None = None,
     cd: int | None = None,
+    mtime: float | None = None,
 ) -> WashEntry:
     return WashEntry(
         path=f"/lib/{name}",
@@ -44,6 +46,7 @@ def entry(
         definition=definition,
         mosaic=mosaic,
         cd=cd,
+        mtime=mtime,
     )
 
 
@@ -139,6 +142,58 @@ def test_local_keeps_best(entries: list[WashEntry], expected: str) -> None:
     assert len(groups) == 1
     assert groups[0].keep.path == expected
     assert len(groups[0].drops) == 1
+
+
+PREFER_CASES = [
+    pytest.param(
+        WashPrefer.LARGEST,
+        [entry("small.mkv", size=100), entry("big.mp4", size=9000)],
+        "/lib/big.mp4",
+        id="largest-keeps-biggest-despite-container",
+    ),
+    pytest.param(
+        WashPrefer.NEWEST,
+        [entry("old.mkv", size=9000, mtime=100.0), entry("new.mp4", size=100, mtime=900.0)],
+        "/lib/new.mp4",
+        id="newest-keeps-latest",
+    ),
+    pytest.param(
+        WashPrefer.OLDEST,
+        [entry("old.mp4", mtime=100.0), entry("new.mkv", mtime=900.0)],
+        "/lib/old.mp4",
+        id="oldest-keeps-earliest",
+    ),
+    pytest.param(
+        WashPrefer.OLDEST,
+        [entry("no-time.mkv", mtime=None), entry("dated.mp4", mtime=900.0)],
+        "/lib/dated.mp4",
+        id="oldest-puts-missing-time-last",
+    ),
+    pytest.param(
+        WashPrefer.QUALITY,
+        [entry("low-720p.mkv", size=9000, definition="720p"), entry("hi-1080p.mp4", size=100, definition="1080p")],
+        "/lib/hi-1080p.mp4",
+        id="quality-is-default",
+    ),
+]
+
+
+@pytest.mark.parametrize(("prefer", "entries", "expected"), PREFER_CASES)
+def test_prefer_strategy_picks_keep(prefer: WashPrefer, entries: list[WashEntry], expected: str) -> None:
+    """单维度策略按该维度决胜, 容器与路径只做兜底."""
+    groups = build_groups(reversed(entries), min_size_bytes=0, prefer=prefer)
+    assert len(groups) == 1
+    assert groups[0].keep.path == expected
+
+
+def test_strm_groups_ignore_prefer() -> None:
+    """STRM 没有画质与体积, 单维度策略对它无效."""
+    groups = build_groups(
+        [entry("b/ABC-123.strm", kind=STRM, size=0, mtime=900.0), entry("a/ABC-123.strm", kind=STRM, size=0, mtime=1.0)],
+        min_size_bytes=0,
+        prefer=WashPrefer.NEWEST,
+    )
+    assert groups[0].keep.path == "/lib/a/ABC-123.strm"
 
 
 def test_strm_ignores_size_and_definition() -> None:

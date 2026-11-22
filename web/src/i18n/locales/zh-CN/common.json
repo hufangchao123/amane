@@ -62,11 +62,9 @@
     "transfer": "115 中转",
     "subtitles": "字幕补全",
     "wash": "洗版",
-    "diagnostics": "体检",
     "backup": "备份",
     "trash": "回收站",
     "maintenance": "库维护",
-    "notify": "通知",
     "audit": "审计"
   },
   "defaults": {

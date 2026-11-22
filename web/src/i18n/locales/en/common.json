@@ -62,11 +62,9 @@
     "transfer": "115 transfer",
     "subtitles": "Subtitles",
     "wash": "Wash",
-    "diagnostics": "Diagnostics",
     "backup": "Backup",
     "trash": "Trash",
     "maintenance": "Maintenance",
-    "notify": "Notifications",
     "audit": "Audit"
   },
   "defaults": {

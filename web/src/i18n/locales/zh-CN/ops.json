@@ -101,34 +101,6 @@
     "confirmPurgeMessage": "只有已到期的记录会被真正删除, 未到期的继续留着. 继续?",
     "selected": "已选 {{count}} 条"
   },
-  "diagnostics": {
-    "title": "体检",
-    "hint": "只读探针; 深度自检与模拟运行在任务执行, 本页只列当前配置下的判据.",
-    "refresh": "重新体检",
-    "allPassed": "全部通过",
-    "summary": "{{failed}} 项失败 / 共 {{total}} 项",
-    "passed": "通过",
-    "failed": "失败",
-    "loadFailed": "读取体检结果失败",
-    "columns": {
-      "check": "检查项",
-      "state": "状态",
-      "detail": "说明"
-    },
-    "checks": {
-      "data_dir": "数据目录",
-      "disk": "磁盘余量",
-      "db": "数据库",
-      "libraries": "库路径",
-      "safe_dirs": "安全目录",
-      "token": "接口鉴权",
-      "transfer": "115 中转",
-      "subtitles": "字幕来源",
-      "wash": "洗版",
-      "backup": "备份",
-      "queue": "任务队列"
-    }
-  },
   "trash": {
     "title": "回收站",
     "hint": "历史回收站 (.amane_trash) 的规模与清理; 清理由任务执行, 默认只统计.",
@@ -190,15 +162,13 @@
     }
   },
   "notify": {
-    "title": "通知",
-    "hint": "把任务结果与每日摘要推到自建渠道。渠道类型与地址在设置页填写，这里只报有没有填。",
     "channel": {
       "title": "渠道",
       "enabled": "已启用（{{kind}}）",
       "disabled": "未启用",
       "urlSet": "地址已填写。",
       "urlMissing": "地址为空，推送不会发出。",
-      "hint": "Webhook 收 {\"title\", \"body\"}；Bark 走路径参数；Server 酱收表单；Telegram 收 text。"
+      "hint": "Webhook 收 {\"title\", \"body\"}；Bark 走路径参数；Server 酱收表单；Telegram 收 text。周报内容在上面的「周报内容」里勾选。"
     },
     "send": {
       "title": "发一条测试消息",

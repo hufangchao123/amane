@@ -1628,30 +1628,6 @@ export const CancelledRowSchema = {
     description: '回合被显式终止.'
 } as const;
 
-export const CheckItemResponseSchema = {
-    properties: {
-        key: {
-            type: 'string',
-            title: 'Key'
-        },
-        ok: {
-            type: 'boolean',
-            title: 'Ok'
-        },
-        detail: {
-            type: 'string',
-            title: 'Detail'
-        }
-    },
-    type: 'object',
-    required: [
-        'key',
-        'ok',
-        'detail'
-    ],
-    title: 'CheckItemResponse'
-} as const;
-
 export const CleanupResultSchema = {
     properties: {
         type: {
@@ -2208,28 +2184,6 @@ export const DesktopResponseSchema = {
         'data_dir'
     ],
     title: 'DesktopResponse'
-} as const;
-
-export const DiagnosticsResponseSchema = {
-    properties: {
-        items: {
-            items: {
-                $ref: '#/components/schemas/CheckItemResponse'
-            },
-            type: 'array',
-            title: 'Items'
-        },
-        failed: {
-            type: 'integer',
-            title: 'Failed'
-        }
-    },
-    type: 'object',
-    required: [
-        'items',
-        'failed'
-    ],
-    title: 'DiagnosticsResponse'
 } as const;
 
 export const DownloadableResourceSchema = {
@@ -3895,7 +3849,8 @@ export const HotSettingsSchema = {
                 local: true,
                 strm: true,
                 min_size_mb: 300,
-                keep_days: 30
+                keep_days: 30,
+                prefer: 'quality'
             }
         },
         notify: {
@@ -3905,7 +3860,14 @@ export const HotSettingsSchema = {
                 kind: 'webhook',
                 url: '',
                 timeout_seconds: 10,
-                max_records: 50
+                max_records: 50,
+                sections: [
+                    'queue',
+                    'types',
+                    'library',
+                    'wash',
+                    'transfer'
+                ]
             }
         },
         worker: {
@@ -7245,6 +7207,20 @@ export const NotifyConfigSchema = {
             minimum: 1,
             title: 'Max Records',
             default: 50
+        },
+        sections: {
+            items: {
+                type: 'string',
+                enum: [
+                    'queue',
+                    'types',
+                    'library',
+                    'wash',
+                    'transfer'
+                ]
+            },
+            type: 'array',
+            title: 'Sections'
         }
     },
     type: 'object',
@@ -12887,11 +12863,27 @@ export const WashConfigSchema = {
             minimum: 1,
             title: 'Keep Days',
             default: 30
+        },
+        prefer: {
+            $ref: '#/components/schemas/WashPrefer',
+            default: 'quality'
         }
     },
     type: 'object',
     title: 'WashConfig',
     description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.'
+} as const;
+
+export const WashPreferSchema = {
+    type: 'string',
+    enum: [
+        'quality',
+        'largest',
+        'newest',
+        'oldest'
+    ],
+    title: 'WashPrefer',
+    description: '洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度.'
 } as const;
 
 export const WashPurgeRoutineSchema = {

@@ -118,6 +118,8 @@ Worker 替换不取消运行中任务: `_rebuild()` 构建新 worker 后旧 work
 - `enabled` 只管派生入口: 服务层另外要求凭据与目录齐备, 缺项报未启用而不是让任务半途失败.
 - 密钥 (115 Cookie、Assrt Token、通知地址) 是普通字符串字段, 进 secrets 脱敏, 不进日志与任务 payload.
 - 四项都不进 `_rebuild()` 链: 服务对象在请求内按当前 section 现构造, 配置改动对下一次任务立即生效.
+- 洗版留哪一份由 `wash.prefer` 决定: `quality` (默认, 分辨率 → 码率 → 体积) / `largest` / `newest` / `oldest`; 单维度策略不被画质翻盘, STRM 组不受影响.
+- 周报内容由 `notify.sections` 勾选: `queue` / `types` / `library` / `wash` / `transfer`, 默认全选, 空列表只发标题.
 
 ## `watermark` (Hot)
 

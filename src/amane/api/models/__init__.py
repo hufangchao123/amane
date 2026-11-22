@@ -13,7 +13,6 @@ from .actors import (
 )
 from .comments import CommentCreateRequest, CommentResponse, CommentUpdateRequest
 from .crop import CropBoxRequest
-from .diagnostics import CheckItemResponse, DiagnosticsResponse
 from .facets import (
     FacetBatchAction,
     FacetBatchRequest,
@@ -161,7 +160,6 @@ __all__ = [
     "BrowserBackendItemResponse",
     "BrowserBackendReportResponse",
     "BrowserInstanceResponse",
-    "CheckItemResponse",
     "CleanupSubmission",
     "CommentCreateRequest",
     "CommentResponse",
@@ -174,7 +172,6 @@ __all__ = [
     "CropPosterRequest",
     "DeleteSubmission",
     "DesktopResponse",
-    "DiagnosticsResponse",
     "FacetBatchAction",
     "FacetBatchRequest",
     "FacetBatchResponse",

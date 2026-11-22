@@ -130,7 +130,7 @@ class WashService:
     async def groups(self, *, kind: WashKindFilter = None, library_id: int | None = None) -> list[WashGroup]:
         """当前的候选分组 (未排序)."""
         entries = await collect_entries(self._repo, kinds=self.kinds(kind), library_id=library_id)
-        return build_groups(entries, min_size_bytes=self._min_size_bytes())
+        return build_groups(entries, min_size_bytes=self._min_size_bytes(), prefer=self._config.prefer)
 
     async def records(
         self,
