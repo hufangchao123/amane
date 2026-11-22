@@ -91,7 +91,6 @@
     "media_refresh": "Media library refresh",
     "wash_purge": "Purge expired wash files",
     "subtitle_audit": "Subtitle audit",
-    "trash_purge": "Clean legacy trash",
     "nfo_patch": "NFO patch",
     "notify": "Notification",
     "notify_digest": "Digest push",
@@ -573,20 +572,6 @@
       "library_id": {
         "label": "Library",
         "description": "Leave empty to audit every library"
-      }
-    },
-    "trash_purge": {
-      "keep_days": {
-        "label": "Keep days",
-        "description": "Files modified earlier are deleted permanently"
-      },
-      "library_id": {
-        "label": "Library",
-        "description": "Leave empty to handle every library"
-      },
-      "dry_run": {
-        "label": "Count only",
-        "description": "Turning this off deletes for real"
       }
     },
     "nfo_patch": {

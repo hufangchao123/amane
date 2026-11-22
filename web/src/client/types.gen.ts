@@ -4478,7 +4478,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'media_refresh' | 'notify_digest';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'media_refresh' | 'notify_digest';
 
 /**
  * RuntimePaths
@@ -4794,9 +4794,7 @@ export type ScheduleCreateRequest = {
         type: 'notify_digest';
     } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
-    } & MediaRefreshRoutine) | ({
-        type: 'trash_purge';
-    } & TrashPurgeRoutine);
+    } & MediaRefreshRoutine);
 };
 
 /**
@@ -4853,9 +4851,7 @@ export type ScheduleResponse = {
         type: 'notify_digest';
     } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
-    } & MediaRefreshRoutine) | ({
-        type: 'trash_purge';
-    } & TrashPurgeRoutine);
+    } & MediaRefreshRoutine);
     /**
      * Enabled
      */
@@ -5802,7 +5798,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6122,8 +6118,6 @@ export type TaskResponse = {
     } & SubtitleAuditResult) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchResult) | ({
-        type: 'trash_purge';
-    } & TrashPurgeResult) | ({
         type: 'nfo_patch';
     } & NfoPatchResult) | ({
         type: 'notify';
@@ -6151,7 +6145,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -6609,148 +6603,6 @@ export type TransferStatusResponse = {
      * Failed
      */
     failed: number;
-};
-
-/**
- * TrashLibraryStatus
- *
- * 一个库的 ``.amane_trash`` 现状; ``oldest_days`` 为空表示目录里没有文件.
- */
-export type TrashLibraryStatus = {
-    /**
-     * Library Id
-     */
-    library_id: number;
-    /**
-     * Name
-     */
-    name: string;
-    /**
-     * Exists
-     */
-    exists: boolean;
-    /**
-     * Files
-     */
-    files?: number;
-    /**
-     * Bytes
-     */
-    bytes?: number;
-    /**
-     * Oldest Days
-     */
-    oldest_days?: number | null;
-};
-
-/**
- * TrashPurgeResult
- */
-export type TrashPurgeResult = {
-    /**
-     * Type
-     */
-    type?: 'trash_purge';
-    /**
-     * Dry Run
-     */
-    dry_run?: boolean;
-    /**
-     * Libraries
-     */
-    libraries?: number;
-    /**
-     * Scanned
-     */
-    scanned?: number;
-    /**
-     * Purged
-     */
-    purged?: number;
-    /**
-     * Bytes Freed
-     */
-    bytes_freed?: number;
-    /**
-     * Kept
-     */
-    kept?: number;
-    /**
-     * Failed
-     */
-    failed?: number;
-    /**
-     * Samples
-     */
-    samples?: Array<string>;
-};
-
-/**
- * TrashPurgeRoutine
- *
- * 历史回收站清理的例行; 例行按真删执行, 因此没有 ``dry_run``.
- */
-export type TrashPurgeRoutine = {
-    /**
-     * Type
-     */
-    type?: 'trash_purge';
-    /**
-     * Library Id
-     */
-    library_id?: number | null;
-    /**
-     * Keep Days
-     */
-    keep_days?: number;
-};
-
-/**
- * TrashPurgeSubmission
- *
- * 历史回收站清理; 默认只统计.
- */
-export type TrashPurgeSubmission = {
-    /**
-     * Library Id
-     */
-    library_id?: number | null;
-    /**
-     * Keep Days
-     *
-     * 保留天数, 修改时间更早的文件被永久删除
-     */
-    keep_days?: number;
-    /**
-     * Dry Run
-     *
-     * 只统计不删除
-     */
-    dry_run?: boolean;
-    /**
-     * Type
-     */
-    type: 'trash_purge';
-};
-
-/**
- * TrashStatusResponse
- *
- * 全部库的回收站现状; 没有库时 ``libraries`` 为空.
- */
-export type TrashStatusResponse = {
-    /**
-     * Libraries
-     */
-    libraries: Array<TrashLibraryStatus>;
-    /**
-     * Total Files
-     */
-    total_files?: number;
-    /**
-     * Total Bytes
-     */
-    total_bytes?: number;
 };
 
 /**
@@ -10353,8 +10205,6 @@ export type SubmitTaskData = {
     } & WashApplySubmission) | ({
         type: 'media_refresh';
     } & MediaRefreshSubmission) | ({
-        type: 'trash_purge';
-    } & TrashPurgeSubmission) | ({
         type: 'nfo_patch';
     } & NfoPatchSubmission) | ({
         type: 'notify';
@@ -11771,22 +11621,6 @@ export type PurgeWashRecordsResponses = {
 };
 
 export type PurgeWashRecordsResponse = PurgeWashRecordsResponses[keyof PurgeWashRecordsResponses];
-
-export type GetTrashStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/trash/status';
-};
-
-export type GetTrashStatusResponses = {
-    /**
-     * Successful Response
-     */
-    200: TrashStatusResponse;
-};
-
-export type GetTrashStatusResponse = GetTrashStatusResponses[keyof GetTrashStatusResponses];
 
 export type GetNfoStatusData = {
     body?: never;

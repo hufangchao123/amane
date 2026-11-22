@@ -12,7 +12,6 @@ STATUS_CASES = [
     pytest.param("transfer/status", {"enabled", "pending", "moved", "skipped", "failed"}, id="transfer"),
     pytest.param("subtitles/status", {"enabled", "missing", "queued"}, id="subtitles"),
     pytest.param("wash/status", {"enabled", "groups", "trashed", "restorable_bytes"}, id="wash"),
-    pytest.param("trash/status", {"libraries", "total_files", "total_bytes"}, id="trash"),
     pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
     pytest.param("notify/status", {"enabled", "kind", "has_url", "records"}, id="notify"),
 ]
@@ -65,7 +64,6 @@ SUBMIT_CASES = [
     pytest.param({"type": "subtitle_audit"}, "subtitle_audit", id="subtitle-audit"),
     pytest.param({"type": "wash_scan", "kind": "local"}, "wash_scan", id="wash-scan"),
     pytest.param({"type": "wash_apply", "group_keys": ["SSIS-1"]}, "wash_apply", id="wash-apply"),
-    pytest.param({"type": "trash_purge", "keep_days": 7}, "trash_purge", id="trash-purge"),
     pytest.param({"type": "nfo_patch", "kind": "directors"}, "nfo_patch", id="nfo-patch"),
     pytest.param({"type": "notify", "title": "测试", "body": "正文"}, "notify", id="notify"),
     pytest.param({"type": "avatar_check", "limit": 5}, "avatar_check", id="avatar-check"),

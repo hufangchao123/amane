@@ -45,7 +45,6 @@ _TYPE_LABELS: dict[TaskType, str] = {
     TaskType.NFO_PATCH: "NFO 修补",
     TaskType.NOTIFY: "通知",
     TaskType.AVATAR_CHECK: "头像校验",
-    TaskType.TRASH_PURGE: "回收站清理",
     TaskType.WASH_SCAN: "洗版扫描",
     TaskType.WASH_APPLY: "洗版",
     TaskType.MEDIA_REFRESH: "媒体库刷新",

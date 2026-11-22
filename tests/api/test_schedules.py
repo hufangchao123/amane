@@ -107,19 +107,13 @@ class TestSchedules:
         assert refresh.json()["task_type"] == "media_refresh"
         assert refresh.json()["payload"] == {"type": "media_refresh"}
 
-        trash = await client.post(
-            "schedules", json={"cron": "0 4 * * *", "submission": {"type": "trash_purge", "keep_days": 14}}
-        )
-        assert trash.status_code == 201
-        assert trash.json()["payload"] == {"type": "trash_purge", "keep_days": 14, "library_id": None}
-
         digest = await client.post("schedules", json={"cron": "0 9 * * 1", "submission": {"type": "notify_digest"}})
         assert digest.status_code == 201
         assert digest.json()["task_type"] == "notify_digest"
         assert digest.json()["payload"] == {"type": "notify_digest"}
 
         listed = await client.get("schedules")
-        assert listed.json()["total"] == 11
+        assert listed.json()["total"] == 10
 
         sched = await repo.create_schedule(cron="0 0 * * *", task_type=RoutineType.CLEANUP, payload={}, name="old")
         sparse = await client.get(f"schedules/{sched.id}")

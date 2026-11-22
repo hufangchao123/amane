@@ -24,7 +24,6 @@ from ...handlers import (
     SubtitleAuditPayload,
     SubtitleFetchPayload,
     Transfer115Payload,
-    TrashPurgePayload,
     UpscalePayload,
     WashApplyPayload,
     WashScanPayload,
@@ -51,7 +50,6 @@ from ..models import (
     SubtitleFetchSubmission,
     TaskSubmission,
     Transfer115Submission,
-    TrashPurgeSubmission,
     UpscaleSubmission,
     WashApplySubmission,
     WashScanSubmission,
@@ -79,7 +77,6 @@ ResolvedPayload = (
     | SubtitleAuditPayload
     | SubtitleFetchPayload
     | WashScanPayload
-    | TrashPurgePayload
     | NfoPatchPayload
     | AvatarCheckPayload
     | NotifyPayload
@@ -138,10 +135,6 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             )
         case WashScanSubmission():
             return TaskType.WASH_SCAN, WashScanPayload(kind=req.kind, library_id=req.library_id)
-        case TrashPurgeSubmission():
-            return TaskType.TRASH_PURGE, TrashPurgePayload(
-                library_id=req.library_id, keep_days=req.keep_days, dry_run=req.dry_run
-            )
         case AvatarCheckSubmission():
             return TaskType.AVATAR_CHECK, AvatarCheckPayload(limit=req.limit, clear_broken=req.clear_broken)
         case NotifySubmission():

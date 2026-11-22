@@ -151,26 +151,6 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
-    case "trash_purge":
-      return (
-        <CountBadges
-          failed={failed}
-          entries={[
-            { label: t("result.counts.scanned"), value: result.scanned ?? 0, tone: "gray" },
-            { label: t("result.counts.purged"), value: result.purged ?? 0, tone: "teal" },
-            { label: t("result.counts.kept"), value: result.kept ?? 0, tone: "gray" },
-            {
-              label: t("result.counts.freed"),
-              value: formatFileSize(result.bytes_freed),
-              tone: "gray",
-            },
-            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
-            ...(result.dry_run
-              ? [{ label: t("result.counts.dryRun"), value: "—", tone: "gray" as const }]
-              : []),
-          ]}
-        />
-      );
     case "nfo_patch":
       return (
         <CountBadges

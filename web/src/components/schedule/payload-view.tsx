@@ -145,8 +145,6 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       return [t("schedules:payload.wash_purge.summary")];
     case "media_refresh":
       return [t("schedules:payload.media_refresh.summary")];
-    case "trash_purge":
-      return [t("schedules:payload.trash_purge.summary", { days: payload.keep_days })];
     case "notify_digest":
       return [t("schedules:payload.notify_digest.summary")];
     default:
@@ -268,17 +266,6 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         {
           label: t("schedules:payload.media_refresh.scope"),
           value: t("schedules:payload.media_refresh.wholeServer"),
-        },
-      ];
-    case "trash_purge":
-      return [
-        { label: t("schedules:payload.trash_purge.keepDays"), value: String(payload.keep_days) },
-        {
-          label: t("schedules:payload.trash_purge.scope"),
-          value:
-            payload.library_id == null
-              ? t("schedules:payload.trash_purge.allLibraries")
-              : t("schedules:payload.trash_purge.library", { id: payload.library_id }),
         },
       ];
     case "notify_digest":

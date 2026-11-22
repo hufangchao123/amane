@@ -34,7 +34,6 @@ from amane.handlers.models import (
     SubtitleAuditResult,
     SubtitleFetchResult,
     Transfer115Result,
-    TrashPurgeResult,
     UpscaleResult,
     WashApplyResult,
     WashScanResult,
@@ -155,10 +154,6 @@ RESULT_CASES = [
     pytest.param(Transfer115Result(scanned=12, moved=9, skipped=2, failed=1), id="transfer_115"),
     pytest.param(SubtitleFetchResult(fetched=3, missing=2, failed=0), id="subtitle_fetch"),
     pytest.param(SubtitleAuditResult(libraries=1, videos=3, subtitles=2, missing=1, orphans=1), id="subtitle_audit"),
-    pytest.param(
-        TrashPurgeResult(dry_run=False, libraries=1, scanned=3, purged=2, bytes_freed=1024),
-        id="trash_purge",
-    ),
     pytest.param(
         ScrapeTransferResult(outcome="ok", destination="/media/done", files=3, bytes=2048),
         id="scrape_transfer",

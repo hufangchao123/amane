@@ -95,13 +95,6 @@
       "summary": "Scan wash candidates ({{kind}}) and record them, no auto apply",
       "scope": "Scan scope"
     },
-    "trash_purge": {
-      "summary": "Purge trash older than {{days}} days",
-      "keepDays": "Keep days",
-      "scope": "Scope",
-      "allLibraries": "All libraries",
-      "library": "Library {{id}}"
-    },
     "notify_digest": {
       "summary": "Push a digest",
       "scope": "Scope",

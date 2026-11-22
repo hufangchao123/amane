@@ -53,7 +53,6 @@ class TaskType(StrEnum):
     NFO_PATCH = "nfo_patch"
     NOTIFY = "notify"
     AVATAR_CHECK = "avatar_check"
-    TRASH_PURGE = "trash_purge"
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
     MEDIA_REFRESH = "media_refresh"
@@ -68,7 +67,6 @@ class RoutineType(StrEnum):
     TRANSFER_115 = "transfer_115"
     WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
-    TRASH_PURGE = "trash_purge"
     MEDIA_REFRESH = "media_refresh"
     NOTIFY_DIGEST = "notify_digest"
 

@@ -46,8 +46,6 @@ from ...handlers import (
     SubtitleFetchResult,
     Transfer115Payload,
     Transfer115Result,
-    TrashPurgePayload,
-    TrashPurgeResult,
     UpscalePayload,
     UpscaleResult,
     WashApplyPayload,
@@ -85,7 +83,6 @@ TaskResultPayload = Annotated[
     | Transfer115Result
     | SubtitleAuditResult
     | SubtitleFetchResult
-    | TrashPurgeResult
     | NfoPatchResult
     | NotifyResult
     | AvatarCheckResult
@@ -338,12 +335,6 @@ class SubtitleFetchSubmission(SubtitleFetchPayload):
     type: Literal["subtitle_fetch"]
 
 
-class TrashPurgeSubmission(TrashPurgePayload):
-    """历史回收站清理; 默认只统计."""
-
-    type: Literal["trash_purge"]
-
-
 class NfoPatchSubmission(NfoPatchPayload):
     """NFO 修补; 默认只统计不写盘."""
 
@@ -399,7 +390,6 @@ TaskSubmission = Annotated[
     | WashScanSubmission
     | WashApplySubmission
     | MediaRefreshSubmission
-    | TrashPurgeSubmission
     | NfoPatchSubmission
     | NotifySubmission
     | AvatarCheckSubmission,
@@ -419,14 +409,6 @@ class WashPurgeRoutine(BaseModel):
     type: Literal["wash_purge"] = "wash_purge"
 
 
-class TrashPurgeRoutine(BaseModel):
-    """历史回收站清理的例行; 例行按真删执行, 因此没有 ``dry_run``."""
-
-    type: Literal["trash_purge"] = "trash_purge"
-    library_id: int | None = None
-    keep_days: int = Field(default=30, ge=1, le=3650)
-
-
 class MediaRefreshRoutine(BaseModel):
     """媒体库刷新的例行; 目标服务器由 ``media_server`` 配置决定, 因此没有参数."""
 
@@ -443,8 +425,7 @@ RoutineSubmission = Annotated[
     | WashScanSubmission
     | WashPurgeRoutine
     | NotifyDigestRoutine
-    | MediaRefreshRoutine
-    | TrashPurgeRoutine,
+    | MediaRefreshRoutine,
     Field(discriminator="type"),
 ]
 

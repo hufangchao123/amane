@@ -50,7 +50,6 @@ export type PanelOnlyTaskType =
   | "subtitle_audit"
   | "wash_scan"
   | "wash_apply"
-  | "trash_purge"
   | "nfo_patch"
   | "notify"
   | "avatar_check"
@@ -122,7 +121,6 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "wash_scan",
   "wash_apply",
   "media_refresh",
-  "trash_purge",
   "nfo_patch",
   "notify",
   "avatar_check",
@@ -167,7 +165,6 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "wash_scan",
   "wash_purge",
   "media_refresh",
-  "trash_purge",
   "notify_digest",
 );
 

@@ -19,6 +19,5 @@ from .semantic import *
 from .subtitle_audit import *
 from .subtitle_fetch import *
 from .transfer115 import *
-from .trash_purge import *
 from .upscale import *
 from .wash import *
