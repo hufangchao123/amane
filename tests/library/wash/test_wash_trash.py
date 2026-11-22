@@ -236,3 +236,18 @@ async def test_purge_refuses_library_file(library_root: Path) -> None:
 
     assert (report.purged, report.failed) == (0, 1)
     assert library_file.read_bytes() == b"x" * 8
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_reports_one_outcome_per_path(library_root: Path) -> None:
+    """每条路径恰好一个结果且顺序与输入一致: 调用方按位置把结果映射回记录."""
+    purged = make_file(library_root.parent / TRASH_DIRNAME / "lib" / "local" / "a.mkv", size=16)
+    missing = library_root.parent / TRASH_DIRNAME / "lib" / "local" / "gone.mkv"
+    outside = make_file(library_root / "ABC-123.mkv", size=8)
+
+    report = await purge_trash_paths([purged, missing, outside])
+
+    assert [item.status for item in report.outcomes] == ["purged", "missing", "failed"]
+    assert [item.path for item in report.outcomes] == [str(purged), str(missing), str(outside)]
+    assert report.outcomes[0].size == 16
+    assert report.outcomes[2].error is not None

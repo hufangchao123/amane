@@ -233,6 +233,9 @@ async def purge_records(
 
     文件已经不在回收站里的记录同样置 ``purged``: 它已经无法还原, 留在 ``trashed`` 里会让状态卡
     永远显示一份不存在的可还原体积.
+
+    删失败 (权限、占用) 的记录**留在** ``trashed``: 文件还在回收站里, 推进 ``purged`` 会同时抹掉
+    还原入口与下一轮重试的机会 —— 与面板一审 P0-9 的「假成功」同一类错误. 失败原因回注报告.
     """
     report = ApplyReport()
     moment = now or datetime.now(UTC)
@@ -255,8 +258,13 @@ async def purge_records(
     report.failed = outcome.failed
     report.skipped += outcome.missing
     report.errors.extend(outcome.errors[:_MAX_ERRORS])
-    ids = [record.id for record in expired if record.id is not None]
-    await repo.set_wash_record_state(ids, WashRecordState.PURGED)
+    cleared = [
+        record.id
+        for record, item in zip(expired, outcome.outcomes, strict=True)
+        if item.status != "failed" and record.id is not None
+    ]
+    if cleared:
+        await repo.set_wash_record_state(cleared, WashRecordState.PURGED)
     await _report(progress, len(expired), len(expired), "done")
     return report
 
