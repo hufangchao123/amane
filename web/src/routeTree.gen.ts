@@ -11,8 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorsRouteImport } from './routes/actors'
-import { Route as AuditRouteImport } from './routes/audit'
-import { Route as BackupRouteImport } from './routes/backup'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
@@ -55,16 +53,6 @@ const IndexRoute = IndexRouteImport.update({
 const ActorsRoute = ActorsRouteImport.update({
   id: '/actors',
   path: '/actors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditRoute = AuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BackupRoute = BackupRouteImport.update({
-  id: '/backup',
-  path: '/backup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -236,8 +224,6 @@ const CatalogKindFacetIdRoute = CatalogKindFacetIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/actors': typeof ActorsRouteWithChildren
-  '/audit': typeof AuditRoute
-  '/backup': typeof BackupRoute
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
   '/diagnostics': typeof DiagnosticsRoute
@@ -274,8 +260,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/audit': typeof AuditRoute
-  '/backup': typeof BackupRoute
   '/client': typeof ClientRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/logs': typeof LogsRoute
@@ -309,8 +293,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/actors': typeof ActorsRouteWithChildren
-  '/audit': typeof AuditRoute
-  '/backup': typeof BackupRoute
   '/catalog': typeof CatalogRouteWithChildren
   '/client': typeof ClientRoute
   '/diagnostics': typeof DiagnosticsRoute
@@ -350,8 +332,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/actors'
-    | '/audit'
-    | '/backup'
     | '/catalog'
     | '/client'
     | '/diagnostics'
@@ -388,8 +368,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/audit'
-    | '/backup'
     | '/client'
     | '/diagnostics'
     | '/logs'
@@ -422,8 +400,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/actors'
-    | '/audit'
-    | '/backup'
     | '/catalog'
     | '/client'
     | '/diagnostics'
@@ -462,8 +438,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActorsRoute: typeof ActorsRouteWithChildren
-  AuditRoute: typeof AuditRoute
-  BackupRoute: typeof BackupRoute
   CatalogRoute: typeof CatalogRouteWithChildren
   ClientRoute: typeof ClientRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
@@ -500,20 +474,6 @@ declare module '@tanstack/react-router' {
       path: '/actors'
       fullPath: '/actors'
       preLoaderRoute: typeof ActorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit': {
-      id: '/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/backup': {
-      id: '/backup'
-      path: '/backup'
-      fullPath: '/backup'
-      preLoaderRoute: typeof BackupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -833,8 +793,6 @@ const SavedQueriesRouteWithChildren = SavedQueriesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActorsRoute: ActorsRouteWithChildren,
-  AuditRoute: AuditRoute,
-  BackupRoute: BackupRoute,
   CatalogRoute: CatalogRouteWithChildren,
   ClientRoute: ClientRoute,
   DiagnosticsRoute: DiagnosticsRoute,
