@@ -682,7 +682,7 @@ class TestConfigManagerLoad:
     def test_legacy_backup_section_dropped(self, tmp_path: Path):
         """备份功能已移除, 旧 TOML 的 [backup] 被忽略, 不让整份配置校验失败."""
         config_path = tmp_path / "config.toml"
-        config_path.write_text('[backup]\nenabled = true\nkeep_db = 7\n\n[worker]\nconcurrency = 4\n')
+        config_path.write_text("[backup]\nenabled = true\nkeep_db = 7\n\n[worker]\nconcurrency = 4\n")
 
         with patch.dict(os.environ, {"AMANE_DATA_DIR": str(tmp_path)}, clear=False):
             cold = ColdSettings()

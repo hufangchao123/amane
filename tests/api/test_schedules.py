@@ -90,7 +90,6 @@ class TestSchedules:
         assert transfer.json()["task_type"] == "transfer_115"
         assert transfer.json()["payload"] == {"type": "transfer_115", "full": True}
 
-
         scan = await client.post(
             "schedules", json={"cron": "0 2 * * *", "submission": {"type": "wash_scan", "kind": "local"}}
         )
