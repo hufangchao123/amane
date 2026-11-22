@@ -8,7 +8,7 @@ from amane.config.manager import SubtitleProvider
 from amane.net import FailureKind, RequestError, RequestFailure
 from amane.subtitles import SubtitleSourceError, fetch_subtitle
 from amane.subtitles.assrt import AssrtCandidate, parse_detail, parse_search, rank_candidates
-from amane.subtitles.models import language_tags
+from amane.subtitles.models import language_tags, request_error_message
 from amane.subtitles.subtitlecat import parse_search as parse_subtitlecat_search
 from amane.subtitles.subtitlecat import pick_download_path
 from tests.subtitles.support import SUBTITLE_BODY, FakeHttp
@@ -50,6 +50,22 @@ class TestAssrtParse:
         ]
         # 有候选命中番号时, 不含番号的整条丢掉: 来源的模糊结果多半是别的片子.
         assert [c.sub_id for c in rank_candidates(candidates, "AD-1", tags)] == [3, 2]
+
+    @pytest.mark.parametrize(
+        ("languages", "expected"),
+        [
+            (["zh-CN", "zh-TW"], 1),
+            (["zh-TW", "zh-CN"], 2),
+        ],
+    )
+    def test_rank_follows_configured_language_order(self, languages: list[str], expected: int):
+        """多语言候选按配置顺序排, 不写死简体优先: 配了繁体优先就该先取繁体那份."""
+        candidates = [
+            AssrtCandidate(sub_id=1, title="AD-1 简体中字"),
+            AssrtCandidate(sub_id=2, title="AD-1 繁体中字"),
+        ]
+        ranked = rank_candidates(candidates, "AD-1", language_tags(languages))
+        assert ranked[0].sub_id == expected
 
     def test_rank_keeps_all_when_nothing_matches(self):
         """一条都不含番号时保留全部, 否则整个来源等于白跑."""
@@ -209,3 +225,50 @@ class _RejectingHttp(FakeHttp):
     async def get_text(self, url: str, *, headers: dict[str, str] | None = None, use_proxy: bool = True) -> str:
         self.calls.append(url)
         raise RequestError(url, RequestFailure(kind=FailureKind.HTTP_STATUS, message="404 not found", status=404))
+
+
+SECRET_TOKEN = "SECRET-TOKEN-3f9a"
+"""假 token: 用例只验证它不出现在任何文案里, 仓库里不留真实凭据."""
+
+
+class _LeakingHttp(FakeHttp):
+    """来源失败时把整条带 token 的地址抄进 ``failure.message``, 这是上游真实会有的写法."""
+
+    async def get_json(self, url: str, *, headers: dict[str, str] | None = None, use_proxy: bool = True) -> object:
+        self.calls.append(url)
+        raise RequestError(
+            url,
+            RequestFailure(kind=FailureKind.HTTP_STATUS, status=503, message=f"503 for url {url}"),
+        )
+
+
+class TestTokenRedaction:
+    """assrt 的 token 只能走查询串, 因此文案里一旦抄了地址就等于泄露凭据."""
+
+    def test_message_redacts_url_copied_into_failure(self):
+        url = f"https://api.assrt.net/v1/sub/search?q=AD-1&token={SECRET_TOKEN}"
+        exc = RequestError(url, RequestFailure(kind=FailureKind.HTTP_STATUS, status=503, message=f"503 for url {url}"))
+
+        message = request_error_message("assrt 搜索失败", exc)
+
+        assert SECRET_TOKEN not in message
+        assert "token=***" in message
+
+    def test_message_keeps_text_without_url(self):
+        """脱敏只动地址: 没有地址的文案要保持原样, 便于按原文排查."""
+        exc = RequestError(
+            "https://api.assrt.net/v1/sub/search", RequestFailure(kind=FailureKind.TIMEOUT, message="timeout")
+        )
+
+        assert request_error_message("assrt 搜索失败", exc) == "assrt 搜索失败: timeout"
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_fetch_failure_message_never_carries_token(self, public_dns: None):
+        web = _LeakingHttp()
+
+        with pytest.raises(SubtitleSourceError) as excinfo:
+            await fetch_subtitle(web, _config(providers=["assrt"], assrt_token=SECRET_TOKEN), "AD-1")
+
+        assert SECRET_TOKEN not in str(excinfo.value)
+        assert "token=***" in str(excinfo.value)
+        assert excinfo.value.transient is True, "503 是临时失败, 下一轮还会再试"
