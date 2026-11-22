@@ -47,6 +47,7 @@ interface TemplateInputProps {
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   catalog?: TemplateCatalog;
+  disabled?: boolean;
   id?: string;
 }
 
@@ -58,6 +59,7 @@ export function TemplateInput({
   value,
   onChange,
   catalog,
+  disabled,
   id,
 }: TemplateInputProps) {
   const uid = useId(id);
@@ -111,6 +113,7 @@ export function TemplateInput({
         <Input
           id={uid}
           ref={inputRef}
+          disabled={disabled}
           value={value}
           placeholder={placeholder}
           spellCheck={false}

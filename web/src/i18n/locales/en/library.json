@@ -89,6 +89,8 @@
     "label": "Auto organize",
     "hint": "Organize the file automatically once it is scraped"
   },
+  "organizeGroup": "Organize",
+  "organizeLocked": "Auto organize is off; these templates and move options only apply when you organize manually",
   "scrapeTransfer": {
     "label": "Transfer after scrape",
     "hint": "With this on the library root holds finished files: pending files land in the input dir, scraped ones move into the root, failed ones into the failure dir.",

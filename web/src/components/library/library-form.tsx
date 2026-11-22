@@ -3,6 +3,7 @@ import {
   Anchor,
   Badge,
   Checkbox,
+  Fieldset,
   Group,
   Input,
   NumberInput,
@@ -302,6 +303,9 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
     }
   };
 
+  // 整理相关字段只服务落盘: 自动整理关掉时它们仍会被手动整理用到, 但不需要在这里调, 因此锁住并说明.
+  const organizeLocked = !value.auto_organize;
+
   return (
     <Stack gap="md">
       <Group align="flex-end" grow preventGrowOverflow={false} wrap="wrap">
@@ -388,95 +392,110 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             }}
           />
         </SimpleGrid>
-        <div className={classes.alignedRow}>
-          <Input.Label className={classes.l1} htmlFor="library-subtitle-extensions">
-            {t("fieldSubtitleExtensions")}
-          </Input.Label>
-          <Input.Label className={classes.l2}>{t("fieldMoveMode")}</Input.Label>
-          <Input.Label className={classes.l3} htmlFor="library-write-nfo">
-            {t("fieldWriteNfo")}
-          </Input.Label>
-          <Input.Description className={classes.d1}>
-            {t("fieldSubtitleExtensionsHint")}
-          </Input.Description>
-          <Input.Description className={classes.d2} aria-hidden>
-            {"\u00a0"}
-          </Input.Description>
-          <Input.Description className={classes.d3} aria-hidden>
-            {"\u00a0"}
-          </Input.Description>
-          <TextInput
-            id="library-subtitle-extensions"
-            className={classes.c1}
-            value={value.subtitle_extensions}
-            onChange={(e) => onChange({ ...value, subtitle_extensions: e.currentTarget.value })}
-          />
-          <div className={classes.c2}>
-            <EnumToggle
-              options={MOVE_MODES}
-              value={value.move_mode}
-              onChange={(move_mode) => onChange({ ...value, move_mode })}
-              getLabel={(mode) => t(`moveMode.${mode}`)}
-            />
-          </div>
-          <div className={classes.c3}>
-            <Switch
-              id="library-write-nfo"
-              checked={value.write_nfo}
-              onChange={(e) => onChange({ ...value, write_nfo: e.currentTarget.checked })}
-              aria-label={t("fieldWriteNfo")}
-            />
-          </div>
-        </div>
       </Stack>
-      <Checkbox.Group
-        label={t("fieldCopyResources")}
-        description={t("fieldCopyResourcesHint")}
-        value={value.copy_resources}
-        onChange={(selected) =>
-          onChange({ ...value, copy_resources: parseCopyResources(selected) })
-        }
-      >
-        <Group mt="xs">
-          {DOWNLOADABLE_RESOURCES.map((kind) => (
-            <Checkbox key={kind} value={kind} label={t(`copyResource.${kind}`)} />
-          ))}
-        </Group>
-      </Checkbox.Group>
-      <TemplateInput
-        label={t("fieldVideoTemplate")}
-        description={t("fieldVideoTemplateHint")}
-        catalog={catalog}
-        value={value.video_template}
-        onChange={(e) => onChange({ ...value, video_template: e.currentTarget.value })}
-      />
-      <TemplateInput
-        label={t("fieldLinkTemplate")}
-        description={t("fieldLinkTemplateHint")}
-        placeholder={t("fieldLinkTemplatePlaceholder")}
-        catalog={catalog}
-        value={value.link_template}
-        onChange={(e) => onChange({ ...value, link_template: e.currentTarget.value })}
-      />
-      {value.link_template.trim() !== "" && (
-        <FieldChrome label={t("fieldLinkMode")}>
-          <EnumToggle
-            options={LINK_MODES}
-            value={value.link_mode}
-            onChange={(link_mode) => onChange({ ...value, link_mode })}
-            getLabel={(mode) => t(`linkMode.${mode}`)}
+
+      <Fieldset legend={t("organizeGroup")} variant="default" disabled={organizeLocked}>
+        {organizeLocked && (
+          <Text size="xs" c="dimmed" mb="sm">
+            {t("organizeLocked")}
+          </Text>
+        )}
+        <Stack gap="md">
+          <div className={classes.alignedRow}>
+            <Input.Label className={classes.l1} htmlFor="library-subtitle-extensions">
+              {t("fieldSubtitleExtensions")}
+            </Input.Label>
+            <Input.Label className={classes.l2}>{t("fieldMoveMode")}</Input.Label>
+            <Input.Label className={classes.l3} htmlFor="library-write-nfo">
+              {t("fieldWriteNfo")}
+            </Input.Label>
+            <Input.Description className={classes.d1}>
+              {t("fieldSubtitleExtensionsHint")}
+            </Input.Description>
+            <Input.Description className={classes.d2} aria-hidden>
+              {"\u00a0"}
+            </Input.Description>
+            <Input.Description className={classes.d3} aria-hidden>
+              {"\u00a0"}
+            </Input.Description>
+            <TextInput
+              id="library-subtitle-extensions"
+              className={classes.c1}
+              value={value.subtitle_extensions}
+              onChange={(e) => onChange({ ...value, subtitle_extensions: e.currentTarget.value })}
+            />
+            <div className={classes.c2}>
+              <EnumToggle
+                disabled={organizeLocked}
+                options={MOVE_MODES}
+                value={value.move_mode}
+                onChange={(move_mode) => onChange({ ...value, move_mode })}
+                getLabel={(mode) => t(`moveMode.${mode}`)}
+              />
+            </div>
+            <div className={classes.c3}>
+              <Switch
+                id="library-write-nfo"
+                checked={value.write_nfo}
+                onChange={(e) => onChange({ ...value, write_nfo: e.currentTarget.checked })}
+                aria-label={t("fieldWriteNfo")}
+              />
+            </div>
+          </div>
+          <Checkbox.Group
+            label={t("fieldCopyResources")}
+            description={t("fieldCopyResourcesHint")}
+            value={value.copy_resources}
+            onChange={(selected) =>
+              onChange({ ...value, copy_resources: parseCopyResources(selected) })
+            }
+          >
+            <Group mt="xs">
+              {DOWNLOADABLE_RESOURCES.map((kind) => (
+                <Checkbox key={kind} value={kind} label={t(`copyResource.${kind}`)} />
+              ))}
+            </Group>
+          </Checkbox.Group>
+          <TemplateInput
+            disabled={organizeLocked}
+            label={t("fieldVideoTemplate")}
+            description={t("fieldVideoTemplateHint")}
+            catalog={catalog}
+            value={value.video_template}
+            onChange={(e) => onChange({ ...value, video_template: e.currentTarget.value })}
           />
-        </FieldChrome>
-      )}
-      {value.link_template.trim() !== "" && value.link_mode === "strm" && (
-        <TemplateInput
-          label={t("fieldStrmContentTemplate")}
-          description={t("fieldStrmContentTemplateHint")}
-          catalog={catalog}
-          value={value.strm_content_template}
-          onChange={(e) => onChange({ ...value, strm_content_template: e.currentTarget.value })}
-        />
-      )}
+          <TemplateInput
+            disabled={organizeLocked}
+            label={t("fieldLinkTemplate")}
+            description={t("fieldLinkTemplateHint")}
+            placeholder={t("fieldLinkTemplatePlaceholder")}
+            catalog={catalog}
+            value={value.link_template}
+            onChange={(e) => onChange({ ...value, link_template: e.currentTarget.value })}
+          />
+          {value.link_template.trim() !== "" && (
+            <FieldChrome label={t("fieldLinkMode")}>
+              <EnumToggle
+                disabled={organizeLocked}
+                options={LINK_MODES}
+                value={value.link_mode}
+                onChange={(link_mode) => onChange({ ...value, link_mode })}
+                getLabel={(mode) => t(`linkMode.${mode}`)}
+              />
+            </FieldChrome>
+          )}
+          {value.link_template.trim() !== "" && value.link_mode === "strm" && (
+            <TemplateInput
+              disabled={organizeLocked}
+              label={t("fieldStrmContentTemplate")}
+              description={t("fieldStrmContentTemplateHint")}
+              catalog={catalog}
+              value={value.strm_content_template}
+              onChange={(e) => onChange({ ...value, strm_content_template: e.currentTarget.value })}
+            />
+          )}
+        </Stack>
+      </Fieldset>
 
       {placeholders.length > 0 && (
         <Stack gap={4}>
@@ -544,6 +563,7 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
                 {OPTIONAL_TEMPLATE_KEYS.map((key) => (
                   <TemplateInput
                     key={key}
+                    disabled={organizeLocked}
                     label={t(TPL_I18N[key])}
                     description={
                       optionalDefaults?.[key]
