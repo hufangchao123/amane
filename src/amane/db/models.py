@@ -48,6 +48,7 @@ class TaskType(StrEnum):
     TRANSFER_115 = "transfer_115"
     SUBTITLE_FETCH = "subtitle_fetch"
     SUBTITLE_AUDIT = "subtitle_audit"
+    TRASH_PURGE = "trash_purge"
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
     BACKUP = "backup"
@@ -63,6 +64,7 @@ class RoutineType(StrEnum):
     TRANSFER_115 = "transfer_115"
     WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
+    TRASH_PURGE = "trash_purge"
     BACKUP = "backup"
     MEDIA_REFRESH = "media_refresh"
 

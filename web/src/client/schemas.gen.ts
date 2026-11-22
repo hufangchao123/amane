@@ -7997,6 +7997,7 @@ export const RoutineTypeSchema = {
         'transfer_115',
         'wash_scan',
         'wash_purge',
+        'trash_purge',
         'backup',
         'media_refresh'
     ],
@@ -8489,6 +8490,9 @@ export const ScheduleCreateRequestSchema = {
                 },
                 {
                     $ref: '#/components/schemas/MediaRefreshRoutine'
+                },
+                {
+                    $ref: '#/components/schemas/TrashPurgeRoutine'
                 }
             ],
             title: 'Submission',
@@ -8502,6 +8506,7 @@ export const ScheduleCreateRequestSchema = {
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
                     transfer_115: '#/components/schemas/Transfer115Submission',
+                    trash_purge: '#/components/schemas/TrashPurgeRoutine',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -8594,6 +8599,9 @@ export const ScheduleResponseSchema = {
                 },
                 {
                     $ref: '#/components/schemas/MediaRefreshRoutine'
+                },
+                {
+                    $ref: '#/components/schemas/TrashPurgeRoutine'
                 }
             ],
             title: 'Payload',
@@ -8607,6 +8615,7 @@ export const ScheduleResponseSchema = {
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
                     transfer_115: '#/components/schemas/Transfer115Submission',
+                    trash_purge: '#/components/schemas/TrashPurgeRoutine',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -10270,6 +10279,9 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/MediaRefreshSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/TrashPurgeSubmission'
                     }
                 ],
                 discriminator: {
@@ -10292,6 +10304,7 @@ export const TaskBatchSubmitRequestSchema = {
                         subtitle_audit: '#/components/schemas/SubtitleAuditSubmission',
                         subtitle_fetch: '#/components/schemas/SubtitleFetchSubmission',
                         transfer_115: '#/components/schemas/Transfer115Submission',
+                        trash_purge: '#/components/schemas/TrashPurgeSubmission',
                         upscale: '#/components/schemas/UpscaleSubmission',
                         wash_apply: '#/components/schemas/WashApplySubmission',
                         wash_scan: '#/components/schemas/WashScanSubmission'
@@ -10860,6 +10873,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/SubtitleFetchResult'
                         },
                         {
+                            $ref: '#/components/schemas/TrashPurgeResult'
+                        },
+                        {
                             $ref: '#/components/schemas/WashScanResult'
                         },
                         {
@@ -10892,6 +10908,7 @@ export const TaskResponseSchema = {
                             subtitle_audit: '#/components/schemas/SubtitleAuditResult',
                             subtitle_fetch: '#/components/schemas/SubtitleFetchResult',
                             transfer_115: '#/components/schemas/Transfer115Result',
+                            trash_purge: '#/components/schemas/TrashPurgeResult',
                             upscale: '#/components/schemas/UpscaleResult',
                             wash_apply: '#/components/schemas/WashApplyResult',
                             wash_scan: '#/components/schemas/WashScanResult'
@@ -10958,6 +10975,7 @@ export const TaskTypeSchema = {
         'transfer_115',
         'subtitle_fetch',
         'subtitle_audit',
+        'trash_purge',
         'wash_scan',
         'wash_apply',
         'backup',
@@ -11474,6 +11492,209 @@ export const TransferStatusResponseSchema = {
         'failed'
     ],
     title: 'TransferStatusResponse'
+} as const;
+
+export const TrashLibraryStatusSchema = {
+    properties: {
+        library_id: {
+            type: 'integer',
+            title: 'Library Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        exists: {
+            type: 'boolean',
+            title: 'Exists'
+        },
+        files: {
+            type: 'integer',
+            title: 'Files',
+            default: 0
+        },
+        bytes: {
+            type: 'integer',
+            title: 'Bytes',
+            default: 0
+        },
+        oldest_days: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Oldest Days'
+        }
+    },
+    type: 'object',
+    required: [
+        'library_id',
+        'name',
+        'exists'
+    ],
+    title: 'TrashLibraryStatus',
+    description: '一个库的 ``.amane_trash`` 现状; ``oldest_days`` 为空表示目录里没有文件.'
+} as const;
+
+export const TrashPurgeResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'trash_purge',
+            title: 'Type',
+            default: 'trash_purge'
+        },
+        dry_run: {
+            type: 'boolean',
+            title: 'Dry Run',
+            default: true
+        },
+        libraries: {
+            type: 'integer',
+            title: 'Libraries',
+            default: 0
+        },
+        scanned: {
+            type: 'integer',
+            title: 'Scanned',
+            default: 0
+        },
+        purged: {
+            type: 'integer',
+            title: 'Purged',
+            default: 0
+        },
+        bytes_freed: {
+            type: 'integer',
+            title: 'Bytes Freed',
+            default: 0
+        },
+        kept: {
+            type: 'integer',
+            title: 'Kept',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        samples: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Samples',
+            default: []
+        }
+    },
+    type: 'object',
+    title: 'TrashPurgeResult'
+} as const;
+
+export const TrashPurgeRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'trash_purge',
+            title: 'Type',
+            default: 'trash_purge'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        keep_days: {
+            type: 'integer',
+            maximum: 3650,
+            minimum: 1,
+            title: 'Keep Days',
+            default: 30
+        }
+    },
+    type: 'object',
+    title: 'TrashPurgeRoutine',
+    description: '历史回收站清理的例行; 例行按真删执行, 因此没有 ``dry_run``.'
+} as const;
+
+export const TrashPurgeSubmissionSchema = {
+    properties: {
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        keep_days: {
+            type: 'integer',
+            maximum: 3650,
+            minimum: 1,
+            title: 'Keep Days',
+            description: '保留天数, 修改时间更早的文件被永久删除',
+            default: 30
+        },
+        dry_run: {
+            type: 'boolean',
+            title: 'Dry Run',
+            description: '只统计不删除',
+            default: true
+        },
+        type: {
+            type: 'string',
+            const: 'trash_purge',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'TrashPurgeSubmission',
+    description: '历史回收站清理; 默认只统计.'
+} as const;
+
+export const TrashStatusResponseSchema = {
+    properties: {
+        libraries: {
+            items: {
+                $ref: '#/components/schemas/TrashLibraryStatus'
+            },
+            type: 'array',
+            title: 'Libraries'
+        },
+        total_files: {
+            type: 'integer',
+            title: 'Total Files',
+            default: 0
+        },
+        total_bytes: {
+            type: 'integer',
+            title: 'Total Bytes',
+            default: 0
+        }
+    },
+    type: 'object',
+    required: [
+        'libraries'
+    ],
+    title: 'TrashStatusResponse',
+    description: '全部库的回收站现状; 没有库时 ``libraries`` 为空.'
 } as const;
 
 export const TrashSummaryResponseSchema = {

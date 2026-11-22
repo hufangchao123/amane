@@ -18,6 +18,7 @@ from ..handlers import (
     RescrapePayload,
     SemanticIndexPayload,
     Transfer115Payload,
+    TrashPurgePayload,
     UpscalePayload,
     WashApplyPayload,
     WashScanPayload,
@@ -123,6 +124,16 @@ class CronScheduler:
             case RoutineType.WASH_SCAN:
                 # 只入队只读扫描: 洗版是破坏性动作, 定时任务只报告候选, 由人决定何时执行
                 await self._repo.create_task(TaskType.WASH_SCAN, WashScanPayload.model_validate(payload))
+            case RoutineType.TRASH_PURGE:
+                # 例行按真删执行: dry_run 只在手动提交时默认开启
+                await self._repo.create_task(
+                    TaskType.TRASH_PURGE,
+                    TrashPurgePayload(
+                        library_id=payload.get("library_id"),
+                        keep_days=int(payload.get("keep_days", 30)),
+                        dry_run=False,
+                    ),
+                )
             case RoutineType.WASH_PURGE:
                 # 只清到期记录: 不重算候选, 免得定时任务顺手洗掉用户还想留的文件
                 ids = await expired_record_ids(self._repo)

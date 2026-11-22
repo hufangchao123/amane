@@ -484,6 +484,26 @@ class SubtitleAuditResult(BaseModel):
     samples: list[str] = []
 
 
+class TrashPurgePayload(BaseModel):
+    """历史回收站的清理范围; ``dry_run`` 默认开, 因为删除不可回滚."""
+
+    library_id: int | None = None
+    keep_days: int = Field(default=30, ge=1, le=3650, description="保留天数, 修改时间更早的文件被永久删除")
+    dry_run: bool = Field(default=True, description="只统计不删除")
+
+
+class TrashPurgeResult(BaseModel):
+    type: Literal[TaskType.TRASH_PURGE] = TaskType.TRASH_PURGE
+    dry_run: bool = True
+    libraries: int = 0
+    scanned: int = 0
+    purged: int = 0
+    bytes_freed: int = 0
+    kept: int = 0
+    failed: int = 0
+    samples: list[str] = []
+
+
 class WashScanPayload(BaseModel):
     """洗版扫描范围; 只出候选清单, 一律不移动文件."""
 

@@ -79,7 +79,8 @@
     "backup": "备份",
     "media_refresh": "媒体库刷新",
     "wash_purge": "回收站清理",
-    "subtitle_audit": "字幕巡检"
+    "subtitle_audit": "字幕巡检",
+    "trash_purge": "回收站清理"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -501,6 +502,20 @@
       "library_id": {
         "label": "媒体库",
         "description": "留空巡检全部媒体库"
+      }
+    },
+    "trash_purge": {
+      "keep_days": {
+        "label": "保留天数",
+        "description": "修改时间早于此天数的文件被永久删除"
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "留空则处理全部媒体库"
+      },
+      "dry_run": {
+        "label": "只统计",
+        "description": "关闭后真删, 不可回滚"
       }
     }
   },

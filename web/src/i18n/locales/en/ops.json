@@ -151,5 +151,33 @@
       "db": "Database",
       "assets": "Resources"
     }
+  },
+  "trash": {
+    "title": "Trash",
+    "hint": "Size and cleanup of the legacy trash directory (.amane_trash); cleanup runs as a task and only counts by default.",
+    "summary": "{{files}} files, {{size}}",
+    "refresh": "Refresh",
+    "queued": "Trash cleanup queued",
+    "runFailed": "Failed to queue trash cleanup",
+    "loadFailed": "Failed to read the trash directory",
+    "preview": "Preview (count only)",
+    "purge": "Delete permanently",
+    "noRestore": "The trash keeps no original location, so there is no restore action: move files out of .amane_trash by hand and they re-enter the index as new files.",
+    "empty": "Empty",
+    "days": "{{formatted}} days old",
+    "form": {
+      "library": "Library",
+      "allLibraries": "All libraries",
+      "keepDays": "Keep days",
+      "keepDaysHint": "Files modified earlier than this many days are deleted permanently",
+      "dryRun": "Count only",
+      "dryRunHint": "Turning this off deletes for real, with no rollback"
+    },
+    "columns": {
+      "library": "Library",
+      "files": "Files",
+      "size": "Size",
+      "oldest": "Oldest file"
+    }
   }
 }

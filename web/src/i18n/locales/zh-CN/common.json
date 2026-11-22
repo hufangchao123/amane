@@ -63,7 +63,8 @@
     "subtitles": "字幕补全",
     "wash": "洗版",
     "diagnostics": "体检",
-    "backup": "备份"
+    "backup": "备份",
+    "trash": "回收站"
   },
   "defaults": {
     "set": "设为默认",

@@ -63,7 +63,8 @@
     "subtitles": "Subtitles",
     "wash": "Wash",
     "diagnostics": "Diagnostics",
-    "backup": "Backup"
+    "backup": "Backup",
+    "trash": "Trash"
   },
   "defaults": {
     "set": "Set as default",

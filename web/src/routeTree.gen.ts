@@ -28,6 +28,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SubtitlesRouteImport } from './routes/subtitles'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TransferRouteImport } from './routes/transfer'
+import { Route as TrashRouteImport } from './routes/trash'
 import { Route as WashRouteImport } from './routes/wash'
 import { Route as ActorsIndexRouteImport } from './routes/actors.index'
 import { Route as ActorsActorIdRouteImport } from './routes/actors.$actorId'
@@ -138,6 +139,11 @@ const TransferRoute = TransferRouteImport.update({
   path: '/transfer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrashRoute = TrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WashRoute = WashRouteImport.update({
   id: '/wash',
   path: '/wash',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
   '/transfer': typeof TransferRoute
+  '/trash': typeof TrashRoute
   '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
   '/transfer': typeof TransferRoute
+  '/trash': typeof TrashRoute
   '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/subtitles': typeof SubtitlesRoute
   '/tasks': typeof TasksRoute
   '/transfer': typeof TransferRoute
+  '/trash': typeof TrashRoute
   '/wash': typeof WashRoute
   '/actors/$actorId': typeof ActorsActorIdRoute
   '/catalog/$kind': typeof CatalogKindRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/subtitles'
     | '/tasks'
     | '/transfer'
+    | '/trash'
     | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/subtitles'
     | '/tasks'
     | '/transfer'
+    | '/trash'
     | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/subtitles'
     | '/tasks'
     | '/transfer'
+    | '/trash'
     | '/wash'
     | '/actors/$actorId'
     | '/catalog/$kind'
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   SubtitlesRoute: typeof SubtitlesRoute
   TasksRoute: typeof TasksRoute
   TransferRoute: typeof TransferRoute
+  TrashRoute: typeof TrashRoute
   WashRoute: typeof WashRoute
 }
 
@@ -567,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/transfer'
       fullPath: '/transfer'
       preLoaderRoute: typeof TransferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trash': {
+      id: '/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof TrashRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wash': {
@@ -770,6 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubtitlesRoute: SubtitlesRoute,
   TasksRoute: TasksRoute,
   TransferRoute: TransferRoute,
+  TrashRoute: TrashRoute,
   WashRoute: WashRoute,
 }
 export const routeTree = rootRouteImport

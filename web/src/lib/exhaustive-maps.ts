@@ -50,7 +50,8 @@ export type PanelOnlyTaskType =
   | "subtitle_audit"
   | "wash_scan"
   | "wash_apply"
-  | "backup";
+  | "backup"
+  | "trash_purge";
 
 export type ManualTaskType = Exclude<SubmittableTaskType, PanelOnlyTaskType>;
 
@@ -118,6 +119,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "wash_apply",
   "backup",
   "media_refresh",
+  "trash_purge",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(
@@ -160,6 +162,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "wash_purge",
   "backup",
   "media_refresh",
+  "trash_purge",
 );
 
 export const FACET_KINDS = exhaustiveTuple<FacetKind>()(

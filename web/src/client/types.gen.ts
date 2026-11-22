@@ -4196,7 +4196,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'backup' | 'media_refresh';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'trash_purge' | 'backup' | 'media_refresh';
 
 /**
  * RuntimePaths
@@ -4512,7 +4512,9 @@ export type ScheduleCreateRequest = {
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
         type: 'media_refresh';
-    } & MediaRefreshRoutine);
+    } & MediaRefreshRoutine) | ({
+        type: 'trash_purge';
+    } & TrashPurgeRoutine);
 };
 
 /**
@@ -4569,7 +4571,9 @@ export type ScheduleResponse = {
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
         type: 'media_refresh';
-    } & MediaRefreshRoutine);
+    } & MediaRefreshRoutine) | ({
+        type: 'trash_purge';
+    } & TrashPurgeRoutine);
     /**
      * Enabled
      */
@@ -5455,7 +5459,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission>;
 };
 
 /**
@@ -5773,6 +5777,8 @@ export type TaskResponse = {
     } & SubtitleAuditResult) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchResult) | ({
+        type: 'trash_purge';
+    } & TrashPurgeResult) | ({
         type: 'wash_scan';
     } & WashScanResult) | ({
         type: 'wash_apply';
@@ -5796,7 +5802,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -6151,6 +6157,148 @@ export type TransferStatusResponse = {
      * Failed
      */
     failed: number;
+};
+
+/**
+ * TrashLibraryStatus
+ *
+ * 一个库的 ``.amane_trash`` 现状; ``oldest_days`` 为空表示目录里没有文件.
+ */
+export type TrashLibraryStatus = {
+    /**
+     * Library Id
+     */
+    library_id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Exists
+     */
+    exists: boolean;
+    /**
+     * Files
+     */
+    files?: number;
+    /**
+     * Bytes
+     */
+    bytes?: number;
+    /**
+     * Oldest Days
+     */
+    oldest_days?: number | null;
+};
+
+/**
+ * TrashPurgeResult
+ */
+export type TrashPurgeResult = {
+    /**
+     * Type
+     */
+    type?: 'trash_purge';
+    /**
+     * Dry Run
+     */
+    dry_run?: boolean;
+    /**
+     * Libraries
+     */
+    libraries?: number;
+    /**
+     * Scanned
+     */
+    scanned?: number;
+    /**
+     * Purged
+     */
+    purged?: number;
+    /**
+     * Bytes Freed
+     */
+    bytes_freed?: number;
+    /**
+     * Kept
+     */
+    kept?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Samples
+     */
+    samples?: Array<string>;
+};
+
+/**
+ * TrashPurgeRoutine
+ *
+ * 历史回收站清理的例行; 例行按真删执行, 因此没有 ``dry_run``.
+ */
+export type TrashPurgeRoutine = {
+    /**
+     * Type
+     */
+    type?: 'trash_purge';
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Keep Days
+     */
+    keep_days?: number;
+};
+
+/**
+ * TrashPurgeSubmission
+ *
+ * 历史回收站清理; 默认只统计.
+ */
+export type TrashPurgeSubmission = {
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Keep Days
+     *
+     * 保留天数, 修改时间更早的文件被永久删除
+     */
+    keep_days?: number;
+    /**
+     * Dry Run
+     *
+     * 只统计不删除
+     */
+    dry_run?: boolean;
+    /**
+     * Type
+     */
+    type: 'trash_purge';
+};
+
+/**
+ * TrashStatusResponse
+ *
+ * 全部库的回收站现状; 没有库时 ``libraries`` 为空.
+ */
+export type TrashStatusResponse = {
+    /**
+     * Libraries
+     */
+    libraries: Array<TrashLibraryStatus>;
+    /**
+     * Total Files
+     */
+    total_files?: number;
+    /**
+     * Total Bytes
+     */
+    total_bytes?: number;
 };
 
 /**
@@ -9740,7 +9888,9 @@ export type SubmitTaskData = {
         type: 'backup';
     } & BackupSubmission) | ({
         type: 'media_refresh';
-    } & MediaRefreshSubmission);
+    } & MediaRefreshSubmission) | ({
+        type: 'trash_purge';
+    } & TrashPurgeSubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';
@@ -11060,3 +11210,19 @@ export type BackupStatusResponses = {
 };
 
 export type BackupStatusResponse2 = BackupStatusResponses[keyof BackupStatusResponses];
+
+export type GetTrashStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/trash/status';
+};
+
+export type GetTrashStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: TrashStatusResponse;
+};
+
+export type GetTrashStatusResponse = GetTrashStatusResponses[keyof GetTrashStatusResponses];

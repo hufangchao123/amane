@@ -166,3 +166,21 @@ async def test_due_media_refresh_schedule_enqueues_refresh_task(repo: Repository
 
     tasks = await repo.list_tasks(task_types=[TaskType.MEDIA_REFRESH])
     assert len(tasks) == 1
+
+
+@pytest.mark.asyncio
+async def test_due_trash_purge_schedule_enqueues_real_delete(repo: Repository) -> None:
+    """例行的意图就是真删: 载荷里的 dry_run 由调度侧关掉, 不接受日程配成只统计."""
+    await repo.create_schedule(
+        cron="0 4 * * *",
+        task_type=RoutineType.TRASH_PURGE,
+        payload={"type": "trash_purge", "keep_days": 14},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    tasks = await repo.list_tasks(task_types=[TaskType.TRASH_PURGE])
+    assert len(tasks) == 1
+    payload = tasks[0].payload
+    assert (payload["dry_run"], payload["keep_days"], payload["library_id"]) == (False, 14, None)

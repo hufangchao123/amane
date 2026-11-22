@@ -40,6 +40,7 @@ import {
   IconSettings,
   IconStethoscope,
   IconSubtitles,
+  IconTrash,
   IconSun,
   IconSunMoon,
   IconUsers,
@@ -116,6 +117,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/wash", labelKey: "nav.wash", icon: IconArrowsExchange },
       { to: "/diagnostics", labelKey: "nav.diagnostics", icon: IconStethoscope },
       { to: "/backup", labelKey: "nav.backup", icon: IconArchive },
+      { to: "/trash", labelKey: "nav.trash", icon: IconTrash },
     ],
   },
 ];

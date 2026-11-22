@@ -97,6 +97,13 @@
     "wash_scan": {
       "summary": "扫描洗版候选 ({{kind}}) 并记录, 不自动执行",
       "scope": "扫描范围"
+    },
+    "trash_purge": {
+      "summary": "清理回收站 (保留 {{days}} 天)",
+      "keepDays": "保留天数",
+      "scope": "范围",
+      "allLibraries": "全部媒体库",
+      "library": "媒体库 {{id}}"
     }
   },
   "labels": {

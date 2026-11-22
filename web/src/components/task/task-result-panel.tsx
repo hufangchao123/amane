@@ -95,6 +95,7 @@ function resultBranch(result: TaskResult, failed: boolean): ReactNode {
     case "wash_apply":
     case "backup":
     case "media_refresh":
+    case "trash_purge":
       return <EmptyHint visible={!failed} />;
     default:
       return assertNever(result, "TaskResult");

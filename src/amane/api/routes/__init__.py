@@ -28,6 +28,7 @@ from .system import router as system_router
 from .tasks import router as tasks_router
 from .tools import router as tools_router
 from .transfer import router as transfer_router
+from .trash import router as trash_router
 from .wash import router as wash_router
 from .webhooks import router as webhooks_router
 from .ws import router as ws_router
@@ -66,3 +67,4 @@ router.include_router(subtitles_router)
 router.include_router(wash_router)
 router.include_router(diagnostics_router)
 router.include_router(backup_router)
+router.include_router(trash_router)

@@ -38,6 +38,7 @@ from ..handlers import (
     SubtitleAuditHandler,
     SubtitleFetchHandler,
     Transfer115Handler,
+    TrashPurgeHandler,
     UpscaleHandler,
     WashApplyHandler,
     WashScanHandler,
@@ -614,6 +615,7 @@ def build_handlers(
     handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot, max_moves=hot.transfer.max_moves_per_run)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo)
+    handlers[TaskType.TRASH_PURGE] = TrashPurgeHandler(repo, library_locks)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
     handlers[TaskType.BACKUP] = BackupHandler(

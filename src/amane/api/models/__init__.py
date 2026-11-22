@@ -131,11 +131,13 @@ from .tasks import (
     TaskSubmission,
     TaskWorkerResponse,
     Transfer115Submission,
+    TrashPurgeSubmission,
     UpscaleSubmission,
     WashApplySubmission,
     WashScanSubmission,
 )
 from .transfer import TransferStatusResponse
+from .trash import TrashLibraryStatus, TrashStatusResponse
 from .user_tags import UserTagLinksResponse, UserTagResponse
 from .wash import WashStatusResponse
 
@@ -261,6 +263,9 @@ __all__ = [
     "TaskWorkerResponse",
     "Transfer115Submission",
     "TransferStatusResponse",
+    "TrashLibraryStatus",
+    "TrashPurgeSubmission",
+    "TrashStatusResponse",
     "UpscaleSubmission",
     "UserTagLinksResponse",
     "UserTagResponse",

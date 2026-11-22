@@ -40,6 +40,8 @@ from ...handlers import (
     SubtitleFetchResult,
     Transfer115Payload,
     Transfer115Result,
+    TrashPurgePayload,
+    TrashPurgeResult,
     UpscalePayload,
     UpscaleResult,
     WashApplyPayload,
@@ -76,6 +78,7 @@ TaskResultPayload = Annotated[
     | Transfer115Result
     | SubtitleAuditResult
     | SubtitleFetchResult
+    | TrashPurgeResult
     | WashScanResult
     | WashApplyResult
     | BackupResult
@@ -320,6 +323,12 @@ class SubtitleFetchSubmission(SubtitleFetchPayload):
     type: Literal["subtitle_fetch"]
 
 
+class TrashPurgeSubmission(TrashPurgePayload):
+    """历史回收站清理; 默认只统计."""
+
+    type: Literal["trash_purge"]
+
+
 class WashScanSubmission(WashScanPayload):
     """洗版扫描: 只出候选清单, 一律不移动文件."""
 
@@ -364,7 +373,8 @@ TaskSubmission = Annotated[
     | WashScanSubmission
     | WashApplySubmission
     | BackupSubmission
-    | MediaRefreshSubmission,
+    | MediaRefreshSubmission
+    | TrashPurgeSubmission,
     Field(discriminator="type"),
 ]
 
@@ -373,6 +383,14 @@ class WashPurgeRoutine(BaseModel):
     """回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数."""
 
     type: Literal["wash_purge"] = "wash_purge"
+
+
+class TrashPurgeRoutine(BaseModel):
+    """历史回收站清理的例行; 例行按真删执行, 因此没有 ``dry_run``."""
+
+    type: Literal["trash_purge"] = "trash_purge"
+    library_id: int | None = None
+    keep_days: int = Field(default=30, ge=1, le=3650)
 
 
 class MediaRefreshRoutine(BaseModel):
@@ -391,7 +409,8 @@ RoutineSubmission = Annotated[
     | WashScanSubmission
     | BackupSubmission
     | WashPurgeRoutine
-    | MediaRefreshRoutine,
+    | MediaRefreshRoutine
+    | TrashPurgeRoutine,
     Field(discriminator="type"),
 ]
 

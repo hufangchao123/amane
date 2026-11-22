@@ -91,7 +91,8 @@
     "backup": "Backup",
     "media_refresh": "Media library refresh",
     "wash_purge": "Trash purge",
-    "subtitle_audit": "Subtitle audit"
+    "subtitle_audit": "Subtitle audit",
+    "trash_purge": "Trash cleanup"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -532,6 +533,20 @@
       "library_id": {
         "label": "Library",
         "description": "Leave empty to audit every library"
+      }
+    },
+    "trash_purge": {
+      "keep_days": {
+        "label": "Keep days",
+        "description": "Files modified earlier are deleted permanently"
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Leave empty to handle every library"
+      },
+      "dry_run": {
+        "label": "Count only",
+        "description": "Turning this off deletes for real"
       }
     }
   },

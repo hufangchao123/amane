@@ -84,7 +84,7 @@
 
 ## 定时入口
 
-`scheduler/cron.py::_execute_task` 的 `match` 有四个媒体运维分支, 每一支只做「把例行转成任务」:
+`scheduler/cron.py::_execute_task` 的 `match` 有五个媒体运维分支, 每一支只做「把例行转成任务」:
 
 | 例行类型 | 入队任务 | 载荷 |
 |---|---|---|
@@ -92,10 +92,20 @@
 | `wash_scan` | `TaskType.WASH_SCAN` | `WashScanPayload(kind=…, library_id=…)` |
 | `backup` | `TaskType.BACKUP` | `BackupPayload(kind=…)` |
 | `wash_purge` | `TaskType.WASH_APPLY` | `WashApplyPayload(purge_ids=到期记录 id)` |
+| `trash_purge` | `TaskType.TRASH_PURGE` | `TrashPurgePayload(library_id, keep_days, dry_run=False)` |
 
 `wash_scan` 只入队只读扫描: 洗版是破坏性动作, 定时任务只产出候选, 由人决定何时执行 `wash_apply`。
+`trash_purge` 的例行固定 `dry_run=False`: 例行的意图就是真删, `dry_run` 只在手动提交时默认开启。
 
 `media_refresh` 的例行有独立分支 (`RoutineType.MEDIA_REFRESH` → `TaskType.MEDIA_REFRESH`), 只让媒体服务器重扫, 不触碰库文件, 因此不列在上表。
+
+## 历史回收站的清理
+
+`.amane_trash` 是历史遗留目录: 现在的删除直接删文件, 不再往里搬 (见 `data-model.md`)。目录里只有相对路径, 没有原位信息, 因此**不提供还原** —— 猜原位会把文件搬进别人的番号目录。要还原就手动移出, 移出后按新文件重新入库。
+
+`TRASH_PURGE` 按修改时间清理: `keep_days` 之内的留着, 其余永久删除, 删空的子目录一并回收, 回收站根目录保留。`dry_run` 默认开启, 只统计并给出前 20 条样例; 关掉才真删, 因此这一步不可回滚。删除发生在库内, 与整理 / 删除 / 洗版共用 `LibraryTaskLocks`。
+
+`GET /trash/status` 只报规模 (`GET /libraries/{id}/cleanup/trash` 之外的一个汇总视角), 遍历在回收目录内进行, 因此进线程池。洗版回收站 `.amane_wash` 不在这里清理: 它有自己的 `wash_records` 与到期清理。
 
 `wash_purge` 的例行载荷为空 (`WashPurgeRoutine`), 到期范围由 `library/wash/apply.py::expired_record_ids` 判定 (只取 `state=TRASHED` 且 `expires_at` 已过), 因此定时不会重算洗版候选 —— 重算法会把用户留着不洗的分组一起洗掉。无到期记录时不入队。
 

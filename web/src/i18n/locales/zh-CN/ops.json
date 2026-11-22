@@ -150,5 +150,33 @@
       "db": "数据库",
       "assets": "资源"
     }
+  },
+  "trash": {
+    "title": "回收站",
+    "hint": "历史回收站 (.amane_trash) 的规模与清理; 清理由任务执行, 默认只统计.",
+    "summary": "共 {{files}} 个文件, {{size}}",
+    "refresh": "刷新",
+    "queued": "已提交回收站清理任务",
+    "runFailed": "提交清理任务失败",
+    "loadFailed": "读取回收站失败",
+    "preview": "预演 (只统计)",
+    "purge": "永久删除",
+    "noRestore": "回收站不保留原位信息, 因此没有还原入口: 需要还原时手动把文件移出 .amane_trash, 移出后按新文件重新入库.",
+    "empty": "空",
+    "days": "{{formatted}} 天前",
+    "form": {
+      "library": "媒体库",
+      "allLibraries": "全部媒体库",
+      "keepDays": "保留天数",
+      "keepDaysHint": "修改时间早于此天数的文件被永久删除",
+      "dryRun": "只统计",
+      "dryRunHint": "关闭后真删, 不可回滚"
+    },
+    "columns": {
+      "library": "媒体库",
+      "files": "文件",
+      "size": "占用",
+      "oldest": "最早的文件"
+    }
   }
 }
