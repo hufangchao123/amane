@@ -22,14 +22,14 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import type { WashRecordItem, WashRecordKind, WashRecordState } from "@/client/types.gen";
 import { ListPagination } from "@/components/common/list-pagination";
+import { PageSizeSelect } from "@/components/common/page-size-select";
 import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { formatFileSize } from "@/lib/utils";
+import { useUIStore } from "@/stores/ui";
 import { pathName } from "./path-name";
 import { useWashRefresh } from "./use-wash-refresh";
-
-const PAGE_SIZE = 20;
 
 const KIND_LABEL: Record<WashRecordKind, "wash.kind.local" | "wash.kind.strm"> = {
   local: "wash.kind.local",
@@ -59,11 +59,12 @@ export function WashRecords() {
   const refresh = useWashRefresh();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+  const pageSize = useUIStore((s) => s.pageSizes.washRecords);
   const query = useQuery(
     washRecordsOptions({
       query: {
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
         sort_by: "created_at",
         order: "desc",
       },
@@ -71,7 +72,7 @@ export function WashRecords() {
   );
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectable = items.filter((item) => item.state === "trashed");
   const allSelected = selectable.length > 0 && selectable.every((item) => selected.has(item.id));
 
@@ -144,6 +145,13 @@ export function WashRecords() {
       <Group justify="space-between">
         <Title order={4}>{t("wash.recordTitle")}</Title>
         <Group gap="xs">
+          <PageSizeSelect
+            sizeKey="washRecords"
+            onChanged={() => {
+              setPage(1);
+              setSelected(new Set());
+            }}
+          />
           <Text size="sm" c="dimmed">
             {t("wash.selected", { count: selected.size })}
           </Text>
