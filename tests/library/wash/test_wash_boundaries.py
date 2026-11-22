@@ -92,7 +92,7 @@ def test_expiry_is_inclusive_and_naive_time_is_utc() -> None:
     assert not _is_expired(now + timedelta(microseconds=1), now)
     assert not _is_expired(None, now)
     # SQLite 读回来的时间不带时区, 按 UTC 解释; 不能因为 naive 就被当成「未来」而永远不清.
-    assert _is_expired(datetime(2025, 12, 31), now)
+    assert _is_expired(datetime(2025, 12, 31), now)  # noqa: DTZ001 - 故意给 naive 时间, 验的就是「按 UTC 解释」
 
 
 @pytest.mark.asyncio(loop_scope="function")

@@ -68,7 +68,7 @@ def test_build_plan_prefers_main_db_and_maps_target(tmp_path: Path) -> None:
 def test_restore_replaces_db_and_keeps_safety_copy(tmp_path: Path) -> None:
     """覆盖前先留底: 恢复错了还能把现库原样放回去."""
     data_dir = tmp_path / "data"
-    backup = _make_db(tmp_path / "backups" / _backup_name(), "from-backup")
+    _make_db(tmp_path / "backups" / _backup_name(), "from-backup")
     target = _make_db(data_dir / "amane.db", "current")
 
     report = restore(build_plan(tmp_path / "backups", data_dir))
