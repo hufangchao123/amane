@@ -1,17 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { OpsPageShell } from "@/components/ops/page-shell";
-import { BackupPanel } from "@/features/backup/backup-panel";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** 备份产物已并入设置页的备份分段, 旧地址直接转过去. */
 export const Route = createFileRoute("/backup")({
-  component: BackupPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/settings", search: { section: "backup" } });
+  },
 });
-
-function BackupPage() {
-  const { t } = useTranslation("ops");
-  return (
-    <OpsPageShell title={t("backup.title")} hint={t("backup.hint")} settingsSection="backup">
-      <BackupPanel />
-    </OpsPageShell>
-  );
-}

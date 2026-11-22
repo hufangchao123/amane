@@ -15,7 +15,6 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  IconArchive,
   IconBell,
   IconArrowsExchange,
   IconBook,
@@ -30,7 +29,6 @@ import {
   IconLanguage,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
-  IconHistory,
   IconListDetails,
   IconListTree,
   IconMessageChatbot,
@@ -98,6 +96,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/libraries", labelKey: "nav.libraries", icon: IconFolders },
       { to: "/plugins", labelKey: "nav.plugins", icon: IconPuzzle },
       { to: "/feeds/sources", labelKey: "nav.feedSources", icon: IconListTree },
+      { to: "/trash", labelKey: "nav.trash", icon: IconTrash },
       { to: "/manual", labelKey: "nav.manual", icon: IconBook },
     ],
   },
@@ -119,9 +118,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/subtitles", labelKey: "nav.subtitles", icon: IconSubtitles },
       { to: "/wash", labelKey: "nav.wash", icon: IconArrowsExchange },
       { to: "/diagnostics", labelKey: "nav.diagnostics", icon: IconStethoscope },
-      { to: "/backup", labelKey: "nav.backup", icon: IconArchive },
-      { to: "/trash", labelKey: "nav.trash", icon: IconTrash },
-      { to: "/audit", labelKey: "nav.audit", icon: IconHistory },
       { to: "/maintenance", labelKey: "nav.maintenance", icon: IconTool },
       { to: "/notifications", labelKey: "nav.notify", icon: IconBell },
     ],

@@ -215,7 +215,20 @@
       "delete": "删除",
       "semantic_index": "语义索引",
       "semantic_benchmark": "性能测试",
-      "actor_push": "推送演员"
+      "actor_push": "推送演员",
+      "transfer_115": "115 中转",
+      "wash_scan": "洗版扫描",
+      "wash_purge": "洗版回收站到期清理",
+      "backup": "备份",
+      "media_refresh": "媒体库刷新",
+      "trash_purge": "历史回收站清理",
+      "notify_digest": "通知摘要",
+      "subtitle_fetch": "字幕补全",
+      "subtitle_audit": "字幕巡检",
+      "nfo_patch": "NFO 修补",
+      "avatar_check": "头像校验",
+      "notify": "通知",
+      "scrape_transfer": "刮削后转移"
     },
     "cleanup": {
       "remove_missing_files": {

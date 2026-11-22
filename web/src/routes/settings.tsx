@@ -17,10 +17,15 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { isHidden, resolveSchema } from "@/components/schema-form/schema";
+import { AuditPanel } from "@/features/audit/audit-panel";
+import { BackupPanel } from "@/features/backup/backup-panel";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { useConfig, useConfigSchema, useUpdateConfig } from "@/hooks/use-config";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
 import { extractErrorMessage } from "@/lib/api-error";
+
+/** 没有配置项、只挂运维面板的分段: 这些 Tab 不出现在 schema 里. */
+const PANEL_SECTIONS = ["audit"] as const;
 
 const settingsSearchSchema = z.object({
   section: z.string().optional(),
@@ -43,10 +48,12 @@ function SettingsPage() {
   const resolvedSchema = useMemo(() => (schema ? resolveSchema(schema, schema) : null), [schema]);
 
   const sectionKeys = useMemo(() => {
-    if (!resolvedSchema?.properties) return [];
-    return Object.entries(resolvedSchema.properties)
-      .filter(([, value]) => typeof value !== "boolean" && !isHidden(value))
-      .map(([key]) => key);
+    const configKeys = resolvedSchema?.properties
+      ? Object.entries(resolvedSchema.properties)
+          .filter(([, value]) => typeof value !== "boolean" && !isHidden(value))
+          .map(([key]) => key)
+      : [];
+    return [...configKeys, ...PANEL_SECTIONS];
   }, [resolvedSchema]);
 
   const currentSection =
@@ -109,6 +116,13 @@ function SettingsPage() {
           <Box style={{ flex: 1, minWidth: 0 }}>
             {sectionKeys.map((key) => {
               if (key !== currentSection) return null;
+              if (key === "audit") {
+                return (
+                  <Paper key={key} withBorder p="md">
+                    <AuditPanel />
+                  </Paper>
+                );
+              }
               const sectionSchema = resolvedSchema.properties?.[key];
               if (!sectionSchema || typeof sectionSchema === "boolean") return null;
               // Schema 顶层 key 运行时才知; 桥接到按 section 切分的表单 values.
@@ -128,6 +142,11 @@ function SettingsPage() {
                     onSave={(patch) => saveMutation.mutate({ body: { [key]: patch } })}
                     saving={saveMutation.isPending}
                   />
+                  {key === "backup" && (
+                    <Box mt="md">
+                      <BackupPanel />
+                    </Box>
+                  )}
                 </Paper>
               );
             })}

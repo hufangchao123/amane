@@ -19,7 +19,8 @@
     "watcher": "文件监控",
     "worker": "任务引擎",
     "logging": "日志",
-    "plugins": "插件"
+    "plugins": "插件",
+    "audit": "审计"
   },
   "config": {
     "loadError": "加载配置失败"

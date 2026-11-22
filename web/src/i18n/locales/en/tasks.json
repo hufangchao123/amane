@@ -247,7 +247,20 @@
       "delete": "Delete",
       "semantic_index": "Semantic index",
       "semantic_benchmark": "Benchmark",
-      "actor_push": "Push actors"
+      "actor_push": "Push actors",
+      "transfer_115": "115 Transfer",
+      "wash_scan": "Wash scan",
+      "wash_purge": "Wash trash purge",
+      "backup": "Backup",
+      "media_refresh": "Media refresh",
+      "trash_purge": "Trash purge",
+      "notify_digest": "Notify digest",
+      "subtitle_fetch": "Subtitle fill",
+      "subtitle_audit": "Subtitle audit",
+      "nfo_patch": "NFO patch",
+      "avatar_check": "Avatar check",
+      "notify": "Notify",
+      "scrape_transfer": "Post-scrape transfer"
     },
     "cleanup": {
       "remove_missing_files": {

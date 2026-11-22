@@ -19,7 +19,8 @@
     "watcher": "File Monitoring",
     "worker": "Task Engine",
     "logging": "Logging",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "audit": "Audit log"
   },
   "config": {
     "loadError": "Failed to load configuration"

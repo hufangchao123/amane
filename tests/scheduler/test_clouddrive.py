@@ -58,6 +58,28 @@ class TestCloudDriveIngest:
         await service.stop()
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_cloud_local_path_follows_input_dir(
+        self, service: WatcherService, repo: Repository, tmp_path: Path
+    ) -> None:
+        """开刮削后转移时云端文件落到输入目录: 库根只收本服务搬进去的成品."""
+        lib_root, pending = tmp_path / "done", tmp_path / "in"
+        lib_root.mkdir()
+        pending.mkdir()
+        lib = await repo.create_library(
+            name="cd",
+            path=str(lib_root),
+            ingest=LibraryIngest.CLOUDDRIVE,
+            cloud_path="/115open/lib",
+            automation=LibraryAutomation.SCRAPE,
+            scrape_transfer=True,
+            scrape_input_dir=str(pending),
+        )
+        await service.start()
+        route = service._cloud_routes[lib.id]
+        assert route.local_path == str(pending)
+        await service.stop()
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_file_create_registers(self, service: WatcherService, repo: Repository, tmp_path: Path) -> None:
         video = tmp_path / "MIDV-001.mp4"
         video.write_bytes(b"x" * 32)

@@ -1,17 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { OpsPageShell } from "@/components/ops/page-shell";
-import { AuditPanel } from "@/features/audit/audit-panel";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** 审计面板已并入设置页, 旧地址直接转过去. */
 export const Route = createFileRoute("/audit")({
-  component: AuditPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/settings", search: { section: "audit" } });
+  },
 });
-
-function AuditPage() {
-  const { t } = useTranslation("ops");
-  return (
-    <OpsPageShell title={t("audit.title")} hint={t("audit.hint")}>
-      <AuditPanel />
-    </OpsPageShell>
-  );
-}

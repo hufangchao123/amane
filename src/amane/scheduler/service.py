@@ -104,8 +104,12 @@ class WatcherService:
             media_extensions=frozenset(self._media_extensions) if self._media_extensions else None,
         )
 
-    def _watch_path(self, lib: Library) -> str:
-        """开刮削后转移的库监控输入目录: 库根只收本服务搬进去的成品, 不会出现外部新文件."""
+    def _discovery_path(self, lib: Library) -> str:
+        """文件发现目录: 开刮削后转移时是输入目录, 否则是库根.
+
+        开启后库根只收本服务搬进去的成品, 外部只会往输入目录写, 因此 native 监控点与
+        clouddrive 的本地落点都取它.
+        """
         if lib.scrape_transfer and lib.scrape_input_dir:
             return lib.scrape_input_dir
         return lib.path
@@ -118,7 +122,7 @@ class WatcherService:
         self._cloud_routes[lib.id] = CloudDriveRoute(
             library_id=lib.id,
             cloud_path=lib.cloud_path,
-            local_path=lib.path,
+            local_path=self._discovery_path(lib),
             recursive=lib.recursive,
             scan=self._scan_for(lib),
         )
@@ -126,7 +130,7 @@ class WatcherService:
         logger.info(
             "clouddrive watch registered",
             library_id=lib.id,
-            path=lib.path,
+            path=self._discovery_path(lib),
             cloud_path=lib.cloud_path,
             recursive=lib.recursive,
         )
@@ -181,7 +185,7 @@ class WatcherService:
             try:
                 for lib in native:
                     assert lib.id is not None
-                    watch_path = self._watch_path(lib)
+                    watch_path = self._discovery_path(lib)
                     logger.info("watching library", library_id=lib.id, path=watch_path, recursive=lib.recursive)
                     self._watcher.watch(
                         watch_path,
@@ -230,7 +234,7 @@ class WatcherService:
             self._register_cloud(lib)
             return
         self.add_library(
-            self._watch_path(lib),
+            self._discovery_path(lib),
             lib.id,
             recursive=lib.recursive,
             patterns=lib.patterns,
