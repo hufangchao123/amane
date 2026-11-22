@@ -1,3 +1,3 @@
-from .manager import BackupEntry, BackupManager
+from .manager import BackupEntry, BackupManager, BackupRootError
 
-__all__ = ["BackupEntry", "BackupManager"]
+__all__ = ["BackupEntry", "BackupManager", "BackupRootError"]
