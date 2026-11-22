@@ -279,5 +279,6 @@
       "all": "All"
     },
     "note": "The trail comes from a queue on the request path, so it may lag the action slightly."
-  }
+  },
+  "configure": "Open settings"
 }

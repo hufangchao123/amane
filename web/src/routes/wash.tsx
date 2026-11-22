@@ -19,7 +19,7 @@ function WashPage() {
   const statusQuery = useQuery(washStatusOptions());
 
   return (
-    <OpsPageShell title={t("wash.title")} hint={t("wash.hint")}>
+    <OpsPageShell title={t("wash.title")} hint={t("wash.hint")} settingsSection="wash">
       <Stack gap="lg">
         {statusQuery.data ? (
           <WashStatus status={statusQuery.data} onRefresh={refresh} />

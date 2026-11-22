@@ -10,7 +10,7 @@ export const Route = createFileRoute("/backup")({
 function BackupPage() {
   const { t } = useTranslation("ops");
   return (
-    <OpsPageShell title={t("backup.title")} hint={t("backup.hint")}>
+    <OpsPageShell title={t("backup.title")} hint={t("backup.hint")} settingsSection="backup">
       <BackupPanel />
     </OpsPageShell>
   );

@@ -19,7 +19,7 @@ function TransferPage() {
   const status = statusQuery.data;
 
   return (
-    <OpsPageShell title={t("transfer.title")} hint={t("transfer.hint")}>
+    <OpsPageShell title={t("transfer.title")} hint={t("transfer.hint")} settingsSection="transfer">
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Title order={4}>{t("transfer.statusTitle")}</Title>

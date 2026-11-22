@@ -10,7 +10,11 @@ export const Route = createFileRoute("/subtitles")({
 function SubtitlesPage() {
   const { t } = useTranslation("ops");
   return (
-    <OpsPageShell title={t("subtitles.title")} hint={t("subtitles.hint")}>
+    <OpsPageShell
+      title={t("subtitles.title")}
+      hint={t("subtitles.hint")}
+      settingsSection="subtitles"
+    >
       <SubtitlesView />
     </OpsPageShell>
   );

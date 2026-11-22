@@ -10,7 +10,7 @@ export const Route = createFileRoute("/notifications")({
 function NotificationsPage() {
   const { t } = useTranslation("ops");
   return (
-    <OpsPageShell title={t("notify.title")} hint={t("notify.hint")}>
+    <OpsPageShell title={t("notify.title")} hint={t("notify.hint")} settingsSection="notify">
       <NotifyPanel />
     </OpsPageShell>
   );
