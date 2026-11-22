@@ -10,6 +10,7 @@ from ...handlers import (
     CleanupPayload,
     DeletePayload,
     MediaRefreshPayload,
+    NfoPatchPayload,
     OrganizePayload,
     R18ImportPayload,
     RefreshPayload,
@@ -33,6 +34,7 @@ from ..models import (
     CleanupSubmission,
     DeleteSubmission,
     MediaRefreshSubmission,
+    NfoPatchSubmission,
     OrganizeSubmission,
     R18ImportSubmission,
     RefreshSubmission,
@@ -73,6 +75,7 @@ ResolvedPayload = (
     | SubtitleFetchPayload
     | WashScanPayload
     | TrashPurgePayload
+    | NfoPatchPayload
     | WashApplyPayload
     | BackupPayload
     | MediaRefreshPayload
@@ -131,6 +134,8 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.TRASH_PURGE, TrashPurgePayload(
                 library_id=req.library_id, keep_days=req.keep_days, dry_run=req.dry_run
             )
+        case NfoPatchSubmission():
+            return TaskType.NFO_PATCH, NfoPatchPayload(kind=req.kind, library_id=req.library_id, dry_run=req.dry_run)
         case WashApplySubmission():
             return TaskType.WASH_APPLY, WashApplyPayload(
                 group_keys=req.group_keys,

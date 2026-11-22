@@ -576,3 +576,36 @@ class MediaRefreshResult(BaseModel):
     """`media_server.kind`, 说明刷新发去了哪一家."""
     url: str = ""
     """刷新请求的目标地址; 不含密钥, 可直接展示."""
+
+
+# --- NFO 修补 ---
+
+
+class NfoPatchPayload(BaseModel):
+    """两类修补共用一套载荷, 由 ``kind`` 选择: 给演员块补缩略图, 或删掉导演行."""
+
+    kind: Literal["thumbs", "directors"] = "thumbs"
+    library_id: int | None = Field(default=None, description="只修补这一个媒体库; 空表示全部媒体库")
+    dry_run: bool = Field(default=True, description="只报告将要改动的文件数, 不写磁盘")
+
+
+class NfoPatchResult(BaseModel):
+    type: Literal[TaskType.NFO_PATCH] = TaskType.NFO_PATCH
+    kind: Literal["thumbs", "directors"] = "thumbs"
+    dry_run: bool = True
+    libraries: int = 0
+    """参与的媒体库数."""
+    files: int = 0
+    """扫到的 NFO 文件数."""
+    changed: int = 0
+    """需要改写 (dry_run) 或已改写 (真跑) 的文件数."""
+    filled: int = 0
+    """补上的 ``<thumb>`` 数."""
+    missing_image: int = 0
+    """演员在库内没有头像地址, 跳过未补的条目数."""
+    removed: int = 0
+    """删掉的 ``<director>`` 行数."""
+    failed: int = 0
+    """读取或写入失败的文件数."""
+    samples: list[str] = []
+    """改动最多的前若干个文件名, 便于人工抽查."""

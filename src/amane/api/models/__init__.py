@@ -86,6 +86,7 @@ from .network import (
     ConnectivityItemResponse,
     ConnectivityReportResponse,
 )
+from .nfo import NfoLibraryOption, NfoStatusResponse
 from .playback import (
     PlaybackSourceListResponse,
     PlaybackSourceOption,
@@ -105,6 +106,7 @@ from .tasks import (
     CleanupSubmission,
     DeleteSubmission,
     MediaRefreshSubmission,
+    NfoPatchSubmission,
     OrganizeSubmission,
     R18ImportSubmission,
     RefreshSubmission,
@@ -215,6 +217,9 @@ __all__ = [
     "MetadataResponse",
     "MetadataUserTagsRequest",
     "MetadataUserTagsResponse",
+    "NfoLibraryOption",
+    "NfoPatchSubmission",
+    "NfoStatusResponse",
     "OptionalPathTemplateDefaults",
     "OrganizeSubmission",
     "PartialMetadata",

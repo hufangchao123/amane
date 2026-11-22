@@ -15,6 +15,7 @@ STATUS_CASES = [
     pytest.param("diagnostics/status", {"items", "failed"}, id="diagnostics"),
     pytest.param("backup/status", {"enabled", "root", "entries"}, id="backup"),
     pytest.param("trash/status", {"libraries", "total_files", "total_bytes"}, id="trash"),
+    pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
 ]
 
 
@@ -67,6 +68,7 @@ SUBMIT_CASES = [
     pytest.param({"type": "wash_apply", "group_keys": ["SSIS-1"]}, "wash_apply", id="wash-apply"),
     pytest.param({"type": "backup", "kind": "db"}, "backup", id="backup"),
     pytest.param({"type": "trash_purge", "keep_days": 7}, "trash_purge", id="trash-purge"),
+    pytest.param({"type": "nfo_patch", "kind": "directors"}, "nfo_patch", id="nfo-patch"),
 ]
 
 

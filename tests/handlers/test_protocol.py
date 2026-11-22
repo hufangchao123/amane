@@ -20,6 +20,7 @@ from amane.handlers.models import (
     CleanupResult,
     DeleteResult,
     MediaRefreshResult,
+    NfoPatchResult,
     OrganizeResult,
     R18ImportResult,
     RefreshResult,
@@ -155,6 +156,10 @@ RESULT_CASES = [
     pytest.param(
         TrashPurgeResult(dry_run=False, libraries=1, scanned=3, purged=2, bytes_freed=1024),
         id="trash_purge",
+    ),
+    pytest.param(
+        NfoPatchResult(kind="thumbs", dry_run=True, libraries=1, files=4, changed=2, filled=3, missing_image=1),
+        id="nfo_patch",
     ),
     pytest.param(WashScanResult(groups=4, droppable=6, bytes_freed=1024), id="wash_scan"),
     pytest.param(WashApplyResult(trashed=6, bytes_freed=1024, skipped=1, failed=0), id="wash_apply"),

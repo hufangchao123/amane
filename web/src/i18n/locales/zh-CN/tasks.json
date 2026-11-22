@@ -80,7 +80,8 @@
     "media_refresh": "媒体库刷新",
     "wash_purge": "回收站清理",
     "subtitle_audit": "字幕巡检",
-    "trash_purge": "回收站清理"
+    "trash_purge": "回收站清理",
+    "nfo_patch": "NFO 修补"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -516,6 +517,24 @@
       "dry_run": {
         "label": "只统计",
         "description": "关闭后真删, 不可回滚"
+      }
+    },
+    "nfo_patch": {
+      "kind": {
+        "label": "修补类型",
+        "description": "补缩略图或删导演行",
+        "options": {
+          "thumbs": "补演员缩略图",
+          "directors": "删导演行"
+        }
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "留空表示全部媒体库"
+      },
+      "dry_run": {
+        "label": "只预演",
+        "description": "关掉后才真正改写文件"
       }
     }
   },

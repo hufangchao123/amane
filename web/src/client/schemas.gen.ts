@@ -6957,6 +6957,170 @@ export const NetworkConfigSchema = {
     title: 'NetworkConfig'
 } as const;
 
+export const NfoLibraryOptionSchema = {
+    properties: {
+        library_id: {
+            type: 'integer',
+            title: 'Library Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        path: {
+            type: 'string',
+            title: 'Path'
+        }
+    },
+    type: 'object',
+    required: [
+        'library_id',
+        'name',
+        'path'
+    ],
+    title: 'NfoLibraryOption',
+    description: '可作为修补目标的媒体库.'
+} as const;
+
+export const NfoPatchResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'nfo_patch',
+            title: 'Type',
+            default: 'nfo_patch'
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'thumbs',
+                'directors'
+            ],
+            title: 'Kind',
+            default: 'thumbs'
+        },
+        dry_run: {
+            type: 'boolean',
+            title: 'Dry Run',
+            default: true
+        },
+        libraries: {
+            type: 'integer',
+            title: 'Libraries',
+            default: 0
+        },
+        files: {
+            type: 'integer',
+            title: 'Files',
+            default: 0
+        },
+        changed: {
+            type: 'integer',
+            title: 'Changed',
+            default: 0
+        },
+        filled: {
+            type: 'integer',
+            title: 'Filled',
+            default: 0
+        },
+        missing_image: {
+            type: 'integer',
+            title: 'Missing Image',
+            default: 0
+        },
+        removed: {
+            type: 'integer',
+            title: 'Removed',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        samples: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Samples',
+            default: []
+        }
+    },
+    type: 'object',
+    title: 'NfoPatchResult'
+} as const;
+
+export const NfoPatchSubmissionSchema = {
+    properties: {
+        kind: {
+            type: 'string',
+            enum: [
+                'thumbs',
+                'directors'
+            ],
+            title: 'Kind',
+            default: 'thumbs'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id',
+            description: '只修补这一个媒体库; 空表示全部媒体库'
+        },
+        dry_run: {
+            type: 'boolean',
+            title: 'Dry Run',
+            description: '只报告将要改动的文件数, 不写磁盘',
+            default: true
+        },
+        type: {
+            type: 'string',
+            const: 'nfo_patch',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'NfoPatchSubmission',
+    description: 'NFO 修补; 默认只统计不写盘.'
+} as const;
+
+export const NfoStatusResponseSchema = {
+    properties: {
+        actors: {
+            type: 'integer',
+            title: 'Actors',
+            default: 0
+        },
+        actors_with_image: {
+            type: 'integer',
+            title: 'Actors With Image',
+            default: 0
+        },
+        libraries: {
+            items: {
+                $ref: '#/components/schemas/NfoLibraryOption'
+            },
+            type: 'array',
+            title: 'Libraries',
+            default: []
+        }
+    },
+    type: 'object',
+    title: 'NfoStatusResponse',
+    description: '演员头像的库存情况; 待补条数由修补任务预演后才知道, 这里只报可用素材.'
+} as const;
+
 export const OptionalPathTemplateDefaultsSchema = {
     properties: {
         thumb_template: {
@@ -10282,6 +10446,9 @@ export const TaskBatchSubmitRequestSchema = {
                     },
                     {
                         $ref: '#/components/schemas/TrashPurgeSubmission'
+                    },
+                    {
+                        $ref: '#/components/schemas/NfoPatchSubmission'
                     }
                 ],
                 discriminator: {
@@ -10293,6 +10460,7 @@ export const TaskBatchSubmitRequestSchema = {
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
                         media_refresh: '#/components/schemas/MediaRefreshSubmission',
+                        nfo_patch: '#/components/schemas/NfoPatchSubmission',
                         organize: '#/components/schemas/OrganizeSubmission',
                         r18_import: '#/components/schemas/R18ImportSubmission',
                         refresh: '#/components/schemas/RefreshSubmission',
@@ -10876,6 +11044,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/TrashPurgeResult'
                         },
                         {
+                            $ref: '#/components/schemas/NfoPatchResult'
+                        },
+                        {
                             $ref: '#/components/schemas/WashScanResult'
                         },
                         {
@@ -10897,6 +11068,7 @@ export const TaskResponseSchema = {
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
                             media_refresh: '#/components/schemas/MediaRefreshResult',
+                            nfo_patch: '#/components/schemas/NfoPatchResult',
                             organize: '#/components/schemas/OrganizeResult',
                             r18_import: '#/components/schemas/R18ImportResult',
                             refresh: '#/components/schemas/RefreshResult',
@@ -10975,6 +11147,7 @@ export const TaskTypeSchema = {
         'transfer_115',
         'subtitle_fetch',
         'subtitle_audit',
+        'nfo_patch',
         'trash_purge',
         'wash_scan',
         'wash_apply',

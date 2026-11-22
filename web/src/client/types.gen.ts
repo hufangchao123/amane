@@ -3530,6 +3530,124 @@ export type NetworkConfig = {
 };
 
 /**
+ * NfoLibraryOption
+ *
+ * 可作为修补目标的媒体库.
+ */
+export type NfoLibraryOption = {
+    /**
+     * Library Id
+     */
+    library_id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+};
+
+/**
+ * NfoPatchResult
+ */
+export type NfoPatchResult = {
+    /**
+     * Type
+     */
+    type?: 'nfo_patch';
+    /**
+     * Kind
+     */
+    kind?: 'thumbs' | 'directors';
+    /**
+     * Dry Run
+     */
+    dry_run?: boolean;
+    /**
+     * Libraries
+     */
+    libraries?: number;
+    /**
+     * Files
+     */
+    files?: number;
+    /**
+     * Changed
+     */
+    changed?: number;
+    /**
+     * Filled
+     */
+    filled?: number;
+    /**
+     * Missing Image
+     */
+    missing_image?: number;
+    /**
+     * Removed
+     */
+    removed?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Samples
+     */
+    samples?: Array<string>;
+};
+
+/**
+ * NfoPatchSubmission
+ *
+ * NFO 修补; 默认只统计不写盘.
+ */
+export type NfoPatchSubmission = {
+    /**
+     * Kind
+     */
+    kind?: 'thumbs' | 'directors';
+    /**
+     * Library Id
+     *
+     * 只修补这一个媒体库; 空表示全部媒体库
+     */
+    library_id?: number | null;
+    /**
+     * Dry Run
+     *
+     * 只报告将要改动的文件数, 不写磁盘
+     */
+    dry_run?: boolean;
+    /**
+     * Type
+     */
+    type: 'nfo_patch';
+};
+
+/**
+ * NfoStatusResponse
+ *
+ * 演员头像的库存情况; 待补条数由修补任务预演后才知道, 这里只报可用素材.
+ */
+export type NfoStatusResponse = {
+    /**
+     * Actors
+     */
+    actors?: number;
+    /**
+     * Actors With Image
+     */
+    actors_with_image?: number;
+    /**
+     * Libraries
+     */
+    libraries?: Array<NfoLibraryOption>;
+};
+
+/**
  * OptionalPathTemplateDefaults
  *
  * 附属模板缺省 (Library 对应列为 None 时 ORGANIZE 使用; 剧照文件名在写盘时按张数渲染).
@@ -5459,7 +5577,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | BackupSubmission | MediaRefreshSubmission | TrashPurgeSubmission | NfoPatchSubmission>;
 };
 
 /**
@@ -5779,6 +5897,8 @@ export type TaskResponse = {
     } & SubtitleFetchResult) | ({
         type: 'trash_purge';
     } & TrashPurgeResult) | ({
+        type: 'nfo_patch';
+    } & NfoPatchResult) | ({
         type: 'wash_scan';
     } & WashScanResult) | ({
         type: 'wash_apply';
@@ -5802,7 +5922,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
+export type TaskType = 'scrape' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'trash_purge' | 'wash_scan' | 'wash_apply' | 'backup' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -9890,7 +10010,9 @@ export type SubmitTaskData = {
         type: 'media_refresh';
     } & MediaRefreshSubmission) | ({
         type: 'trash_purge';
-    } & TrashPurgeSubmission);
+    } & TrashPurgeSubmission) | ({
+        type: 'nfo_patch';
+    } & NfoPatchSubmission);
     path?: never;
     query?: never;
     url: '/api/tasks';
@@ -11226,3 +11348,19 @@ export type GetTrashStatusResponses = {
 };
 
 export type GetTrashStatusResponse = GetTrashStatusResponses[keyof GetTrashStatusResponses];
+
+export type GetNfoStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/nfo/status';
+};
+
+export type GetNfoStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: NfoStatusResponse;
+};
+
+export type GetNfoStatusResponse = GetNfoStatusResponses[keyof GetNfoStatusResponses];

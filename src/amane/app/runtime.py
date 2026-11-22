@@ -27,6 +27,7 @@ from ..handlers import (
     DeleteHandler,
     LibraryTaskLocks,
     MediaRefreshHandler,
+    NfoPatchHandler,
     OrganizeHandler,
     R18ImportHandler,
     RefreshHandler,
@@ -616,6 +617,7 @@ def build_handlers(
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo)
     handlers[TaskType.TRASH_PURGE] = TrashPurgeHandler(repo, library_locks)
+    handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, library_locks)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
     handlers[TaskType.BACKUP] = BackupHandler(

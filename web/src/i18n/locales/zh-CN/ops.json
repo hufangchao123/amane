@@ -178,5 +178,27 @@
       "size": "占用",
       "oldest": "最早的文件"
     }
+  },
+  "maintenance": {
+    "title": "库维护",
+    "hint": "改写库内文件的动作都在这里; 每个动作默认只预演, 关掉开关才真正写盘.",
+    "nfo": {
+      "title": "NFO 修补",
+      "hint": "给 NFO 的演员块补上缩略图地址, 或删掉导演行. 只改磁盘上的文件, 不进索引, 也不影响已入库的元数据.",
+      "coverage": "{{withImage}} / {{actors}} 位演员有头像",
+      "kind": "修补类型",
+      "kinds": {
+        "thumbs": "补演员缩略图",
+        "directors": "删导演行"
+      },
+      "library": "媒体库",
+      "allLibraries": "全部媒体库",
+      "dryRun": "只预演",
+      "dryRunHint": "关掉后会真正改写文件",
+      "preview": "预演",
+      "apply": "执行",
+      "queued": "修补任务已入队",
+      "runFailed": "任务入队失败"
+    }
   }
 }

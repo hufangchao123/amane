@@ -18,6 +18,7 @@ import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as LibrariesRouteImport } from './routes/libraries'
 import { Route as LogsRouteImport } from './routes/logs'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MetaRouteImport } from './routes/meta'
 import { Route as NetworkRouteImport } from './routes/network'
@@ -87,6 +88,11 @@ const LibrariesRoute = LibrariesRouteImport.update({
 const LogsRoute = LogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManualRoute = ManualRouteImport.update({
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/client': typeof ClientRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/logs': typeof LogsRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manual': typeof ManualRoute
   '/network': typeof NetworkRoute
   '/plugins': typeof PluginsRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/feeds': typeof FeedsRouteWithChildren
   '/libraries': typeof LibrariesRouteWithChildren
   '/logs': typeof LogsRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manual': typeof ManualRoute
   '/meta': typeof MetaRouteWithChildren
   '/network': typeof NetworkRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/feeds'
     | '/libraries'
     | '/logs'
+    | '/maintenance'
     | '/manual'
     | '/meta'
     | '/network'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/client'
     | '/diagnostics'
     | '/logs'
+    | '/maintenance'
     | '/manual'
     | '/network'
     | '/plugins'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/feeds'
     | '/libraries'
     | '/logs'
+    | '/maintenance'
     | '/manual'
     | '/meta'
     | '/network'
@@ -433,6 +445,7 @@ export interface RootRouteChildren {
   FeedsRoute: typeof FeedsRouteWithChildren
   LibrariesRoute: typeof LibrariesRouteWithChildren
   LogsRoute: typeof LogsRoute
+  MaintenanceRoute: typeof MaintenanceRoute
   ManualRoute: typeof ManualRoute
   MetaRoute: typeof MetaRouteWithChildren
   NetworkRoute: typeof NetworkRoute
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/logs'
       preLoaderRoute: typeof LogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manual': {
@@ -780,6 +800,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedsRoute: FeedsRouteWithChildren,
   LibrariesRoute: LibrariesRouteWithChildren,
   LogsRoute: LogsRoute,
+  MaintenanceRoute: MaintenanceRoute,
   ManualRoute: ManualRoute,
   MetaRoute: MetaRouteWithChildren,
   NetworkRoute: NetworkRoute,

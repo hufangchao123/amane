@@ -179,5 +179,27 @@
       "size": "Size",
       "oldest": "Oldest file"
     }
+  },
+  "maintenance": {
+    "title": "Library maintenance",
+    "hint": "Actions that rewrite files in your libraries live here; each one only previews until you switch it off.",
+    "nfo": {
+      "title": "NFO patch",
+      "hint": "Add actor thumbnails to NFO files, or drop director lines. Only the files on disk change; indexes and stored metadata stay as they are.",
+      "coverage": "{{withImage}} of {{actors}} actors have an image",
+      "kind": "Patch",
+      "kinds": {
+        "thumbs": "Fill actor thumbnails",
+        "directors": "Remove director lines"
+      },
+      "library": "Library",
+      "allLibraries": "All libraries",
+      "dryRun": "Preview only",
+      "dryRunHint": "Turn off to rewrite files",
+      "preview": "Preview",
+      "apply": "Run",
+      "queued": "Patch task queued",
+      "runFailed": "Could not queue the task"
+    }
   }
 }

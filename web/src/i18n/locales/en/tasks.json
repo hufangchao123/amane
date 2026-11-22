@@ -92,7 +92,8 @@
     "media_refresh": "Media library refresh",
     "wash_purge": "Trash purge",
     "subtitle_audit": "Subtitle audit",
-    "trash_purge": "Trash cleanup"
+    "trash_purge": "Trash cleanup",
+    "nfo_patch": "NFO patch"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -547,6 +548,24 @@
       "dry_run": {
         "label": "Count only",
         "description": "Turning this off deletes for real"
+      }
+    },
+    "nfo_patch": {
+      "kind": {
+        "label": "Patch",
+        "description": "Fill thumbnails or remove director lines",
+        "options": {
+          "thumbs": "Fill actor thumbnails",
+          "directors": "Remove director lines"
+        }
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Leave empty for every library"
+      },
+      "dry_run": {
+        "label": "Preview only",
+        "description": "Turn off to rewrite files"
       }
     }
   },

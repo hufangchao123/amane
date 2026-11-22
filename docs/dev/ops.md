@@ -111,6 +111,16 @@
 
 `RoutineType` 与 `TaskType` 的取值都按 VARCHAR 存储, 新增枚举成员不需要迁移; 前端 `ROUTINE_TYPES` 的穷举与 `RoutineSubmission` 判别联合共同约束取值集合。
 
+## NFO 修补
+
+`NFO_PATCH` 改写已有的 NFO 文件, 分两类: `kind=thumbs` 给 `<actor>` 块补 `<thumb>`, `kind=directors` 删掉 `<director>` 行。两类都只碰磁盘文本, 不写数据库, 也不改库内索引; 手工搬动过目录的库同样适用。
+
+缩略图取 `Actor.image_urls` 的第一条, 与媒体服务器上的演员图表同源; 演员在库内没有头像时计 `missing_image`, 不写半截标签。演员块已有 `<thumb>` 的跳过, 因此重复执行不产生变更。写入走同目录临时文件加 `Path.replace`, 中途失败不会留下半截 NFO。
+
+`dry_run` 默认开启: 只扫盘并报出将改动的文件数与前十个文件名。真跑时按媒体库取 `LibraryTaskLocks`, 与整理 / 删除 / 洗版互斥。库目录不存在或 NFO 读写失败计 `failed`, 该文件跳过, 整轮继续。
+
+`GET /nfo/status` 只报库内演员总数与其中带头像的数量, 以及可选媒体库; 待补条数必须先预演, 因为那要遍历磁盘, 不适合放在请求里。
+
 ## 禁止事项
 
 - 不新增鉴权豁免。五个路由都走全局 token 中间件。

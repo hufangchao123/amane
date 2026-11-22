@@ -64,7 +64,8 @@
     "wash": "Wash",
     "diagnostics": "Diagnostics",
     "backup": "Backup",
-    "trash": "Trash"
+    "trash": "Trash",
+    "maintenance": "Maintenance"
   },
   "defaults": {
     "set": "Set as default",

@@ -20,6 +20,8 @@ from ...handlers import (
     DeleteResult,
     MediaRefreshPayload,
     MediaRefreshResult,
+    NfoPatchPayload,
+    NfoPatchResult,
     OrganizePayload,
     OrganizeResult,
     R18ImportPayload,
@@ -79,6 +81,7 @@ TaskResultPayload = Annotated[
     | SubtitleAuditResult
     | SubtitleFetchResult
     | TrashPurgeResult
+    | NfoPatchResult
     | WashScanResult
     | WashApplyResult
     | BackupResult
@@ -329,6 +332,12 @@ class TrashPurgeSubmission(TrashPurgePayload):
     type: Literal["trash_purge"]
 
 
+class NfoPatchSubmission(NfoPatchPayload):
+    """NFO 修补; 默认只统计不写盘."""
+
+    type: Literal["nfo_patch"]
+
+
 class WashScanSubmission(WashScanPayload):
     """洗版扫描: 只出候选清单, 一律不移动文件."""
 
@@ -374,7 +383,8 @@ TaskSubmission = Annotated[
     | WashApplySubmission
     | BackupSubmission
     | MediaRefreshSubmission
-    | TrashPurgeSubmission,
+    | TrashPurgeSubmission
+    | NfoPatchSubmission,
     Field(discriminator="type"),
 ]
 

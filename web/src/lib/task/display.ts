@@ -1,4 +1,5 @@
 import {
+  IconFileText,
   type Icon,
   IconArchive,
   IconBroadcast,
@@ -55,6 +56,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   backup: IconArchive,
   media_refresh: IconBroadcast,
   trash_purge: IconTrash,
+  nfo_patch: IconFileText,
 });
 
 const EMPTY_CHILD_STATUS: Required<TaskChildStatusCounts> = {
