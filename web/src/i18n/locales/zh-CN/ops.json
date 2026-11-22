@@ -43,9 +43,11 @@
     "recentTitle": "最近补全",
     "recentEmpty": "还没有补全记录.",
     "recentStatus": "状态",
-    "recentResult": "结果",
+    "recentFetched": "落位",
+    "recentMissing": "缺口",
+    "recentFailed": "失败",
     "recentTime": "结束时间",
-    "recentCounts": "落位 {{fetched}} / 缺 {{missing}} / 失败 {{failed}}",
+    "recentLegend": "缺口是来源确实没有这份字幕; 失败是这一轮没办成 (缺元数据、落位冲突或来源临时不可用), 下一轮还会再试.",
     "justNow": "刚刚"
   },
   "wash": {
