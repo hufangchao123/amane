@@ -67,13 +67,19 @@ async def test_digest_builds_summary_from_repository(repo: Repository) -> None:
     library = await repo.create_library(name="日韩", path="/media/日韩")
     assert library.id is not None
     await repo.create_task(TaskType.REFRESH, {})
+    await repo.create_task(TaskType.SCRAPE, {})
     factory, sent = _factory(NotifyOutcome(ok=True, channel="webhook", status=204))
     handler = NotifyHandler(repo, _hot(enabled=True, url="https://hook.test/a"), notifier_factory=factory)
     result = await handler.handle(NotifyPayload(kind="digest"))
     assert result.success
     title, body = sent[0]
     assert title == "Amane 周报"
-    assert "排队 1" in body
+    # 原有功能的类型也要出现在摘要里, 不能只报移植来的几项
+    assert "扫描入库 1" in body
+    assert "刮削 1" in body
+    assert "排队 2" in body
+    assert "媒体库: 0 份文件" in body
+    assert "洗版回收站" in body
     assert "115 中转" in body
     assert result.result is not None
     assert result.result.digest_days == 7

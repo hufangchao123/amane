@@ -1692,6 +1692,22 @@ class TestTaskRepo:
         assert await repo.count_tasks(statuses=[TaskStatus.DONE]) == 0
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_count_tasks_window_and_by_type(self, repo: Repository):
+        await repo.create_task(task_type=TaskType.SCRAPE, payload={})
+        await repo.create_task(task_type=TaskType.SCRAPE, payload={})
+        await repo.create_task(task_type=TaskType.WASH_SCAN, payload={})
+
+        counts = await repo.count_tasks_by_type()
+        assert counts[TaskType.SCRAPE] == 2
+        assert counts[TaskType.WASH_SCAN] == 1
+
+        # 窗口起点在未来: 一条都不该算进来
+        later = datetime.now(UTC) + timedelta(days=1)
+        assert await repo.count_tasks(since=later) == 0
+        assert await repo.count_tasks_by_type(since=later) == {}
+        assert await repo.list_tasks(since=later) == []
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_list_tasks_pagination(self, repo: Repository):
         for i in range(5):
             await repo.create_task(task_type=TaskType.SCRAPE, payload={"i": i}, priority=i)

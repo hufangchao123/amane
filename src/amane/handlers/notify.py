@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from ..db.models import TaskStatus, TransferItemState, WashRecordState
+from ..db.models import TaskStatus, TaskType, TransferItemState, WashRecordState
 from ..notify import Notifier
 from .models import NotifyPayload, NotifyResult
 from .protocol import TaskHandler, TaskResult
@@ -20,7 +21,36 @@ if TYPE_CHECKING:
 
 DIGEST_DAYS = 7
 DIGEST_FAILED_SAMPLES = 5
+DIGEST_TYPE_LINES = 6
 BODY_LIMIT = 2000
+
+#: 摘要里的类型名; 没登记的类型退回枚举值, 免得新增任务时这里报错.
+_TYPE_LABELS: dict[TaskType, str] = {
+    TaskType.SCRAPE: "刮削",
+    TaskType.ORGANIZE: "整理",
+    TaskType.REFRESH: "扫描入库",
+    TaskType.CLEANUP: "清理",
+    TaskType.UPSCALE: "放大",
+    TaskType.R18_IMPORT: "R18 导入",
+    TaskType.ACTOR_SCRAPE: "演员刮削",
+    TaskType.RESCRAPE: "重新刮削",
+    TaskType.SCAN_INVALID: "失效扫描",
+    TaskType.DELETE: "删除",
+    TaskType.SEMANTIC_INDEX: "语义索引",
+    TaskType.SEMANTIC_BENCHMARK: "语义基准",
+    TaskType.ACTOR_PUSH: "演员回写",
+    TaskType.TRANSFER_115: "115 中转",
+    TaskType.SUBTITLE_FETCH: "字幕补全",
+    TaskType.SUBTITLE_AUDIT: "字幕巡检",
+    TaskType.NFO_PATCH: "NFO 修补",
+    TaskType.NOTIFY: "通知",
+    TaskType.AVATAR_CHECK: "头像校验",
+    TaskType.TRASH_PURGE: "回收站清理",
+    TaskType.WASH_SCAN: "洗版扫描",
+    TaskType.WASH_APPLY: "洗版",
+    TaskType.BACKUP: "备份",
+    TaskType.MEDIA_REFRESH: "媒体库刷新",
+}
 
 
 class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
@@ -65,21 +95,43 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
         return TaskResult(success=outcome.ok, result=result, error=outcome.error)
 
     async def _digest_body(self) -> str:
-        """任务计数与最近失败; 只查库, 不碰磁盘."""
+        """窗口内的队列与类型分布, 加上库、洗版、中转的现状; 只查库, 不碰磁盘."""
+        since = datetime.now(UTC) - timedelta(days=DIGEST_DAYS)
         queued = await self._repo.count_tasks(statuses=[TaskStatus.QUEUED])
         running = await self._repo.count_tasks(statuses=[TaskStatus.RUNNING])
-        done = await self._repo.count_tasks(statuses=[TaskStatus.DONE])
-        failed = await self._repo.count_tasks(statuses=[TaskStatus.FAILED])
+        done = await self._repo.count_tasks(statuses=[TaskStatus.DONE], since=since)
+        failed = await self._repo.count_tasks(statuses=[TaskStatus.FAILED], since=since)
+        lines = [f"最近 {DIGEST_DAYS} 天: 完成 {done}, 失败 {failed}; 当前排队 {queued}, 执行中 {running}"]
+
+        by_type = await self._repo.count_tasks_by_type(since=since)
+        if by_type:
+            lines.append(f"按类型: {_type_breakdown(by_type)}")
+
+        files = await self._repo.count_media_files()
+        missing = await self._repo.count_media_files(has_subtitle=False)
+        lines.append(f"媒体库: {files} 份文件, 其中缺外挂字幕 {missing} 份")
+
         wash_count, wash_bytes = await self._repo.count_wash_records(state=WashRecordState.TRASHED)
-        transfer = await self._repo.transfer_state_counts()
-        pending = transfer.get(TransferItemState.PENDING, 0)
-        lines = [
-            f"最近 {DIGEST_DAYS} 天的队列: 排队 {queued}, 执行中 {running}, 完成 {done}, 失败 {failed}",
-            f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB",
-            f"115 中转: {pending} 个文件等待成熟",
-        ]
-        recent = await self._repo.list_tasks(statuses=[TaskStatus.FAILED], limit=DIGEST_FAILED_SAMPLES)
+        pending = (await self._repo.transfer_state_counts()).get(TransferItemState.PENDING, 0)
+        lines.append(f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB")
+        lines.append(f"115 中转: {pending} 个文件等待成熟")
+
+        recent = await self._repo.list_tasks(statuses=[TaskStatus.FAILED], limit=DIGEST_FAILED_SAMPLES, since=since)
         for task in recent:
             detail = (task.error or "").splitlines()[0][:120] if task.error else "无错误文案"
-            lines.append(f"失败 #{task.id} {task.type}: {detail}")
+            lines.append(f"失败 #{task.id} {_type_label(task.type)}: {detail}")
         return "\n".join(lines)
+
+
+def _type_label(task_type: TaskType) -> str:
+    return _TYPE_LABELS.get(task_type, task_type.value)
+
+
+def _type_breakdown(counts: dict[TaskType, int]) -> str:
+    """按条数倒序取前几类, 其余折成一句, 免得一行过长."""
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], _type_label(item[0])))
+    head = [f"{_type_label(task_type)} {total}" for task_type, total in ordered[:DIGEST_TYPE_LINES]]
+    rest = len(ordered) - DIGEST_TYPE_LINES
+    if rest > 0:
+        head.append(f"其它 {rest} 类")
+    return ", ".join(head)

@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Sequence
+from datetime import datetime
 from typing import NamedTuple
 
 from pydantic import BaseModel
@@ -29,6 +30,7 @@ def _scope_tasks[T](
     task_ids: Iterable[int] | None = None,
     statuses: Iterable[TaskStatus] | None = None,
     task_types: Iterable[TaskType] | None = None,
+    since: datetime | None = None,
 ) -> SelectOfScalar[T]:
     if task_ids is not None:
         stmt = stmt.where(col(Task.id).in_(list(task_ids)))
@@ -36,6 +38,8 @@ def _scope_tasks[T](
         stmt = stmt.where(col(Task.status).in_(list(statuses)))
     if task_types:
         stmt = stmt.where(col(Task.type).in_(list(task_types)))
+    if since is not None:
+        stmt = stmt.where(col(Task.created_at) >= since)
     return stmt
 
 
@@ -406,13 +410,14 @@ class TasksRepoMixin(RepositoryMixinBase):
         order: SortOrder = SortOrder.DESC,
         *,
         roots_only: bool = False,
+        since: datetime | None = None,
     ) -> list[Task]:
         async with self._session() as session:
             if roots_only and (statuses or task_types):
                 # roots_only 只约束列表显示哪一层: 筛选仍匹配全部任务, 再还原链根.
                 stmt = select(Task).where(col(Task.id).in_(_matching_root_ids(statuses, task_types)), _IS_CHAIN_ROOT)
             else:
-                stmt = _scope_tasks(select(Task), statuses=statuses, task_types=task_types)
+                stmt = _scope_tasks(select(Task), statuses=statuses, task_types=task_types, since=since)
                 if roots_only:
                     stmt = stmt.where(_IS_CHAIN_ROOT)
             stmt = (
@@ -429,17 +434,27 @@ class TasksRepoMixin(RepositoryMixinBase):
         task_types: Iterable[TaskType] | None = None,
         *,
         roots_only: bool = False,
+        since: datetime | None = None,
     ) -> int:
         async with self._session() as session:
             if roots_only and (statuses or task_types):
                 stmt = select(count()).where(col(Task.id).in_(_matching_root_ids(statuses, task_types)), _IS_CHAIN_ROOT)
             else:
-                base = _scope_tasks(select(Task), statuses=statuses, task_types=task_types)
+                base = _scope_tasks(select(Task), statuses=statuses, task_types=task_types, since=since)
                 if roots_only:
                     base = base.where(_IS_CHAIN_ROOT)
                 stmt = select(count()).select_from(base.subquery())
             result = await session.exec(stmt)
             return result.one() or 0
+
+    async def count_tasks_by_type(self, *, since: datetime | None = None) -> dict[TaskType, int]:
+        """按任务类型统计条数 (可只算某时刻之后), 供摘要类输出使用."""
+        stmt = select(col(Task.type), count()).group_by(col(Task.type))
+        if since is not None:
+            stmt = stmt.where(col(Task.created_at) >= since)
+        async with self._session() as session:
+            result = await session.exec(stmt)
+            return {row[0]: int(row[1]) for row in result.all()}
 
     async def list_task_links(
         self, *, parent_task_id: int | None = None, child_task_id: int | None = None
