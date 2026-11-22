@@ -11,6 +11,7 @@ export const PAGE_SIZE_OPTIONS = {
   savedQuery: [20, 50, 100, 200],
   washCandidates: [20, 50, 100, 200],
   washRecords: [20, 50, 100, 200],
+  transferItems: [20, 50, 100, 200],
 } as const;
 
 export type PageSizeKey = keyof typeof PAGE_SIZE_OPTIONS;
@@ -29,6 +30,7 @@ export const DEFAULT_PAGE_SIZES = {
   savedQuery: 50,
   washCandidates: 20,
   washRecords: 20,
+  transferItems: 20,
 } as const satisfies { [K in PageSizeKey]: (typeof PAGE_SIZE_OPTIONS)[K][number] };
 
 export function clampPageSize(key: PageSizeKey, value: number): PageSize {
