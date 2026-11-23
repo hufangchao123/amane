@@ -129,12 +129,6 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       }
       return parts;
     }
-    case "transfer_115":
-      return [
-        payload.full
-          ? t("schedules:payload.transfer_115.full")
-          : t("schedules:payload.transfer_115.incremental"),
-      ];
     case "wash_scan":
       return [
         t("schedules:payload.wash_scan.summary", {
@@ -233,13 +227,6 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         },
       ];
     }
-    case "transfer_115":
-      return [
-        {
-          label: t("tasks:submit.transfer_115.full.label"),
-          value: yesNo(t, payload.full ?? false),
-        },
-      ];
     case "wash_scan":
       return [
         {

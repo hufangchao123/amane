@@ -421,7 +421,6 @@ RoutineSubmission = Annotated[
     | R18ImportSubmission
     | RescrapeSubmission
     | SemanticIndexSubmission
-    | Transfer115Submission
     | WashScanSubmission
     | WashPurgeRoutine
     | NotifyDigestRoutine

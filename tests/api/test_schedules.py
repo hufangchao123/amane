@@ -83,13 +83,6 @@ class TestSchedules:
             "kinds": ["cover", "still"],
         }
 
-        transfer = await client.post(
-            "schedules", json={"cron": "0 5 * * *", "submission": {"type": "transfer_115", "full": True}}
-        )
-        assert transfer.status_code == 201
-        assert transfer.json()["task_type"] == "transfer_115"
-        assert transfer.json()["payload"] == {"type": "transfer_115", "full": True}
-
         scan = await client.post(
             "schedules", json={"cron": "0 2 * * *", "submission": {"type": "wash_scan", "kind": "local"}}
         )
@@ -113,7 +106,7 @@ class TestSchedules:
         assert digest.json()["payload"] == {"type": "notify_digest"}
 
         listed = await client.get("schedules")
-        assert listed.json()["total"] == 10
+        assert listed.json()["total"] == 9
 
         sched = await repo.create_schedule(cron="0 0 * * *", task_type=RoutineType.CLEANUP, payload={}, name="old")
         sparse = await client.get(f"schedules/{sched.id}")

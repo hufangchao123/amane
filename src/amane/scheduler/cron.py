@@ -1,15 +1,17 @@
 """到期 Schedule 创建对应 Task, 并更新 last_run / next_run."""
 
 import asyncio
+from collections.abc import Callable
 from contextlib import suppress
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, assert_never
 
 import structlog
 from croniter import croniter
 from structlog.contextvars import bound_contextvars
 
-from ..db import RoutineType, TaskType
+from ..config import HotSettings
+from ..db import RoutineType, TaskStatus, TaskType
 from ..handlers import (
     CleanupPayload,
     MediaRefreshPayload,
@@ -33,10 +35,13 @@ _CHECK_INTERVAL = 60.0
 
 
 class CronScheduler:
-    def __init__(self, repo: Repository):
+    def __init__(self, repo: Repository, get_hot: Callable[[], HotSettings] | None = None):
         self._repo = repo
+        self._get_hot = get_hot
         self._running = False
         self._stop_signal = asyncio.Event()
+        # 自动中转的下次到期时刻; None 表示尚未开始计时或当前关闭
+        self._transfer_due_at: datetime | None = None
 
     @property
     def is_running(self) -> bool:
@@ -63,6 +68,7 @@ class CronScheduler:
 
     async def _tick(self) -> None:
         now = datetime.now(UTC)
+        await self._maybe_transfer(now)
         schedules = await self._repo.list_schedules()
 
         for schedule in schedules:
@@ -89,6 +95,37 @@ class CronScheduler:
             new_next_run = croniter(schedule.cron, now).get_next(datetime)
             await self._repo.update_schedule(schedule.id, last_run=now, next_run=new_next_run)
 
+    async def _maybe_transfer(self, now: datetime) -> None:
+        """按 ``transfer.interval_minutes`` 到点入队一次中转.
+
+        中转没有例行类型: 间隔写在中转配置里, 因此关掉开关或把间隔设为 0 就立刻停, 不必再去
+        定时任务页删条目. 上一轮还在排队或执行时不重复入队 —— 中转是幂等扫描, 抢跑只会浪费配额.
+        """
+        if self._get_hot is None:
+            return
+        hot = self._get_hot()
+        interval = hot.transfer.interval_minutes
+        if interval <= 0 or not hot.transfer.enabled:
+            self._transfer_due_at = None
+            return
+
+        if self._transfer_due_at is None:
+            self._transfer_due_at = now + timedelta(minutes=interval)
+            return
+        if now < self._transfer_due_at:
+            return
+        self._transfer_due_at = now + timedelta(minutes=interval)
+
+        busy = await self._repo.count_tasks(
+            statuses=[TaskStatus.QUEUED, TaskStatus.RUNNING],
+            task_types=[TaskType.TRANSFER_115],
+        )
+        if busy:
+            logger.info("transfer skipped", reason="上一轮尚未结束")
+            return
+        await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload())
+        logger.info("transfer enqueued", interval_minutes=interval)
+
     async def _execute_task(self, schedule_id: int, task_type: RoutineType, payload: dict) -> None:
         match task_type:
             case RoutineType.CLEANUP:
@@ -114,8 +151,6 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.RESCRAPE, RescrapePayload.model_validate(payload))
             case RoutineType.SEMANTIC_INDEX:
                 await self._repo.create_task(TaskType.SEMANTIC_INDEX, SemanticIndexPayload.model_validate(payload))
-            case RoutineType.TRANSFER_115:
-                await self._repo.create_task(TaskType.TRANSFER_115, Transfer115Payload(full=bool(payload.get("full"))))
             case RoutineType.NOTIFY_DIGEST:
                 await self._repo.create_task(TaskType.NOTIFY, NotifyPayload(kind="digest"))
             case RoutineType.MEDIA_REFRESH:

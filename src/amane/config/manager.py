@@ -849,6 +849,12 @@ class TransferConfig(BaseModel):
     target_cid: str = Field(default="", description="网盘目标目录 ID")
     ad_keywords: list[str] = Field(default_factory=list, description="命中即视为广告文件")
     ad_action: Literal["skip", "trash"] = Field(default="skip", description="广告文件处理方式")
+    interval_minutes: int = Field(
+        default=0,
+        ge=0,
+        le=1440,
+        description="自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交",
+    )
     max_moves_per_run: int = Field(default=5, ge=1, description="单轮最多搬移的文件数")
 
 

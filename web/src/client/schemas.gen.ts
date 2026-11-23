@@ -3823,6 +3823,7 @@ export const HotSettingsSchema = {
                 target_cid: '',
                 ad_keywords: [],
                 ad_action: 'skip',
+                interval_minutes: 0,
                 max_moves_per_run: 5
             }
         },
@@ -8503,7 +8504,6 @@ export const RoutineTypeSchema = {
         'r18_import',
         'rescrape',
         'semantic_index',
-        'transfer_115',
         'wash_scan',
         'wash_purge',
         'media_refresh',
@@ -8985,9 +8985,6 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/SemanticIndexSubmission'
                 },
                 {
-                    $ref: '#/components/schemas/Transfer115Submission'
-                },
-                {
                     $ref: '#/components/schemas/WashScanSubmission'
                 },
                 {
@@ -9010,7 +9007,6 @@ export const ScheduleCreateRequestSchema = {
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
-                    transfer_115: '#/components/schemas/Transfer115Submission',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -9090,9 +9086,6 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/SemanticIndexSubmission'
                 },
                 {
-                    $ref: '#/components/schemas/Transfer115Submission'
-                },
-                {
                     $ref: '#/components/schemas/WashScanSubmission'
                 },
                 {
@@ -9115,7 +9108,6 @@ export const ScheduleResponseSchema = {
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
-                    transfer_115: '#/components/schemas/Transfer115Submission',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -11936,6 +11928,14 @@ export const TransferConfigSchema = {
             title: 'Ad Action',
             description: '广告文件处理方式',
             default: 'skip'
+        },
+        interval_minutes: {
+            type: 'integer',
+            maximum: 1440,
+            minimum: 0,
+            title: 'Interval Minutes',
+            description: '自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交',
+            default: 0
         },
         max_moves_per_run: {
             type: 'integer',

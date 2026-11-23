@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from amane.config import HotSettings, TransferConfig
 from amane.db import RoutineType, TaskType
 from amane.db.models import WashRecordKind
 from amane.handlers import (
@@ -53,20 +54,57 @@ async def test_future_semantic_schedule_stays_idle(repo: Repository) -> None:
     assert await repo.list_tasks(task_types=[TaskType.SEMANTIC_INDEX]) == []
 
 
-@pytest.mark.asyncio
-async def test_due_transfer_schedule_enqueues_transfer_task(repo: Repository) -> None:
-    await repo.create_schedule(
-        cron="0 5 * * *",
-        task_type=RoutineType.TRANSFER_115,
-        payload={"type": "transfer_115", "full": True},
-        next_run=datetime.now(UTC) - timedelta(minutes=1),
+def _transfer_hot(*, interval: int = 10, enabled: bool = True) -> HotSettings:
+    transfer = TransferConfig(
+        enabled=enabled,
+        cookies="UID=1; CID=2",
+        source_cid="111",
+        target_cid="222",
+        interval_minutes=interval,
     )
+    return HotSettings(transfer=transfer)
 
-    await CronScheduler(repo)._tick()
+
+@pytest.mark.asyncio
+async def test_transfer_interval_enqueues_after_it_elapses(repo: Repository) -> None:
+    """间隔写在中转配置里: 第一次 tick 只开始计时, 到期后才入队."""
+    hot = _transfer_hot(interval=10)
+    scheduler = CronScheduler(repo, get_hot=lambda: hot)
+
+    await scheduler._tick()
+    assert await repo.list_tasks(task_types=[TaskType.TRANSFER_115]) == []
+
+    scheduler._transfer_due_at = datetime.now(UTC) - timedelta(seconds=1)
+    await scheduler._tick()
 
     tasks = await repo.list_tasks(task_types=[TaskType.TRANSFER_115])
     assert len(tasks) == 1
-    assert Transfer115Payload.model_validate(tasks[0].payload).full is True
+    assert Transfer115Payload.model_validate(tasks[0].payload).full is False
+    assert scheduler._transfer_due_at is not None and scheduler._transfer_due_at > datetime.now(UTC)
+
+
+@pytest.mark.asyncio
+async def test_transfer_interval_zero_keeps_it_manual(repo: Repository) -> None:
+    hot = _transfer_hot(interval=0)
+    scheduler = CronScheduler(repo, get_hot=lambda: hot)
+    scheduler._transfer_due_at = datetime.now(UTC) - timedelta(seconds=1)
+
+    await scheduler._tick()
+
+    assert await repo.list_tasks(task_types=[TaskType.TRANSFER_115]) == []
+    assert scheduler._transfer_due_at is None
+
+
+@pytest.mark.asyncio
+async def test_transfer_interval_skips_while_previous_round_runs(repo: Repository) -> None:
+    hot = _transfer_hot(interval=5)
+    scheduler = CronScheduler(repo, get_hot=lambda: hot)
+    await repo.create_task(TaskType.TRANSFER_115, Transfer115Payload())
+
+    scheduler._transfer_due_at = datetime.now(UTC) - timedelta(seconds=1)
+    await scheduler._tick()
+
+    assert len(await repo.list_tasks(task_types=[TaskType.TRANSFER_115])) == 1
 
 
 @pytest.mark.asyncio

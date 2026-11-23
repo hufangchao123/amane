@@ -77,10 +77,6 @@
       "limit": "最多 {{limit}} 条",
       "kinds": "索引范围 {{kinds}}"
     },
-    "transfer_115": {
-      "full": "全量重扫",
-      "incremental": "只搬运未搬过的文件"
-    },
     "media_refresh": {
       "summary": "让媒体服务器重新扫描媒体库",
       "scope": "刷新范围",

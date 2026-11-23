@@ -4502,7 +4502,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'transfer_115' | 'wash_scan' | 'wash_purge' | 'media_refresh' | 'notify_digest';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'wash_scan' | 'wash_purge' | 'media_refresh' | 'notify_digest';
 
 /**
  * RuntimePaths
@@ -4809,8 +4809,6 @@ export type ScheduleCreateRequest = {
     } & RescrapeSubmission) | ({
         type: 'semantic_index';
     } & SemanticIndexSubmission) | ({
-        type: 'transfer_115';
-    } & Transfer115Submission) | ({
         type: 'wash_scan';
     } & WashScanSubmission) | ({
         type: 'wash_purge';
@@ -4866,8 +4864,6 @@ export type ScheduleResponse = {
     } & RescrapeSubmission) | ({
         type: 'semantic_index';
     } & SemanticIndexSubmission) | ({
-        type: 'transfer_115';
-    } & Transfer115Submission) | ({
         type: 'wash_scan';
     } & WashScanSubmission) | ({
         type: 'wash_purge';
@@ -6428,6 +6424,12 @@ export type TransferConfig = {
      * 广告文件处理方式
      */
     ad_action?: 'skip' | 'trash';
+    /**
+     * Interval Minutes
+     *
+     * 自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交
+     */
+    interval_minutes?: number;
     /**
      * Max Moves Per Run
      *

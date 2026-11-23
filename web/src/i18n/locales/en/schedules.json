@@ -77,10 +77,6 @@
       "limit": "Up to {{limit}} entries",
       "kinds": "Sources {{kinds}}"
     },
-    "transfer_115": {
-      "full": "Rescan everything",
-      "incremental": "Only files not moved yet"
-    },
     "media_refresh": {
       "summary": "Ask the media server to rescan its libraries",
       "scope": "Scope",

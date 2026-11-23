@@ -101,13 +101,18 @@ Open objectives: 无.
 扫描的目录只取已入库文件所在的目录, 扩展名取 `libraries.subtitle_extensions` (空列表跳过). 巡检只出清单,
 不移动文件, 因此不取库锁; 清理配不上的字幕在回收站运维里做.
 
+## 自动中转
+
+中转没有例行类型: 间隔写在中转配置里 (`transfer.interval_minutes`, 0 表示只接受手动与接口提交). `CronScheduler` 每分钟的检查里顺带看一次是否到期, 到期就入队一条 `TRANSFER_115`; 开关或间隔为 0 时立刻停, 不必再去「定时任务」页删条目. 上一轮还在排队或执行时跳过这一轮 —— 中转是幂等扫描, 抢跑只浪费配额. 首次检查只开始计时, 因此改完配置不会立刻搬一次.
+
+间隔是固定分钟数, 表达不了「每周一次」这类日历节奏 —— 那类需求仍只能靠「中转」页按钮或接口提交, 不再有例行入口.
+
 ## 定时入口
 
 `scheduler/cron.py::_execute_task` 的 `match` 有三个媒体运维分支, 每一支只做「把例行转成任务」:
 
 | 例行类型 | 入队任务 | 载荷 |
 |---|---|---|
-| `transfer_115` | `TaskType.TRANSFER_115` | `Transfer115Payload(full=…)` |
 | `wash_scan` | `TaskType.WASH_SCAN` | `WashScanPayload(kind=…, library_id=…)` |
 | `wash_purge` | `TaskType.WASH_APPLY` | `WashApplyPayload(purge_ids=到期记录 id)` |
 

@@ -54,7 +54,6 @@ async def test_schema_tool_covers_members(builder: Callable[[], Any], tool_name:
 
 MEDIA_OPS_TASK_TYPES = {
     "scrape_transfer",
-    "transfer_115",
     "subtitle_fetch",
     "subtitle_audit",
     "wash_scan",
@@ -64,7 +63,7 @@ MEDIA_OPS_TASK_TYPES = {
     "avatar_check",
     "media_refresh",
 }
-MEDIA_OPS_ROUTINE_TYPES = {"transfer_115", "wash_scan", "wash_purge", "notify_digest", "media_refresh"}
+MEDIA_OPS_ROUTINE_TYPES = {"wash_scan", "wash_purge", "notify_digest", "media_refresh"}
 
 
 def test_media_ops_types_are_admitted() -> None:

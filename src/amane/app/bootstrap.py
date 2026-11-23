@@ -211,7 +211,7 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
     )
     worker.start()
 
-    cron_scheduler = CronScheduler(repo)
+    cron_scheduler = CronScheduler(repo, get_hot=lambda: config.hot)
     cron_task = asyncio.create_task(cron_scheduler.start())
 
     feed_service = FeedService(repo, web_client)

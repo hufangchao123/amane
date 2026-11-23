@@ -875,6 +875,10 @@
         "label": "Enabled",
         "description": "Skip transfer tasks while off"
       },
+      "interval_minutes": {
+        "label": "Auto transfer interval (minutes)",
+        "description": "0 disables the schedule and accepts only manual or API submissions; a round is skipped while the previous one is still running"
+      },
       "cookies": {
         "label": "115 cookie",
         "description": "115 cookie string; needs both folder IDs to activate"

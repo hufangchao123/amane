@@ -875,6 +875,10 @@
         "label": "启用",
         "description": "关闭后中转任务直接跳过"
       },
+      "interval_minutes": {
+        "label": "自动中转间隔（分钟）",
+        "description": "0 表示不自动跑, 只接受手动与接口提交; 到点时上一轮还没结束会跳过"
+      },
       "cookies": {
         "label": "115 Cookie",
         "description": "115 网盘 Cookie 串; 与两个目录 ID 同时填齐才启用"
