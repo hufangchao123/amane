@@ -150,3 +150,28 @@ async def test_failure_followups_skip_deleted_file(repo: Repository, tmp_path: P
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
     assert followups == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_transfer_followup_precedes_organize(repo: Repository, tmp_path: Path) -> None:
+    """同时开自动整理与转移时, 转移后继排在整理之前 —— 顺序即执行顺序."""
+    lib_root, pending = tmp_path / "done", tmp_path / "in"
+    lib_root.mkdir()
+    pending.mkdir()
+    lib = await repo.create_library(
+        name="t",
+        path=str(lib_root),
+        auto_organize=True,
+        scrape_transfer=True,
+        scrape_input_dir=str(pending),
+    )
+    assert lib.id is not None
+    media = await register_media_file(repo, lib.id, pending / "MIDV-123" / "MIDV-123.mp4")
+    assert media.id is not None
+
+    result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media.id))
+
+    assert [f.task_type for f in result.followups][-2:] == [
+        TaskType.SCRAPE_TRANSFER,
+        TaskType.ORGANIZE,
+    ]

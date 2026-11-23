@@ -21,7 +21,7 @@ from ...db.models import WashRecordKind
 from ...parsing import parse_file_info
 from ...utils.path import existing_disk_path
 from ...utils.threads import in_thread
-from ..rules import MEDIA_EXTENSIONS, is_in_trash
+from ..rules import MEDIA_EXTENSIONS, is_in_trash, is_under_any, publish_roots
 from .model import WashEntry
 from .trash import is_trash_path
 
@@ -159,7 +159,12 @@ async def collect_entries(
     for library in libraries:
         if library is None or library.id is None:
             continue
-        rows = [index_row(media) for media in await repo.list_media_files(library_id=library.id, limit=None)]
+        roots = publish_roots(path=library.path, ok_dir=library.scrape_ok_dir)
+        rows = [
+            index_row(media)
+            for media in await repo.list_media_files(library_id=library.id, limit=None)
+            if is_under_any(media.path, roots)
+        ]
         entries.extend(await entries_from_rows(rows, library_id=library.id))
     if len(wanted) == 1:
         only = next(iter(wanted))

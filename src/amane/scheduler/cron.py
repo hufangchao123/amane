@@ -3,7 +3,7 @@
 import asyncio
 from contextlib import suppress
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 import structlog
 from croniter import croniter
@@ -131,4 +131,4 @@ class CronScheduler:
                     return
                 await self._repo.create_task(TaskType.WASH_APPLY, WashApplyPayload(purge_ids=ids))
             case _:
-                logger.warning("unknown task type", task_type=task_type)
+                assert_never(task_type)

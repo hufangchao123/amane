@@ -11,7 +11,15 @@ from ..config import HotSettings, WatermarkConfig
 from ..db.models import Library, MediaFile, TaskType
 from ..db.repo_types import MediaFileUpdates
 from ..enums import ActorGender, DownloadableResource, LinkMode
-from ..library import MEDIA_EXTENSIONS, LibraryFileKind, LibraryScan, ancestor_dirs, prune_empty_dirs
+from ..library import (
+    MEDIA_EXTENSIONS,
+    LibraryFileKind,
+    LibraryScan,
+    ancestor_dirs,
+    is_under_any,
+    prune_empty_dirs,
+    scope_roots,
+)
 from ..library.rules import is_in_trash
 from ..media import ResourceStore, allows_poster_crop, apply_cover_watermarks_from_info, crop_poster
 from ..media import write_nfo as write_nfo_file
@@ -524,6 +532,12 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
             logger.warning("organize scope missing", library_id=library.id, media_file_ids=payload.media_file_ids)
             skipped += 1
         library_root = Path(library.path)
+        tracked_roots = scope_roots(
+            path=library.path,
+            input_dir=library.scrape_input_dir,
+            ok_dir=library.scrape_ok_dir,
+            fail_dir=library.scrape_fail_dir,
+        )
         media_extensions = frozenset(self._config.watcher.media_extensions) or MEDIA_EXTENSIONS
         scan = LibraryScan(
             trailer_pattern=library.trailer_pattern,
@@ -539,7 +553,9 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                 if mf.id is not None:
                     mf_path = Path(mf.path)
                     missing = await existing_disk_path(mf_path, follow_symlinks=False) is None
-                    if missing or not is_descendant(mf_path, library_root) or is_in_trash(mf_path):
+                    # 刮削后转移会把记录指到库根之外 (输入/成功/失败目录), 这些仍属于本库.
+                    tracked = is_under_any(mf_path, tracked_roots)
+                    if missing or not tracked or is_in_trash(mf_path):
                         await self._repo.delete_media_file(mf.id)
                     else:
                         kind = await _classify_indexed(mf_path, scan)

@@ -5,7 +5,15 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ..db import TaskType
-from ..library import MEDIA_EXTENSIONS, InventoryStore, LibraryHit, LibraryScan, OrphanScan, scan_inventory
+from ..library import (
+    MEDIA_EXTENSIONS,
+    InventoryStore,
+    LibraryHit,
+    LibraryScan,
+    OrphanScan,
+    is_under_any,
+    scan_inventory,
+)
 from ..parsing import parse_file_info
 from ..utils.path import nfc_path
 from ..utils.threads import path_exists, path_is_dir
@@ -159,7 +167,15 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
             # 删除索引中已不存在的记录.
             if want_remove:
                 if seen is not None:
-                    missing = [f for f in existing if nfc_path(f.path) not in seen]
+                    # 后转移目的目录不在扫描范围内, 记录仍属于本库.
+                    landing = (
+                        [Path(dir_) for dir_ in (library.scrape_ok_dir, library.scrape_fail_dir) if dir_]
+                        if library is not None
+                        else []
+                    )
+                    missing = [
+                        f for f in existing if nfc_path(f.path) not in seen and not is_under_any(f.path, landing)
+                    ]
                 else:
                     missing = []
                     for f in existing:

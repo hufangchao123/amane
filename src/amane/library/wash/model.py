@@ -109,11 +109,41 @@ class WashGroup:
         return sum(entry.size for entry in self.drops)
 
 
+#: 同一番号下的分卷/合集/花絮关键词. 命中即单独成组, 不与正片互洗.
+_PART_TOKENS = (
+    "前編",
+    "後編",
+    "前篇",
+    "后篇",
+    "上巻",
+    "下巻",
+    "上卷",
+    "下卷",
+    "総集編",
+    "合集",
+    "全集",
+    "特典",
+    "花絮",
+)
+
+
+def part_of(entry: WashEntry) -> str | None:
+    """从文件名里认出分卷/合集/花絮标记; 认不出返回 None."""
+    stem = Path(entry.path).stem.casefold()
+    for token in _PART_TOKENS:
+        if token in stem:
+            return token
+    return None
+
+
 def group_key_of(entry: WashEntry) -> str:
     """同组判定键: 库 + 番号 (+ 分段 + 有码标记), 见模块文档."""
     parts = [f"lib{entry.library_id}", entry.number.strip().upper()]
     if entry.cd is not None:
         parts.append(f"cd{entry.cd}")
+    part = part_of(entry)
+    if part is not None:
+        parts.append(f"part{part}")
     if entry.mosaic is not None:
         parts.append(entry.mosaic.value)
     return ":".join(parts)

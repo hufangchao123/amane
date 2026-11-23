@@ -780,3 +780,10 @@ class TestBskBackendAvailability:
 
         with pytest.raises(ValidationError, match="未找到 bsk CLI"):
             BrowserConfig(bsk_path=str(tmp_path / "absent"), backend=BrowserBackendName.BSK)
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:70000/hook", "https://host:not-a-port/a"])
+def test_notify_url_rejects_bad_port(url: str) -> None:
+    """端口不合法要在配置阶段拒绝, 否则等到推送时才炸."""
+    with pytest.raises(ValidationError):
+        NotifyConfig(enabled=True, url=url)

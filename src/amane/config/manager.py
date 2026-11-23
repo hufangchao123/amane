@@ -923,6 +923,12 @@ class NotifyConfig(BaseModel):
         parsed = urlsplit(value)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("通知地址须是 http(s) 地址")
+        try:
+            port = parsed.port
+        except ValueError as exc:
+            raise ValueError("通知地址的端口不合法") from exc
+        if port is not None and not 1 <= port <= 65535:
+            raise ValueError("通知地址的端口须在 1-65535")
         return value
 
 

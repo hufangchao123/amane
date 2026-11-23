@@ -67,10 +67,10 @@ class TestAssrtParse:
         ranked = rank_candidates(candidates, "AD-1", language_tags(languages))
         assert ranked[0].sub_id == expected
 
-    def test_rank_keeps_all_when_nothing_matches(self):
-        """一条都不含番号时保留全部, 否则整个来源等于白跑."""
+    def test_rank_drops_everything_when_nothing_matches(self):
+        """一条都不含番号时整轮作废: 别的片子顶上后落位了也发现不了错配."""
         candidates = [AssrtCandidate(sub_id=1, title="某字幕组 合集")]
-        assert [c.sub_id for c in rank_candidates(candidates, "AD-1", language_tags(["zh-CN"]))] == [1]
+        assert rank_candidates(candidates, "AD-1", language_tags(["zh-CN"])) == []
 
 
 class TestAssrtFetch:

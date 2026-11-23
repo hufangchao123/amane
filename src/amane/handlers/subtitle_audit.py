@@ -5,6 +5,7 @@
 
 from typing import TYPE_CHECKING
 
+from ..db.models import MediaFileStatus
 from ..subtitles.audit import SubtitleFinding, scan_library
 from .models import SubtitleAuditPayload, SubtitleAuditResult
 from .protocol import TaskHandler, TaskResult
@@ -43,7 +44,10 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
             videos += scan.videos
             subtitles += scan.subtitles
             findings.extend(scan.findings)
-            missing += await self._repo.count_media_files(library_id=library.id, has_subtitle=False)
+            # 只算已刮削的行: 未刮削与失败的行本来就不在补全目标里.
+            missing += await self._repo.count_media_files(
+                library_id=library.id, status=[MediaFileStatus.SCRAPED], has_subtitle=False
+            )
 
         await self.report_progress(len(libraries) + 1, len(libraries) + 1, "done")
         return TaskResult(

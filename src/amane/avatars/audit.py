@@ -29,7 +29,19 @@ VERIFY_TIMEOUT = 12.0
 SAMPLE_LIMIT = 20
 
 #: 认得出的图片头. WebP 的 RIFF 头还需在第 8 字节看到 WEBP, 这里只按首 4 字节粗判.
-_IMAGE_MAGIC = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"GIF87a", b"GIF89a", b"RIFF", b"BM")
+_IMAGE_MAGIC = (
+    b"\xff\xd8\xff",  # jpeg
+    b"\x89PNG\r\n\x1a\n",  # png
+    b"GIF87a",  # gif
+    b"GIF89a",
+    b"RIFF",  # webp
+    b"BM",  # bmp
+    b"<svg",  # svg (文本)
+    b"<?xml",  # svg 声明
+)
+
+#: ISO-BMFF 容器 (avif / heic / heif): 第 4 字节起是 `ftyp` 盒子.
+_ISO_BMFF_MARK = b"ftyp"
 
 #: 服务端明确声明资源不在了; 其余 4xx 与 5xx 可能是鉴权、限流或临时故障, 不据此清链接.
 _GONE_STATUSES = frozenset({404, 410})
@@ -74,7 +86,10 @@ class AvatarCheckOutcome:
 
 def looks_like_image(head: bytes) -> bool:
     """按文件头判断; 内容不是图片说明该地址返回的是错误页或占位图."""
-    return any(head.startswith(magic) for magic in _IMAGE_MAGIC)
+    if any(head.startswith(magic) for magic in _IMAGE_MAGIC):
+        return True
+    # avif / heic 的魔数不在开头: 前 4 字节是盒子长度.
+    return head[4:8] == _ISO_BMFF_MARK
 
 
 async def verify_location(

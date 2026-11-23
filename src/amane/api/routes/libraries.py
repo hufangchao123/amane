@@ -178,6 +178,25 @@ async def get_library(library_id: int, repo: RepoDep) -> LibraryResponse:
     return to_resp(LibraryResponse, lib)
 
 
+#: 改动这些字段要重建监控: 观察点由路径、发现通道与三个转移目录共同决定.
+WATCH_FIELDS = frozenset(
+    {
+        "automation",
+        "scrape_transfer",
+        "scrape_input_dir",
+        "scrape_ok_dir",
+        "ingest",
+        "cloud_path",
+        "path",
+        "recursive",
+        "patterns",
+        "trailer_pattern",
+        "blacklist_patterns",
+        "min_file_size",
+    }
+)
+
+
 @router.patch("/{library_id}")
 async def update_library(
     library_id: int,
@@ -212,18 +231,7 @@ async def update_library(
         raise HTTPException(status_code=404, detail="媒体库不存在")
     logger.info("library updated", library_id=library_id, fields=list(updates.keys()))
 
-    watch_fields = {
-        "automation",
-        "ingest",
-        "cloud_path",
-        "path",
-        "recursive",
-        "patterns",
-        "trailer_pattern",
-        "blacklist_patterns",
-        "min_file_size",
-    }
-    if runtime.watcher_service and watch_fields & updates.keys():
+    if runtime.watcher_service and WATCH_FIELDS & updates.keys():
         runtime.watcher_service.sync_library(lib)
     # 清单记录生成时的库根: 路径改掉后按新库根重解释相对路径会删错文件.
     if "path" in updates:

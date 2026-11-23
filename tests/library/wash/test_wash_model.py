@@ -373,3 +373,19 @@ CONTAINER_CASES = [
 @pytest.mark.parametrize(("path", "expected"), CONTAINER_CASES)
 def test_container_rank(path: str, expected: int) -> None:
     assert container_rank(path) == expected
+
+
+def test_part_tokens_keep_segments_out_of_the_main_feature() -> None:
+    """前編/後編、合集、特典各自成组: 与正片互洗会把一整段内容洗掉."""
+    groups = build_groups(
+        [
+            entry("ABC-123.mkv", size=5000),
+            entry("ABC-123 前編.mkv", size=1200),
+            entry("ABC-123 後編.mkv", size=1100),
+            entry("ABC-123 前編 720p.mkv", size=900),
+        ],
+        min_size_bytes=0,
+    )
+    kept = {group.keep.path for group in groups}
+    assert "/lib/ABC-123 前編.mkv" in kept
+    assert all(group.group_key.endswith("part前編") for group in groups)

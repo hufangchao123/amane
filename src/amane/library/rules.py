@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import AfterValidator
 
+from ..utils.path import path_is_under
 from ..utils.threads import in_thread
 
 if TYPE_CHECKING:
@@ -45,6 +46,39 @@ _IGNORED_DIRNAMES = frozenset({TRASH_DIRNAME, WASH_TRASH_DIRNAME})
 
 # .strm 在扫描扩展名里 (当正片入口), 但是路径指针不是视频字节; 大小过滤不把它当视频字节.
 _POINTER_EXTENSIONS = frozenset({".strm"})
+
+
+def scope_roots(
+    *,
+    path: str,
+    input_dir: str | None = None,
+    ok_dir: str | None = None,
+    fail_dir: str | None = None,
+) -> list[Path]:
+    """媒体库跟踪的全部目录: 库根与三个可选目录, 跳过空项.
+
+    刮削后转移让 ``MediaFile.path`` 可以落在库根之外; 判断一条记录是否仍属于这个库时,
+    必须按这组目录判定, 不能只比库根.
+    """
+    extras = (input_dir, ok_dir, fail_dir)
+    return [Path(path), *(Path(extra) for extra in extras if extra)]
+
+
+def publish_roots(*, path: str, ok_dir: str | None = None) -> list[Path]:
+    """成品所在目录: 库根与成功目录.
+
+    整理与洗版只认这两处 —— 输入目录里是待整理文件, 失败目录里是待复制的废片,
+    都不该参与「留最优」的比较.
+    """
+    roots = [Path(path)]
+    if ok_dir:
+        roots.append(Path(ok_dir))
+    return roots
+
+
+def is_under_any(path: str | Path, roots: Sequence[Path]) -> bool:
+    """路径是否为任一目录自身或子孙 (字面比较, 不解析符号链接)."""
+    return any(path_is_under(path, root) for root in roots)
 
 
 def compile_skip_patterns(patterns: Sequence[str | None] | None) -> list[Pattern[str]] | None:

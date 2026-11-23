@@ -29,13 +29,52 @@ _SECRET_QUERY_KEYS = frozenset(
 
 _SECRET_QUERY_SUFFIXES = ("_key", "_token", "_secret", "_password", "_passwd", "_sign", "_sig", "_auth")
 
+#: 名字里出现这些片段就当密钥: apikey / accessToken / AccessKeyId / signature 都不带下划线.
+_SECRET_QUERY_FRAGMENTS = (
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "apikey",
+    "accesskey",
+    "credential",
+    "signature",
+    "cookie",
+    "authorization",
+)
+
+#: 路径段满足这三条才当密钥: 够长、只有 URL 安全字符、字母与数字都有.
+_MIN_SECRET_SEGMENT = 16
+
 
 def is_secret_query_key(key: str) -> bool:
-    """查询参数名是否属密钥类: 全名相等或带密钥类后缀, 避免把 ``keyword`` 认成 ``key``."""
+    """查询参数名是否属密钥类.
+
+    判据三条取「或」: 全名相等、带密钥类后缀、名字里含密钥片段. ``keyword`` / ``signed``
+    这类正常参数不会被误伤 —— 前者不在片段表里, 后者不满足后缀与全名.
+    """
     normalized = key.lower().replace("-", "_")
     if normalized in _SECRET_QUERY_KEYS:
         return True
-    return normalized.endswith(_SECRET_QUERY_SUFFIXES)
+    if normalized.endswith(_SECRET_QUERY_SUFFIXES):
+        return True
+    compact = normalized.replace("_", "")
+    return any(fragment in compact for fragment in _SECRET_QUERY_FRAGMENTS)
+
+
+def is_secret_path_segment(segment: str) -> bool:
+    """路径段是否像密钥 (bark 这类把设备键写在路径里的地址)."""
+    if len(segment) < _MIN_SECRET_SEGMENT:
+        return False
+    if not all(char.isalnum() or char in "-_" for char in segment):
+        return False
+    return any(char.isdigit() for char in segment) and any(char.isalpha() for char in segment)
+
+
+def _redact_path(path: str) -> str:
+    if "/" not in path:
+        return path
+    return "/".join(REDACTED_QUERY_VALUE if is_secret_path_segment(segment) else segment for segment in path.split("/"))
 
 
 def redact_query(query: str) -> str:
@@ -51,9 +90,9 @@ def redact_query(query: str) -> str:
 
 
 def redact_url(url: str) -> str:
-    """返回脱敏后的 URL; 不含查询参数与 userinfo 时原样返回."""
+    """返回脱敏后的 URL; 不含查询参数、userinfo 与疑似密钥路径段时原样返回."""
     if "?" not in url and "@" not in url.split("//", 1)[-1].split("/", 1)[0]:
-        return url
+        return _redact_path(url)
     try:
         parts = urlsplit(url)
         port = parts.port
@@ -71,4 +110,4 @@ def redact_url(url: str) -> str:
                 f"{name}={REDACTED_QUERY_VALUE}" if is_secret_query_key(name) else f"{name}={value}"
                 for name, value in pairs
             )
-    return urlunsplit((parts.scheme, netloc, parts.path, query, parts.fragment))
+    return urlunsplit((parts.scheme, netloc, _redact_path(parts.path), query, parts.fragment))

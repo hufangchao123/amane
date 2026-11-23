@@ -241,7 +241,8 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
                 failed_sites=result.failed_sites,
                 outcomes=current().site_outcomes(),
             ),
-            followups=[*actor_followups, *organize_followups, *transfer_followups],
+            # 顺序即执行顺序: 先搬 (落点由库配置决定), 整理再按新路径落盘.
+            followups=[*actor_followups, *transfer_followups, *organize_followups],
         )
 
     def failure_result(self, payload: ScrapePayload) -> ScrapeResult | None:

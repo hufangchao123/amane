@@ -55,3 +55,15 @@ async def test_rejected_response_carries_status() -> None:
     assert outcome.ok is False
     assert outcome.status == 500
     assert outcome.error == "渠道返回 500"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_unreachable_address_fails_without_raising() -> None:
+    """连不上的地址 (连拒绝) 也要折成失败结果, 不能炸穿任务.
+
+    端口越界那种在配置阶段就被拒, 见 `tests/config/test_config_manager.py`.
+    """
+    notifier = Notifier(NotifyConfig(enabled=True, url="http://127.0.0.1:9/hook"))
+    outcome = await notifier.send("标题", "正文")
+    assert outcome.ok is False
+    assert outcome.error

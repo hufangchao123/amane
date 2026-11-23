@@ -99,11 +99,14 @@ def parse_detail(payload: object) -> AssrtFile | None:
 
 
 def rank_candidates(candidates: Sequence[AssrtCandidate], number: str, tags: Sequence[str]) -> list[AssrtCandidate]:
-    """标题含番号的优先, 其余按分数; 一个都不含番号时保留全部 (接口的模糊搜索结果仍可能有用)."""
+    """只留标题含番号的候选.
+
+    接口的模糊搜索会带回别的作品, 标题里没有番号就无从确认, 落位后无法发现错配 ——
+    宁可这一轮没有字幕, 也不拿别的片子顶上.
+    """
     key = normalize_key(number)
     matched = [c for c in candidates if key and key in normalize_key(c.title)]
-    pool = matched or list(candidates)
-    return sorted(pool, key=lambda c: score_title(c.title, tags), reverse=True)
+    return sorted(matched, key=lambda c: score_title(c.title, tags), reverse=True)
 
 
 async def fetch(web: SubtitleHttp, number: str, *, token: str, languages: Sequence[str]) -> SubtitleDownload:

@@ -82,6 +82,9 @@ def _handler(repo: Repository, source: _FakeSource, tmp_path: Path) -> AvatarChe
 def test_looks_like_image_cases() -> None:
     assert looks_like_image(PNG_HEAD)
     assert looks_like_image(b"\xff\xd8\xff\xe0" + b"\x00" * 8)
+    # avif / heic 的 ftyp 盒子不在开头, 少认这一种会把有效链接判成坏图.
+    assert looks_like_image(b"\x00\x00\x00\x20ftypavif" + b"\x00" * 8)
+    assert looks_like_image(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
     assert not looks_like_image(b"<html>not found</html>")
 
 

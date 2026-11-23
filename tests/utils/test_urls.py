@@ -19,6 +19,18 @@ from amane.utils.urls import redact_url
         pytest.param("https://host/a?sign=abc&ts=1", "https://host/a?sign=***&ts=1", id="query-sign"),
         pytest.param("https://user:pw@host:8443/a", "https://host:8443/a", id="userinfo"),
         pytest.param("https://host/a?keyword=abc", "https://host/a?keyword=abc", id="keyword-not-secret"),
+        pytest.param("https://host/a?signed=1", "https://host/a?signed=1", id="signed-not-secret"),
+        pytest.param("https://host/a?apikey=k&page=2", "https://host/a?apikey=***&page=2", id="query-apikey"),
+        pytest.param("https://host/a?accessToken=t", "https://host/a?accessToken=***", id="query-camel-access"),
+        pytest.param("https://host/a?AccessKeyId=id", "https://host/a?AccessKeyId=***", id="query-accesskeyid"),
+        pytest.param("https://host/a?signature=s", "https://host/a?signature=***", id="query-signature"),
+        pytest.param("https://host/a?X-Amz-Credential=c", "https://host/a?X-Amz-Credential=***", id="query-credential"),
+        pytest.param(
+            "https://api.day.app/AbCdEf1234567890XyZ/标题/正文",
+            "https://api.day.app/***/标题/正文",
+            id="path-device-key",
+        ),
+        pytest.param("https://host/api/v1/items", "https://host/api/v1/items", id="path-not-secret"),
         pytest.param("https://host/a?page=2", "https://host/a?page=2", id="plain-query"),
         pytest.param("https://host/a", "https://host/a", id="no-query"),
         pytest.param(

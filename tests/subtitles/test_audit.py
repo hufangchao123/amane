@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from amane.db.models import MediaFileStatus
 from amane.handlers import SubtitleAuditHandler, SubtitleAuditPayload
 from amane.subtitles.audit import scan_library
 
@@ -70,13 +71,15 @@ async def test_handler_counts_missing_and_orphans(repo: Repository, tmp_path: Pa
     assert library.id is not None
     video = _write(root / "ABC-123" / "ABC-123-1080p.mp4")
     _write(root / "ABC-123" / "ABC-123-720p.zh.srt")
-    await repo.create_media_file(library.id, path=video)
+    await repo.create_media_file(library.id, path=video, status=MediaFileStatus.SCRAPED)
+    # 未刮削的行不进补全队列, 因此不计入缺口.
+    await repo.create_media_file(library.id, path=_write(root / "XYZ-9" / "XYZ-9.mp4"))
 
     result = await SubtitleAuditHandler(repo).handle(SubtitleAuditPayload())
 
     assert result.success
     assert result.result is not None
-    assert (result.result.libraries, result.result.videos, result.result.subtitles) == (1, 1, 1)
+    assert (result.result.libraries, result.result.videos, result.result.subtitles) == (1, 2, 1)
     assert (result.result.missing, result.result.orphans) == (1, 1)
     assert result.result.samples == [(root / "ABC-123" / "ABC-123-720p.zh.srt").as_posix()]
 

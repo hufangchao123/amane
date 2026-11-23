@@ -113,6 +113,7 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
             if owned is not None:
                 await owned.close()
 
+        # success 表示「这一轮跑完了」: 单份取不到的计数在结果里, 由页面显示, 不把整轮标失败.
         return TaskResult(success=True, result=self._summarize(outcomes))
 
     def _summarize(self, outcomes: list[_TargetOutcome]) -> SubtitleFetchResult:

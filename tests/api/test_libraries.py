@@ -491,3 +491,10 @@ async def test_scrape_transfer_patch_merges_with_existing_dirs(client: AsyncClie
 
     assert rejected.status_code == 422
     assert "输入目录不能与库根重叠" in rejected.json()["detail"]
+
+
+def test_watch_fields_covers_transfer_dirs() -> None:
+    """三个转移目录决定监控点, 漏了它们会出现「输入目录不被监听」."""
+    from amane.api.routes.libraries import WATCH_FIELDS
+
+    assert {"scrape_transfer", "scrape_input_dir", "scrape_ok_dir"} <= WATCH_FIELDS

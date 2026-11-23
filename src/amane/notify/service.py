@@ -52,7 +52,9 @@ class Notifier:
                 timeout=self._config.timeout_seconds, transport=self._transport, trust_env=False
             ) as client:
                 response = await client.request(request.method, request.url, json=request.json, data=request.form)
-        except httpx2.HTTPError as error:
+        except Exception as error:
+            # 端口越界、域名解析失败、TLS 握手失败都可能抛, 有时还裹在 anyio 的 ExceptionGroup 里.
+            # 只捕 Exception: 取消与中断仍要能传出去.
             logger.warning("notify failed", channel=self._config.kind, reason=str(error))
             return NotifyOutcome(ok=False, channel=self._config.kind, error=str(error))
         ok = response.status_code < 400
