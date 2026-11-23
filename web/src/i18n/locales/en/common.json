@@ -59,7 +59,6 @@
       "ops": "Run",
       "mediaOps": "Media ops"
     },
-    "transfer": "115 transfer",
     "subtitles": "Subtitles",
     "wash": "Wash",
     "backup": "Backup",
@@ -190,23 +189,6 @@
     "recordKinds": {
       "digest": "",
       "message": ""
-    }
-  },
-  "transfer": {
-    "qr": {
-      "clients": {
-        "android": "",
-        "ios": "",
-        "windows": "",
-        "mac": "",
-        "linux": "",
-        "tv": "",
-        "web": ""
-      },
-      "scanned": "",
-      "confirmed": "",
-      "expired": "",
-      "waiting": ""
     }
   },
   "fieldGroups": {

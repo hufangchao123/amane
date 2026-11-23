@@ -84,7 +84,6 @@
     "semantic_index": "Semantic index",
     "semantic_benchmark": "Benchmark",
     "actor_push": "Push actors",
-    "transfer_115": "115 transfer",
     "subtitle_fetch": "Subtitle fetch",
     "wash_scan": "Wash scan",
     "wash_apply": "Wash apply",
@@ -188,9 +187,6 @@
     "actorPushMissing": "Missing actors {{value}}",
     "actorPushFailed": "Failed {{value}}",
     "counts": {
-      "scanned": "Scanned",
-      "moved": "Moved",
-      "waiting": "Writing",
       "skipped": "Skipped",
       "failed": "Failed",
       "fetched": "Fetched",
@@ -246,7 +242,6 @@
       "semantic_index": "Semantic index",
       "semantic_benchmark": "Benchmark",
       "actor_push": "Push actors",
-      "transfer_115": "115 Transfer",
       "wash_scan": "Wash scan",
       "wash_purge": "Purge expired wash files",
       "backup": "Backup",
@@ -512,12 +507,6 @@
       "force": {
         "label": "Force overwrite",
         "description": "Overwrite existing images and person fields on the media server"
-      }
-    },
-    "transfer_115": {
-      "full": {
-        "label": "Full rescan",
-        "description": "Ignore previous records and re-check every source file"
       }
     },
     "subtitle_fetch": {

@@ -29,7 +29,6 @@ class Repository(
     repos.TasksRepoMixin,
     repos.AuditRepoMixin,
     repos.NotifyRepoMixin,
-    repos.TransferRepoMixin,
     repos.WashRepoMixin,
 ):
     def __init__(self, engine: AsyncEngine, *, embeddings: EmbeddingStore | None = None):

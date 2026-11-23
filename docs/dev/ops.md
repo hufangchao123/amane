@@ -1,6 +1,6 @@
-# 媒体运维功能 (中转 / 字幕 / 洗版)
+# 媒体运维功能 (字幕 / 洗版 / 通知)
 
-> 三个阶段包: `src/amane/transfer`、`src/amane/subtitles`、`src/amane/library/wash`。
+> 阶段包: `src/amane/subtitles`、`src/amane/library/wash`。
 > 本文只写跨模块契约与仍生效的禁止事项; 端点形状、字段与默认值读源码或 `web/openapi.json`。
 > 路由见 [api.md](api.md), 任务边界见 [task-system.md](task-system.md), 库文件与回收站见 [data-model.md](data-model.md)。
 
@@ -8,7 +8,6 @@
 
 | 包 | 职责 | 不变量 |
 |----|------|--------|
-| `transfer` | 网盘侧增量搬移与逐文件状态 | 只读网盘、只写 STRM 根目录; 不生成 STRM 内容 (`organize/strm_content.py` 负责) |
 | `subtitles` | 从字幕来源取回字幕文件 | 放置一律经 `organize.subtitles`; 不直接改库内路径 |
 | `library/wash` | 同组多份文件择一保留, 其余入回收站 | 移动必须持 `LibraryTaskLocks`; 落选只搬进 `.amane_wash`, 不 `os.remove`; 真删只发生在到期的清理 |
 
@@ -16,7 +15,7 @@
 
 ## 任务类型
 
-`transfer_115` / `subtitle_fetch` / `wash_scan` / `wash_apply` 四类经 `AsyncWorker` 消费, 由 `app/runtime.py::build_handlers` 注册。
+`subtitle_fetch` / `wash_scan` / `wash_apply` 三类经 `AsyncWorker` 消费, 由 `app/runtime.py::build_handlers` 注册。
 `wash_scan` 与 `wash_apply` 是**两个** handler (`WashScanHandler` / `WashApplyHandler`) 与两套 payload: 扫描只读出候选, 执行按候选移动; 前者不取 `LibraryTaskLocks`, 后者必须取。
 
 `WashApplyPayload` 的三组入口可以同时给: `restore_ids` 与 `purge_ids` 来自回收站列表, `group_keys` 来自候选列表, 执行顺序固定为还原 → 清理 → 洗版; 三者全空表示按当前策略重算后执行全部候选, 只带还原或清理时不顺手洗全库。
@@ -52,18 +51,9 @@
 
 ## 数据
 
-`transfer_items` 以网盘文件 ID 为唯一键, 记录逐文件状态; `wash_records` 一行对应一次「留一个、移一个」, 指向回收站内的实际位置。二者只由所属任务写入, 路由只读。
+`wash_records` 一行对应一次「留一个、移一个」, 指向回收站内的实际位置; 只由洗版任务写入, 路由只读。
 
-面板时代的 `115-transfer-state.json` 等状态文件**不再读写**; 迁移期允许一次性导入, 之后以库为准。
-
-## 115 中转的扫码登录
-
-Cookie 支持扫码取得, 省掉手工从浏览器复制. 三条接口都按登录客户端分路径 (`web` / `android` / `ios` / `windows` / `mac` / `linux` / `tv`), 客户端决定 115 发给哪个端的凭据: 中转只读网盘目录与搬运, 网页端即可.
-
-- 取码 `POST /api/transfer/qrcode`: 透传 `GET qrcodeapi.115.com/api/1.0/{client}/1.0/token/` 的 `uid` / `time` / `sign`.
-- 轮询 `GET /api/transfer/qrcode/status`: 未扫时 115 回 `code 90038`, 映射成 `waiting`; `scanned` / `expired` 原样转出. 网页端确认后 115 不再回 Cookie, 要另换一次: `POST passportapi.115.com/app/1.0/web/1.0/login/qrcode/` 的 `data.cookie`, 即 `confirmed` 分支.
-- 图片 `GET /api/transfer/qrcode/image`: 后端转发 `qrcode/?uid=`, 浏览器不直连 115 的域名.
-- 确认后 Cookie 直接写进 `transfer.cookies`, 响应只报 `saved`, 不回显内容; 中转按该 Cookie 动作, 与手工填写等价.
+面板时代的状态文件 (`115-transfer-state.json` 等) **不再读写**。
 
 ## 字幕补全的目标
 
@@ -75,18 +65,17 @@ Cookie 支持扫码取得, 省掉手工从浏览器复制. 三条接口都按登
 
 ## 配置
 
-`transfer` / `subtitles` / `wash` 三个 section 挂在 `HotSettings`, 由 `/api/config` 的 schema 直接出表单。
+`subtitles` / `wash` / `notify` 三个 section 挂在 `HotSettings`, 由 `/api/config` 的 schema 直接出表单。
 
 - 密钥只放 section 内的字符串字段, 不进日志、不进任务 payload。
 - `enabled` 与实际可用分离: 缺凭据或目录时服务层报未启用, 任务不会半途失败。
 - 关闭某项功能不等于留下残留任务: 派生入口先看 `enabled`。
-- 中转单轮搬移上限由 `transfer.max_moves_per_run` 决定 (默认 5), 剩余文件下一轮继续: 上限只防单轮过久, 不表示放弃。
 
 ## 端点与提交
 
-三个功能各有 `GET /api/{transfer|subtitles|wash}/status` 只读端点, 任务入队统一走 `POST /api/tasks` 的判别联合。
+三个功能各有 `GET /api/{subtitles|wash|notify}/status` 只读端点, 任务入队统一走 `POST /api/tasks` 的判别联合。
 
-四个提交模型 (`Transfer115Submission` / `SubtitleFetchSubmission` / `WashScanSubmission` / `WashApplySubmission`) 存在, 是为了满足 `tests/api/test_tasks.py` 的两条不变量: 每个 `TaskType` 都必须有提交模型 (`TaskSubmission`) 与结果模型 (`TaskResultPayload`)。前端把它们列为 `PanelOnlyTaskType`, 不出现在通用提交弹窗里 — 由各自页面按钮直接调 SDK。
+三个提交模型 (`SubtitleFetchSubmission` / `WashScanSubmission` / `WashApplySubmission`) 存在, 是为了满足 `tests/api/test_tasks.py` 的两条不变量: 每个 `TaskType` 都必须有提交模型 (`TaskSubmission`) 与结果模型 (`TaskResultPayload`)。前端把它们列为 `PanelOnlyTaskType`, 不出现在通用提交弹窗里 — 由各自页面按钮直接调 SDK。
 
 `handlers/models.py` 里的 Payload / Result 与 `handlers/*.py` 里的 handler 分离, 结果模型带 `type: Literal[TaskType.X]` 判别字段。新增任务类型要同步五处, 少一处就有编译期或测试期报错挡着: `TaskSubmission` 联合、`TaskResultPayload` 联合、`api/support/task_resolve.py::resolve_submission` 的 `match`、`web/src/lib/exhaustive-maps.ts` 的 `TASK_TYPES`、`web/src/lib/task/display.ts` 的 `TASK_ICONS`; 另有 i18n 的 `settings.json`(配置字段) 与 `tasks.json`(提交字段 + `filters.*`) 两处编译期穷举检查。
 
@@ -109,25 +98,9 @@ Cookie 支持扫码取得, 省掉手工从浏览器复制. 三条接口都按登
 扫描的目录只取已入库文件所在的目录, 扩展名取 `libraries.subtitle_extensions` (空列表跳过). 巡检只出清单,
 不移动文件, 因此不取库锁; 清理配不上的字幕在回收站运维里做.
 
-## 中转的两级目录
+## 115 网盘的中转不在本应用内
 
-离线下载完成不产生下游能用的创建事件: 把离线落点直接接进 STRM 生成器时, 文件明明在映射目录里, 生成器却看不到。所以离线落点只能当中转的源目录, 由中转搬进成品目录 —— 移动事件是可靠的, 下游按「移动进来」生成 `.strm`, 文件夹整项搬也成立 (生成器对文件夹事件递归处理子文件)。
-
-因此 `source_cid` 与 `target_cid` 必须是两个不同目录, 且只有目标目录进下游的路径映射。改成一个目录等于让这条链路失效。
-
-## 中转的成熟判据
-
-一条候选要同时满足两条才搬: 首次登记后至少过 `MIN_AGE_SECONDS`（120 秒）, 且这一轮看到的体积与上一轮记下的相同。只看时间挡不住「边下边搬」—— 离线下载先建项再灌数据, 两分钟内灌不完的大文件照样是半截。体积变了就记下新体积并重新计时, 结果里记作 `waiting`, 不计入 `skipped`。
-
-文件夹自身的体积恒为 0, 判据取夹内媒体文件之和: 这一轮要列一次夹内清单（本来也要列, 用于剔广告）, 总体积与上一轮不同就再等一轮。因此文件夹比单文件多等一轮, 代价是每次多看一次目录。
-
-下游的 STRM 生成器按「文件落地」立即出 `.strm`, 半截搬走会让指针指向残缺文件, 而媒体服务器不会因为文件后来变大而重新刮削 —— 这条判据的意义在这里, 不在省一次搬移。
-
-## 自动中转
-
-中转没有例行类型: 间隔写在中转配置里 (`transfer.interval_minutes`, 0 表示只接受手动与接口提交). `CronScheduler` 每分钟的检查里顺带看一次是否到期, 到期就入队一条 `TRANSFER_115`; 开关或间隔为 0 时立刻停, 不必再去「定时任务」页删条目. 上一轮还在排队或执行时跳过这一轮 —— 中转是幂等扫描, 抢跑只浪费配额. 首次检查只开始计时, 因此改完配置不会立刻搬一次.
-
-间隔是固定分钟数, 表达不了「每周一次」这类日历节奏 —— 那类需求仍只能靠「中转」页按钮或接口提交, 不再有例行入口.
+115 网盘的网盘侧搬移 (把离线落点搬进 STRM 成品目录) 由下游的 STRM 工具承担, 本应用不读网盘、不存网盘凭据、也不发起网盘请求: 离线下载完成不产生下游能用的创建事件, 只有搬移产生的移动事件才会让它生成 `.strm`。
 
 ## 定时入口
 
@@ -190,14 +163,14 @@ Cookie 支持扫码取得, 省掉手工从浏览器复制. 三条接口都按登
 
 渠道表单、测试发送与最近推送都在设置页的「通知」分段里 (该分段由 `notify` schema 自动生成表单, 面板挂在表单下方), 没有独立页面。
 
-`NOTIFY` 把一段标题与正文推到 `notify` 配置里的渠道, 四种渠道只在请求形状上不同 (`notify/channels.py` 一张表); `kind=digest` 时正文留空则由任务现算摘要: 队列计数、洗版回收站可用量与占用、115 中转待搬条数、最近五条失败任务。摘要只查库, 不扫盘, 因此可以挂在例行上 (`NOTIFY_DIGEST`)。
+`NOTIFY` 把一段标题与正文推到 `notify` 配置里的渠道, 四种渠道只在请求形状上不同 (`notify/channels.py` 一张表); `kind=digest` 时正文留空则由任务现算摘要: 队列计数、按类型的条数分布、媒体库与字幕缺口、洗版回收站可用量与占用、最近五条失败任务。摘要只查库, 不扫盘, 因此可以挂在例行上 (`NOTIFY_DIGEST`)。
 
 地址由使用者在配置里填写, 常常指向内网 (自建 Bark / Server 酱代理), 因此这里**不放内网出站限制** —— 与抓站点的出站策略不同, 也不该相同。地址里可能带密钥, 所以 `notify.url` 进脱敏名单, 导出任务记录时会被替换。
 
 每次推送写一行 `notify_records` (种类、渠道快照、标题、正文摘要、结果), 保留条数由 `notify.max_records` 决定, 超出部分在下一次推送时删除。推送失败只把任务标为失败并带上渠道返回码, 不回滚任何业务动作; 未启用或地址为空时不发请求, 直接失败并写明原因。
 
 推送标题上限 200 字、正文上限 2000 字 (`handlers/models.py` 的 `NOTIFY_TITLE_LIMIT` / `NOTIFY_BODY_LIMIT`): 载荷整体进任务表的 JSON 列, 批量提交时若不设限会被写成几 MB。记录层另有 `BODY_LIMIT` 截断, 两者不同 —— 前者拒收, 后者只是留痕时缩短。渠道地址 (`notify.url`) 在配置阶段校验: 非空必须是 http(s)、有主机名、端口在 1-65535 且不超过 2000 字, 免得推送时才报错。发送阶段的任何异常 (端口越界、解析失败、TLS 失败, 乃至 anyio 包起来的 `ExceptionGroup`) 都折成失败结果, 只记日志不外抛 —— 通知失败不该炸穿任务, 也不该被当成可重试的业务错误。
-摘要 (`kind=digest`) 按 `notify.sections` 逐段拼: `queue` 报最近 7 天的完成与失败、当前排队与执行中, 并附最近五条失败任务; `types` 报按任务类型的条数分布 (原有刮削整理与移植来的运维任务同列, 按条数取前 6 类); `library` 报媒体库文件数与缺外挂字幕数; `wash` 报洗版回收站条数与占用; `transfer` 报 115 待搬条数。勾空的段不查库, 全不选时只发标题。时间窗靠 `count_tasks(since=…)` 与 `count_tasks_by_type(since=…)`, 不扫盘也不读日志。
+摘要 (`kind=digest`) 按 `notify.sections` 逐段拼: `queue` 报最近 7 天的完成与失败、当前排队与执行中, 并附最近五条失败任务; `types` 报按任务类型的条数分布 (原有刮削整理与移植来的运维任务同列, 按条数取前 6 类); `library` 报媒体库文件数与缺外挂字幕数; `wash` 报洗版回收站条数与占用。勾空的段不查库, 全不选时只发标题。时间窗靠 `count_tasks(since=…)` 与 `count_tasks_by_type(since=…)`, 不扫盘也不读日志。
 
 
 ## NFO 修补

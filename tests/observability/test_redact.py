@@ -41,16 +41,8 @@ def test_hot_slice_scrape_drops_noise():
         ({"scraping": {"site_config": {}}, "llm": {}, "network": {}, "r18": {"read_password": "default"}}, False),
         ({"plugins": {"acme.fake": {"config": {"api_token": "secret"}}}}, True),
         (
-            {"scraping": {"site_config": {}}, "llm": {}, "network": {}, "r18": {}, "transfer": {"cookies": "UID=1"}},
-            True,
-        ),
-        (
             {"scraping": {"site_config": {}}, "llm": {}, "network": {}, "r18": {}, "subtitles": {"assrt_token": "t"}},
             True,
-        ),
-        (
-            {"scraping": {"site_config": {}}, "llm": {}, "network": {}, "r18": {}, "transfer": {"cookies": None}},
-            False,
         ),
     ],
 )
@@ -142,16 +134,15 @@ def test_redact_hot(input_hot: dict, assertions):
 def test_redact_hot_covers_media_ops_secrets():
     """媒体运维的密钥字段必须登记进脱敏: 任务记录导出走的就是这条路径."""
     dump = {
-        "transfer": {"enabled": True, "cookies": "SECRET-COOKIE", "source_cid": "1", "target_cid": "2"},
+        "r18": {"enabled": True, "dsn": "postgresql://user:pw@host/db"},
         "subtitles": {"enabled": True, "assrt_token": "SECRET-TOKEN", "providers": ["assrt"]},
     }
     sliced = hot_slice_for_task(dump, "subtitle_fetch")
     out = redact_hot(sliced)
-    assert "SECRET-COOKIE" not in json.dumps(out, ensure_ascii=False)
     assert "SECRET-TOKEN" not in json.dumps(out, ensure_ascii=False)
-    assert out["transfer"]["cookies"] == REDACTION_PLACEHOLDER
+    assert "postgresql://user:pw@host/db" not in json.dumps(out, ensure_ascii=False)
     assert out["subtitles"]["assrt_token"] == REDACTION_PLACEHOLDER
-    assert out["transfer"]["source_cid"] == "1", "非密钥字段保持原值"
+    assert out["subtitles"]["enabled"] is True, "非密钥字段保持原值"
     assert needs_secrets_file(sliced) is True
 
 

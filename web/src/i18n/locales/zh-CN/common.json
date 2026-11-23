@@ -59,7 +59,6 @@
       "ops": "运行",
       "mediaOps": "媒体运维"
     },
-    "transfer": "115 中转",
     "subtitles": "字幕补全",
     "wash": "洗版",
     "backup": "备份",
@@ -180,23 +179,6 @@
     "recordKinds": {
       "digest": "notify.recordKinds.digest",
       "message": "notify.recordKinds.message"
-    }
-  },
-  "transfer": {
-    "qr": {
-      "clients": {
-        "android": "transfer.qr.clients.android",
-        "ios": "transfer.qr.clients.ios",
-        "windows": "transfer.qr.clients.windows",
-        "mac": "transfer.qr.clients.mac",
-        "linux": "transfer.qr.clients.linux",
-        "tv": "transfer.qr.clients.tv",
-        "web": "transfer.qr.clients.web"
-      },
-      "scanned": "transfer.qr.scanned",
-      "confirmed": "transfer.qr.confirmed",
-      "expired": "transfer.qr.expired",
-      "waiting": "transfer.qr.waiting"
     }
   },
   "fieldGroups": {

@@ -435,23 +435,7 @@ class RescrapeResult(BaseModel):
     actors: int = 0
 
 
-# --- 媒体运维 (115 中转 / 字幕下载 / 洗版 / 备份) ---
-
-
-class Transfer115Payload(BaseModel):
-    """115 中转范围; ``full`` 忽略 ``transfer_items`` 里的既往结果重扫一遍."""
-
-    full: bool = False
-
-
-class Transfer115Result(BaseModel):
-    type: Literal[TaskType.TRANSFER_115] = TaskType.TRANSFER_115
-    scanned: int = 0
-    moved: int = 0
-    skipped: int = 0
-    failed: int = 0
-    waiting: int = 0
-    """体积还在变, 这一轮只记账没搬; 下一轮体积相同才搬."""
+# --- 媒体运维 (字幕下载 / 洗版 / 备份) ---
 
 
 class SubtitleFetchPayload(BaseModel):

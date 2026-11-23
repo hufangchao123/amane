@@ -45,7 +45,6 @@ export type SubmittableTaskType = TaskPayload["type"];
 export type PanelOnlyTaskType =
   | "delete"
   | "semantic_benchmark"
-  | "transfer_115"
   | "subtitle_fetch"
   | "subtitle_audit"
   | "wash_scan"
@@ -115,7 +114,6 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "semantic_index",
   "semantic_benchmark",
   "actor_push",
-  "transfer_115",
   "subtitle_fetch",
   "subtitle_audit",
   "wash_scan",

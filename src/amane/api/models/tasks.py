@@ -44,8 +44,6 @@ from ...handlers import (
     SubtitleAuditResult,
     SubtitleFetchPayload,
     SubtitleFetchResult,
-    Transfer115Payload,
-    Transfer115Result,
     UpscalePayload,
     UpscaleResult,
     WashApplyPayload,
@@ -80,7 +78,6 @@ TaskResultPayload = Annotated[
     | RescrapeResult
     | SemanticIndexResult
     | SemanticBenchmarkResult
-    | Transfer115Result
     | SubtitleAuditResult
     | SubtitleFetchResult
     | NfoPatchResult
@@ -317,12 +314,6 @@ class ActorPushSubmission(ActorPushPayload):
     type: Literal["actor_push"]
 
 
-class Transfer115Submission(Transfer115Payload):
-    """115 中转: 由面板「立即中转」按钮发起."""
-
-    type: Literal["transfer_115"]
-
-
 class SubtitleAuditSubmission(SubtitleAuditPayload):
     """巡检范围; 空表示全部媒体库."""
 
@@ -384,7 +375,6 @@ TaskSubmission = Annotated[
     | RescrapeSubmission
     | SemanticIndexSubmission
     | SemanticBenchmarkSubmission
-    | Transfer115Submission
     | SubtitleAuditSubmission
     | SubtitleFetchSubmission
     | WashScanSubmission

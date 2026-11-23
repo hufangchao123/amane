@@ -21,7 +21,6 @@ import {
   IconBrandGithub,
   IconCategory,
   IconClock,
-  IconCloudDownload,
   IconDeviceMobile,
   IconFileText,
   IconFolders,
@@ -109,12 +108,11 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "mediaOps",
     labelKey: "nav.groups.mediaOps",
-    // 顺序按「需要人决定的排前, 纯自动的排后」: 洗版要先挑保留哪一份, 字幕与中转由任务自动跑,
+    // 顺序按「需要人决定的排前, 纯自动的排后」: 洗版要先挑保留哪一份, 字幕由任务自动跑,
     // 维护是一次性修补, 放最后.
     items: [
       { to: "/wash", labelKey: "nav.wash", icon: IconArrowsExchange },
       { to: "/subtitles", labelKey: "nav.subtitles", icon: IconSubtitles },
-      { to: "/transfer", labelKey: "nav.transfer", icon: IconCloudDownload },
       { to: "/maintenance", labelKey: "nav.maintenance", icon: IconTool },
     ],
   },

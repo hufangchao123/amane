@@ -36,7 +36,7 @@ HTTP 宿主与 DI 在 `app.py` / `deps.py` / `middleware.py` / `spa.py`; `routes
 | `saved-queries` | `/saved-queries` | 查询预设 CRUD / 结果 / 批量; 见 [agent.md](agent.md) |
 | `tools` | `/tools` | 外部智能体的工具索引、单工具入参与派发; 见 [agent.md](agent.md)「外部接入」 |
 | `bootstrap` | `/agent-guide` | 免鉴权的接入引导, 固定文本; 豁免见 `middleware.py::_TOKEN_EXEMPT` |
-| `transfer` / `subtitles` / `wash` / `notify` / `nfo` | 同名 | 媒体运维的只读状态 (`GET /status`); 动作一律走 `POST /tasks` 的运维任务类型, 端点本身不触发副作用. 见 [ops.md](ops.md) |
+| `subtitles` / `wash` / `notify` / `nfo` | 同名 | 媒体运维的只读状态 (`GET /status`); 动作一律走 `POST /tasks` 的运维任务类型, 端点本身不触发副作用. 见 [ops.md](ops.md) |
 | `audit` | 同名 | 写操作留痕的只读列表; `DELETE /api/audit` 清空. 见 [ops.md](ops.md) |
 | `ws` | `/ws` | EventBus 广播 |
 

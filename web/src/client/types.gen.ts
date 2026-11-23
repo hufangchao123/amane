@@ -1959,7 +1959,6 @@ export type HotSettings = {
     llm?: LlmConfig;
     r18?: R18Config;
     watcher?: WatcherConfig;
-    transfer?: TransferConfig;
     subtitles?: SubtitleFetchConfig;
     wash?: WashConfig;
     notify?: NotifyConfig;
@@ -3712,7 +3711,7 @@ export type NotifyConfig = {
     /**
      * Sections
      */
-    sections?: Array<'queue' | 'types' | 'library' | 'wash' | 'transfer'>;
+    sections?: Array<'queue' | 'types' | 'library' | 'wash'>;
 };
 
 /**
@@ -5818,7 +5817,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | Transfer115Submission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6132,8 +6131,6 @@ export type TaskResponse = {
     } & SemanticIndexResult) | ({
         type: 'semantic_benchmark';
     } & SemanticBenchmarkResult) | ({
-        type: 'transfer_115';
-    } & Transfer115Result) | ({
         type: 'subtitle_audit';
     } & SubtitleAuditResult) | ({
         type: 'subtitle_fetch';
@@ -6165,7 +6162,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'transfer_115' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -6337,298 +6334,6 @@ export type ToolSummary = {
      * Signature
      */
     signature: string;
-};
-
-/**
- * Transfer115Result
- */
-export type Transfer115Result = {
-    /**
-     * Type
-     */
-    type?: 'transfer_115';
-    /**
-     * Scanned
-     */
-    scanned?: number;
-    /**
-     * Moved
-     */
-    moved?: number;
-    /**
-     * Skipped
-     */
-    skipped?: number;
-    /**
-     * Failed
-     */
-    failed?: number;
-    /**
-     * Waiting
-     */
-    waiting?: number;
-};
-
-/**
- * Transfer115Submission
- *
- * 115 中转: 由面板「立即中转」按钮发起.
- */
-export type Transfer115Submission = {
-    /**
-     * Full
-     */
-    full?: boolean;
-    /**
-     * Type
-     */
-    type: 'transfer_115';
-};
-
-/**
- * TransferConfig
- *
- * 115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.
- *
- * ``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,
- * 本地出现文件靠 STRM 生成流程接续.
- */
-export type TransferConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Cookies
-     *
-     * 115 Cookie 串
-     */
-    cookies?: string | null;
-    /**
-     * Source Cid
-     *
-     * 网盘源目录 ID
-     */
-    source_cid?: string;
-    /**
-     * Target Cid
-     *
-     * 网盘目标目录 ID
-     */
-    target_cid?: string;
-    /**
-     * Ad Keywords
-     *
-     * 命中即视为广告文件
-     */
-    ad_keywords?: Array<string>;
-    /**
-     * Ad Action
-     *
-     * 广告文件处理方式
-     */
-    ad_action?: 'skip' | 'trash';
-    /**
-     * Interval Minutes
-     *
-     * 自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交
-     */
-    interval_minutes?: number;
-    /**
-     * Max Moves Per Run
-     *
-     * 单轮最多搬移的文件数
-     */
-    max_moves_per_run?: number;
-};
-
-/**
- * TransferDirEntry
- *
- * 网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录.
- */
-export type TransferDirEntry = {
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Name
-     */
-    name: string;
-};
-
-/**
- * TransferDirListResponse
- *
- * 一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``.
- */
-export type TransferDirListResponse = {
-    /**
-     * Enabled
-     */
-    enabled: boolean;
-    /**
-     * Cid
-     */
-    cid: string;
-    /**
-     * Items
-     */
-    items: Array<TransferDirEntry>;
-    /**
-     * Reason
-     */
-    reason?: string | null;
-};
-
-/**
- * TransferItemListResponse
- */
-export type TransferItemListResponse = {
-    /**
-     * Items
-     */
-    items: Array<TransferItemResponse>;
-    /**
-     * Total
-     */
-    total: number;
-};
-
-/**
- * TransferItemResponse
- *
- * 一条逐文件状态; ``error`` 在跳过时承载原因, 在失败时承载错误.
- */
-export type TransferItemResponse = {
-    /**
-     * Id
-     */
-    id: number;
-    /**
-     * Fid
-     */
-    fid: string;
-    /**
-     * File Name
-     */
-    file_name: string;
-    state: TransferItemState;
-    /**
-     * Attempts
-     */
-    attempts: number;
-    /**
-     * Error
-     */
-    error: string | null;
-    /**
-     * Moved At
-     */
-    moved_at: string | null;
-    /**
-     * Updated At
-     */
-    updated_at: string;
-};
-
-/**
- * TransferItemState
- */
-export type TransferItemState = 'pending' | 'moved' | 'skipped' | 'failed';
-
-/**
- * TransferLoginClient
- *
- * 扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端.
- */
-export type TransferLoginClient = 'web' | 'android' | 'ios' | 'windows' | 'mac' | 'linux' | 'tv';
-
-/**
- * TransferQrPollResponse
- */
-export type TransferQrPollResponse = {
-    /**
-     * Status
-     */
-    status: 'waiting' | 'scanned' | 'confirmed' | 'expired';
-    /**
-     * Saved
-     */
-    saved?: boolean;
-};
-
-/**
- * TransferQrStartRequest
- *
- * 要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口.
- */
-export type TransferQrStartRequest = {
-    client?: TransferLoginClient;
-};
-
-/**
- * TransferQrTicketResponse
- *
- * 一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示.
- */
-export type TransferQrTicketResponse = {
-    /**
-     * Enabled
-     */
-    enabled: boolean;
-    /**
-     * Uid
-     */
-    uid: string;
-    /**
-     * Time
-     */
-    time: string;
-    /**
-     * Sign
-     */
-    sign: string;
-    client: TransferLoginClient;
-    /**
-     * Qrcode Url
-     */
-    qrcode_url: string;
-    /**
-     * Expires In
-     */
-    expires_in: number;
-};
-
-/**
- * TransferStatusResponse
- */
-export type TransferStatusResponse = {
-    /**
-     * Enabled
-     */
-    enabled: boolean;
-    /**
-     * Reason
-     */
-    reason: string | null;
-    /**
-     * Pending
-     */
-    pending: number;
-    /**
-     * Moved
-     */
-    moved: number;
-    /**
-     * Skipped
-     */
-    skipped: number;
-    /**
-     * Failed
-     */
-    failed: number;
 };
 
 /**
@@ -10235,8 +9940,6 @@ export type SubmitTaskData = {
     } & SemanticIndexSubmission) | ({
         type: 'semantic_benchmark';
     } & SemanticBenchmarkSubmission) | ({
-        type: 'transfer_115';
-    } & Transfer115Submission) | ({
         type: 'subtitle_audit';
     } & SubtitleAuditSubmission) | ({
         type: 'subtitle_fetch';
@@ -11292,187 +10995,6 @@ export type ReleaseSemanticResponses = {
 };
 
 export type ReleaseSemanticResponse = ReleaseSemanticResponses[keyof ReleaseSemanticResponses];
-
-export type TransferStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/transfer/status';
-};
-
-export type TransferStatusResponses = {
-    /**
-     * Successful Response
-     */
-    200: TransferStatusResponse;
-};
-
-export type TransferStatusResponse2 = TransferStatusResponses[keyof TransferStatusResponses];
-
-export type StartTransferQrcodeData = {
-    body: TransferQrStartRequest;
-    path?: never;
-    query?: never;
-    url: '/api/transfer/qrcode';
-};
-
-export type StartTransferQrcodeErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type StartTransferQrcodeError = StartTransferQrcodeErrors[keyof StartTransferQrcodeErrors];
-
-export type StartTransferQrcodeResponses = {
-    /**
-     * Successful Response
-     */
-    201: TransferQrTicketResponse;
-};
-
-export type StartTransferQrcodeResponse = StartTransferQrcodeResponses[keyof StartTransferQrcodeResponses];
-
-export type PollTransferQrcodeData = {
-    body?: never;
-    path?: never;
-    query: {
-        client: TransferLoginClient;
-        /**
-         * Uid
-         */
-        uid: string;
-        /**
-         * Time
-         */
-        time: string;
-        /**
-         * Sign
-         */
-        sign: string;
-    };
-    url: '/api/transfer/qrcode/status';
-};
-
-export type PollTransferQrcodeErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type PollTransferQrcodeError = PollTransferQrcodeErrors[keyof PollTransferQrcodeErrors];
-
-export type PollTransferQrcodeResponses = {
-    /**
-     * Successful Response
-     */
-    200: TransferQrPollResponse;
-};
-
-export type PollTransferQrcodeResponse = PollTransferQrcodeResponses[keyof PollTransferQrcodeResponses];
-
-export type TransferDirsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Cid
-         */
-        cid?: string;
-    };
-    url: '/api/transfer/dirs';
-};
-
-export type TransferDirsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type TransferDirsError = TransferDirsErrors[keyof TransferDirsErrors];
-
-export type TransferDirsResponses = {
-    /**
-     * Successful Response
-     */
-    200: TransferDirListResponse;
-};
-
-export type TransferDirsResponse = TransferDirsResponses[keyof TransferDirsResponses];
-
-export type TransferQrcodeImageData = {
-    body?: never;
-    path?: never;
-    query: {
-        client: TransferLoginClient;
-        /**
-         * Uid
-         */
-        uid: string;
-    };
-    url: '/api/transfer/qrcode/image';
-};
-
-export type TransferQrcodeImageErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type TransferQrcodeImageError = TransferQrcodeImageErrors[keyof TransferQrcodeImageErrors];
-
-export type TransferQrcodeImageResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
-
-export type ListTransferItemsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * State
-         *
-         * 仅该状态的条目
-         */
-        state?: TransferItemState | null;
-        /**
-         * Offset
-         */
-        offset?: number;
-        /**
-         * Limit
-         *
-         * 每页条数
-         */
-        limit?: number;
-    };
-    url: '/api/transfer/items';
-};
-
-export type ListTransferItemsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListTransferItemsError = ListTransferItemsErrors[keyof ListTransferItemsErrors];
-
-export type ListTransferItemsResponses = {
-    /**
-     * Successful Response
-     */
-    200: TransferItemListResponse;
-};
-
-export type ListTransferItemsResponse = ListTransferItemsResponses[keyof ListTransferItemsResponses];
 
 export type SubtitleStatusData = {
     body?: never;

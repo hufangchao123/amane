@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from ..db.models import TaskStatus, TaskType, TransferItemState, WashRecordState
+from ..db.models import TaskStatus, TaskType, WashRecordState
 from ..notify import Notifier
 from .models import NotifyPayload, NotifyResult
 from .protocol import TaskHandler, TaskResult
@@ -39,7 +39,6 @@ _TYPE_LABELS: dict[TaskType, str] = {
     TaskType.SEMANTIC_INDEX: "语义索引",
     TaskType.SEMANTIC_BENCHMARK: "语义基准",
     TaskType.ACTOR_PUSH: "演员回写",
-    TaskType.TRANSFER_115: "115 中转",
     TaskType.SUBTITLE_FETCH: "字幕补全",
     TaskType.SUBTITLE_AUDIT: "字幕巡检",
     TaskType.NFO_PATCH: "NFO 修补",
@@ -110,9 +109,6 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
         if "wash" in sections:
             wash_count, wash_bytes = await self._repo.count_wash_records(state=WashRecordState.TRASHED)
             lines.append(f"洗版回收站: {wash_count} 份可还原, 占用 {wash_bytes / 1024 / 1024:.0f} MiB")
-        if "transfer" in sections:
-            pending = (await self._repo.transfer_state_counts()).get(TransferItemState.PENDING, 0)
-            lines.append(f"115 中转: {pending} 个文件等待成熟")
         if "queue" in sections:
             lines.extend(await self._failure_lines(since))
         return "\n".join(lines)

@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 STATUS_CASES = [
-    pytest.param("transfer/status", {"enabled", "pending", "moved", "skipped", "failed"}, id="transfer"),
     pytest.param("subtitles/status", {"enabled", "missing", "queued"}, id="subtitles"),
     pytest.param("wash/status", {"enabled", "groups", "trashed", "restorable_bytes"}, id="wash"),
     pytest.param("nfo/status", {"actors", "actors_with_image", "libraries"}, id="nfo"),
@@ -40,26 +39,25 @@ class TestOpsStatusHttp:
 class TestOpsConfig:
     @pytest.mark.asyncio(loop_scope="function")
     async def test_sections_roundtrip(self, client: AsyncClient) -> None:
-        """四个 section 进配置 schema, 且能写回后再读出来."""
+        """运维 section 进配置 schema, 且能写回后再读出来."""
         schema = (await client.get("config/schema")).json()["properties"]
-        for section in ("transfer", "subtitles", "wash"):
+        for section in ("subtitles", "wash", "notify"):
             assert section in schema
 
-        patched = await client.patch("config", json={"transfer": {"enabled": True, "max_moves_per_run": 3}})
+        patched = await client.patch("config", json={"wash": {"enabled": True, "min_size_mb": 120}})
         assert patched.status_code == 200
         body = (await client.get("config")).json()
-        assert body["transfer"]["enabled"] is True
-        assert body["transfer"]["max_moves_per_run"] == 3
+        assert body["wash"]["enabled"] is True
+        assert body["wash"]["min_size_mb"] == 120
 
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_invalid_move_limit_rejected(self, client: AsyncClient) -> None:
-        """越界值必须被拒: 单轮上限为 0 等于永远不搬."""
-        resp = await client.patch("config", json={"transfer": {"max_moves_per_run": 0}})
+    async def test_invalid_size_threshold_rejected(self, client: AsyncClient) -> None:
+        """越界值必须被拒: 体积下限不能是负数."""
+        resp = await client.patch("config", json={"wash": {"min_size_mb": -1}})
         assert resp.status_code == 422
 
 
 SUBMIT_CASES = [
-    pytest.param({"type": "transfer_115"}, "transfer_115", id="transfer"),
     pytest.param({"type": "subtitle_fetch", "library_id": 1}, "subtitle_fetch", id="subtitles"),
     pytest.param({"type": "subtitle_audit"}, "subtitle_audit", id="subtitle-audit"),
     pytest.param({"type": "wash_scan", "kind": "local"}, "wash_scan", id="wash-scan"),

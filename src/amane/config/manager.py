@@ -835,29 +835,6 @@ class SemanticConfig(BaseModel):
     auto_maintain: bool = Field(default=False, description="条目图片变化后立即增量索引; 打开时视觉模型常驻")
 
 
-class TransferConfig(BaseModel):
-    """115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.
-
-    ``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,
-    本地出现文件靠 STRM 生成流程接续.
-    """
-
-    enabled: bool = False
-
-    cookies: str | None = Field(default=None, description="115 Cookie 串")
-    source_cid: str = Field(default="", description="网盘源目录 ID")
-    target_cid: str = Field(default="", description="网盘目标目录 ID")
-    ad_keywords: list[str] = Field(default_factory=list, description="命中即视为广告文件")
-    ad_action: Literal["skip", "trash"] = Field(default="skip", description="广告文件处理方式")
-    interval_minutes: int = Field(
-        default=0,
-        ge=0,
-        le=1440,
-        description="自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交",
-    )
-    max_moves_per_run: int = Field(default=5, ge=1, description="单轮最多搬移的文件数")
-
-
 SubtitleProvider = Literal["assrt", "subtitlecat"]
 """字幕站: assrt 需 Token, subtitlecat 免鉴权."""
 
@@ -905,10 +882,10 @@ class WashConfig(BaseModel):
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]
-NotifySection = Literal["queue", "types", "library", "wash", "transfer"]
+NotifySection = Literal["queue", "types", "library", "wash"]
 """周报里可选的段: 队列与失败 / 类型分布 / 媒体库缺口 / 洗版回收站 / 115 中转."""
 
-DEFAULT_NOTIFY_SECTIONS: list[NotifySection] = ["queue", "types", "library", "wash", "transfer"]
+DEFAULT_NOTIFY_SECTIONS: list[NotifySection] = ["queue", "types", "library", "wash"]
 
 
 class NotifyConfig(BaseModel):
@@ -924,6 +901,14 @@ class NotifyConfig(BaseModel):
     """保留的发送记录条数, 超出部分由下一次发送删除."""
     sections: list[NotifySection] = Field(default_factory=lambda: list(DEFAULT_NOTIFY_SECTIONS))
     """周报包含哪几段; 空列表表示只发标题."""
+
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _drop_removed_sections(cls, value: Any) -> Any:
+        """丢弃已移除的分段; 115 中转移除后旧配置里还会留着 ``transfer``."""
+        if isinstance(value, list):
+            return [item for item in value if item != "transfer"]
+        return value
 
     @field_validator("url")
     @classmethod
@@ -951,13 +936,14 @@ class HotSettings(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _drop_removed_sections(cls, data: Any) -> Any:
-        """丢弃已移除的 section: ``paths`` 与 ``backup``.
+        """丢弃已移除的 section: ``paths``、``backup`` 与 ``transfer``.
 
         ``extra=forbid`` 下留着旧 section 会让整份配置校验失败, 因此这里显式丢弃.
         """
         if isinstance(data, dict):
             data.pop("paths", None)
             data.pop("backup", None)
+            data.pop("transfer", None)
         return data
 
     @model_validator(mode="before")
@@ -1005,7 +991,6 @@ class HotSettings(BaseModel):
     llm: LLMConfig = LLMConfig()
     r18: R18Config = R18Config()
     watcher: WatcherConfig = WatcherConfig()
-    transfer: TransferConfig = TransferConfig()
     subtitles: SubtitleFetchConfig = SubtitleFetchConfig()
     wash: WashConfig = WashConfig()
 

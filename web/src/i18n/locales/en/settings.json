@@ -11,7 +11,6 @@
     "watermark": "Watermark",
     "llm": "LLM Translation",
     "r18": "R18 Data Source",
-    "transfer": "115 Transfer",
     "subtitles": "Subtitle Fill",
     "wash": "Wash",
     "notify": "Notification",
@@ -868,46 +867,6 @@
         "description": "Attempts per file"
       }
     },
-    "transfer": {
-      "label": "115 transfer",
-      "description": "Move files out of a 115 cloud directory into the local STRM root",
-      "enabled": {
-        "label": "Enabled",
-        "description": "Skip transfer tasks while off"
-      },
-      "interval_minutes": {
-        "label": "Auto transfer interval (minutes)",
-        "description": "0 disables the schedule and accepts only manual or API submissions; a round is skipped while the previous one is still running"
-      },
-      "cookies": {
-        "label": "115 cookie",
-        "description": "115 cookie string; needs both folder IDs to activate"
-      },
-      "source_cid": {
-        "label": "Source folder ID",
-        "description": "115 folder ID to pull files from"
-      },
-      "target_cid": {
-        "label": "Target folder ID",
-        "description": "115 folder ID to move files into"
-      },
-      "ad_keywords": {
-        "label": "Ad keywords",
-        "description": "File names matching any keyword are treated as ads"
-      },
-      "ad_action": {
-        "label": "Ad handling",
-        "description": "What to do with matched ad files",
-        "options": {
-          "skip": "Skip",
-          "trash": "Move to trash"
-        }
-      },
-      "max_moves_per_run": {
-        "label": "Moves per run",
-        "description": "Maximum files moved in one run; the rest continue next round"
-      }
-    },
     "wash": {
       "label": "Wash",
       "description": "Keep the best copy when one number has several files",
@@ -1055,8 +1014,7 @@
             "queue": "Queue and failures",
             "types": "By task type",
             "library": "Library gaps",
-            "wash": "Wash trash",
-            "transfer": "115 transfer"
+            "wash": "Wash trash"
           }
         }
       }

@@ -83,7 +83,6 @@ async def test_digest_builds_summary_from_repository(repo: Repository) -> None:
     assert "排队 2" in body
     assert "媒体库: 0 份文件" in body
     assert "洗版回收站" in body
-    assert "115 中转" in body
     assert result.result is not None
     assert result.result.digest_days == 7
 

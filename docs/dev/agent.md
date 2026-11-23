@@ -34,7 +34,7 @@
 | `task-ops` | 统一提交 / 取消 / 重试 (入队, 不代为运行); 提交面覆盖 `POST /api/tasks` 的全部媒体运维类型 |
 | `saved-query-ops` | 预设改名 / 删除 |
 
-提交面与 `POST /api/tasks` 保持同一份准入: 媒体运维的任务类型 (`transfer_115` / `subtitle_fetch` / `subtitle_audit` / `wash_scan` / `wash_apply` / `nfo_patch` / `notify` / `avatar_check` / `media_refresh` / `scrape_transfer`) 与例行类型都在成员表里, 新增类型时必须同时扩 `payload_schema.py` 的两张表与两个 `Literal` —— 漏了助理就看不见这个功能, 而 HTTP 入口照常可用. 例外是面板专用入口 (删除) 与语义索引类, 保持不开放. `wash_apply` 属不可逆 (带 `purge_ids` 时真删文件), 提交前走批准流. 库工具 (`create_library` / `update_library`) 与页面共用 `library/scrape_paths.py::check_scrape_dirs` 校验转移目录, 也共用 `scheduler/watcher.py::WATCH_FIELDS` 决定是否重建观察点.
+提交面与 `POST /api/tasks` 保持同一份准入: 媒体运维的任务类型 (`subtitle_fetch` / `subtitle_audit` / `wash_scan` / `wash_apply` / `nfo_patch` / `notify` / `avatar_check` / `media_refresh` / `scrape_transfer`) 与例行类型都在成员表里, 新增类型时必须同时扩 `payload_schema.py` 的两张表与两个 `Literal` —— 漏了助理就看不见这个功能, 而 HTTP 入口照常可用. 例外是面板专用入口 (删除) 与语义索引类, 保持不开放. `wash_apply` 属不可逆 (带 `purge_ids` 时真删文件), 提交前走批准流. 库工具 (`create_library` / `update_library`) 与页面共用 `library/scrape_paths.py::check_scrape_dirs` 校验转移目录, 也共用 `scheduler/watcher.py::WATCH_FIELDS` 决定是否重建观察点.
 
 任务与定时任务的入参 (即 `submit_task` / `create_schedule` 的 `submission`) **不随工具签名内联**: 联合体大小远大于其余工具定义, 改为 `get_task_submission_schema` / `get_routine_submission_schema` 按需返回, 与提交时的校验共用同一个 `TypeAdapter`; 校验失败返回出错字段 (最多三条)、可用类型与该类型的字段定义, 模型无需再次试探形状.
 

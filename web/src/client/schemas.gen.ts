@@ -3815,18 +3815,6 @@ export const HotSettingsSchema = {
                 ]
             }
         },
-        transfer: {
-            $ref: '#/components/schemas/TransferConfig',
-            default: {
-                enabled: false,
-                source_cid: '',
-                target_cid: '',
-                ad_keywords: [],
-                ad_action: 'skip',
-                interval_minutes: 0,
-                max_moves_per_run: 5
-            }
-        },
         subtitles: {
             $ref: '#/components/schemas/SubtitleFetchConfig',
             default: {
@@ -3869,8 +3857,7 @@ export const HotSettingsSchema = {
                     'queue',
                     'types',
                     'library',
-                    'wash',
-                    'transfer'
+                    'wash'
                 ]
             }
         },
@@ -7273,8 +7260,7 @@ export const NotifyConfigSchema = {
                     'queue',
                     'types',
                     'library',
-                    'wash',
-                    'transfer'
+                    'wash'
                 ]
             },
             type: 'array',
@@ -10847,9 +10833,6 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/SemanticBenchmarkSubmission'
                     },
                     {
-                        $ref: '#/components/schemas/Transfer115Submission'
-                    },
-                    {
                         $ref: '#/components/schemas/SubtitleAuditSubmission'
                     },
                     {
@@ -10896,7 +10879,6 @@ export const TaskBatchSubmitRequestSchema = {
                         semantic_index: '#/components/schemas/SemanticIndexSubmission',
                         subtitle_audit: '#/components/schemas/SubtitleAuditSubmission',
                         subtitle_fetch: '#/components/schemas/SubtitleFetchSubmission',
-                        transfer_115: '#/components/schemas/Transfer115Submission',
                         upscale: '#/components/schemas/UpscaleSubmission',
                         wash_apply: '#/components/schemas/WashApplySubmission',
                         wash_scan: '#/components/schemas/WashScanSubmission'
@@ -11459,9 +11441,6 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/SemanticBenchmarkResult'
                         },
                         {
-                            $ref: '#/components/schemas/Transfer115Result'
-                        },
-                        {
                             $ref: '#/components/schemas/SubtitleAuditResult'
                         },
                         {
@@ -11508,7 +11487,6 @@ export const TaskResponseSchema = {
                             semantic_index: '#/components/schemas/SemanticIndexResult',
                             subtitle_audit: '#/components/schemas/SubtitleAuditResult',
                             subtitle_fetch: '#/components/schemas/SubtitleFetchResult',
-                            transfer_115: '#/components/schemas/Transfer115Result',
                             upscale: '#/components/schemas/UpscaleResult',
                             wash_apply: '#/components/schemas/WashApplyResult',
                             wash_scan: '#/components/schemas/WashScanResult'
@@ -11573,7 +11551,6 @@ export const TaskTypeSchema = {
         'semantic_index',
         'semantic_benchmark',
         'actor_push',
-        'transfer_115',
         'subtitle_fetch',
         'subtitle_audit',
         'nfo_patch',
@@ -11827,434 +11804,6 @@ export const ToolSummarySchema = {
     ],
     title: 'ToolSummary',
     description: '目录索引里的一条: 够选工具, 不够直接构造复杂入参.'
-} as const;
-
-export const Transfer115ResultSchema = {
-    properties: {
-        type: {
-            type: 'string',
-            const: 'transfer_115',
-            title: 'Type',
-            default: 'transfer_115'
-        },
-        scanned: {
-            type: 'integer',
-            title: 'Scanned',
-            default: 0
-        },
-        moved: {
-            type: 'integer',
-            title: 'Moved',
-            default: 0
-        },
-        skipped: {
-            type: 'integer',
-            title: 'Skipped',
-            default: 0
-        },
-        failed: {
-            type: 'integer',
-            title: 'Failed',
-            default: 0
-        },
-        waiting: {
-            type: 'integer',
-            title: 'Waiting',
-            default: 0
-        }
-    },
-    type: 'object',
-    title: 'Transfer115Result'
-} as const;
-
-export const Transfer115SubmissionSchema = {
-    properties: {
-        full: {
-            type: 'boolean',
-            title: 'Full',
-            default: false
-        },
-        type: {
-            type: 'string',
-            const: 'transfer_115',
-            title: 'Type'
-        }
-    },
-    type: 'object',
-    required: [
-        'type'
-    ],
-    title: 'Transfer115Submission',
-    description: '115 中转: 由面板「立即中转」按钮发起.'
-} as const;
-
-export const TransferConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        cookies: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Cookies',
-            description: '115 Cookie 串'
-        },
-        source_cid: {
-            type: 'string',
-            title: 'Source Cid',
-            description: '网盘源目录 ID',
-            default: ''
-        },
-        target_cid: {
-            type: 'string',
-            title: 'Target Cid',
-            description: '网盘目标目录 ID',
-            default: ''
-        },
-        ad_keywords: {
-            items: {
-                type: 'string'
-            },
-            type: 'array',
-            title: 'Ad Keywords',
-            description: '命中即视为广告文件'
-        },
-        ad_action: {
-            type: 'string',
-            enum: [
-                'skip',
-                'trash'
-            ],
-            title: 'Ad Action',
-            description: '广告文件处理方式',
-            default: 'skip'
-        },
-        interval_minutes: {
-            type: 'integer',
-            maximum: 1440,
-            minimum: 0,
-            title: 'Interval Minutes',
-            description: '自动中转的间隔(分钟); 0 表示不自动跑, 只接受手动与接口提交',
-            default: 0
-        },
-        max_moves_per_run: {
-            type: 'integer',
-            minimum: 1,
-            title: 'Max Moves Per Run',
-            description: '单轮最多搬移的文件数',
-            default: 5
-        }
-    },
-    type: 'object',
-    title: 'TransferConfig',
-    description: '115 中转: 把网盘源目录里新增的文件搬进本地 STRM 根目录. 缺 cookies 时即使 enabled 也不工作.\n\n``source_cid`` 与 ``target_cid`` 都是 115 网盘的目录 ID, 不是本机路径: 中转只改网盘侧位置,\n本地出现文件靠 STRM 生成流程接续.'
-} as const;
-
-export const TransferDirEntrySchema = {
-    properties: {
-        id: {
-            type: 'string',
-            title: 'Id'
-        },
-        name: {
-            type: 'string',
-            title: 'Name'
-        }
-    },
-    type: 'object',
-    required: [
-        'id',
-        'name'
-    ],
-    title: 'TransferDirEntry',
-    description: '网盘目录里的一层文件夹: 只有名字与 ID, 用来填源目录与目标目录.'
-} as const;
-
-export const TransferDirListResponseSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled'
-        },
-        cid: {
-            type: 'string',
-            title: 'Cid'
-        },
-        items: {
-            items: {
-                $ref: '#/components/schemas/TransferDirEntry'
-            },
-            type: 'array',
-            title: 'Items'
-        },
-        reason: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Reason'
-        }
-    },
-    type: 'object',
-    required: [
-        'enabled',
-        'cid',
-        'items'
-    ],
-    title: 'TransferDirListResponse',
-    description: '一层目录的子文件夹. ``cid`` 是这一层的目录 ID, 根目录为 ``0``.'
-} as const;
-
-export const TransferItemListResponseSchema = {
-    properties: {
-        items: {
-            items: {
-                $ref: '#/components/schemas/TransferItemResponse'
-            },
-            type: 'array',
-            title: 'Items'
-        },
-        total: {
-            type: 'integer',
-            title: 'Total'
-        }
-    },
-    type: 'object',
-    required: [
-        'items',
-        'total'
-    ],
-    title: 'TransferItemListResponse'
-} as const;
-
-export const TransferItemResponseSchema = {
-    properties: {
-        id: {
-            type: 'integer',
-            title: 'Id'
-        },
-        fid: {
-            type: 'string',
-            title: 'Fid'
-        },
-        file_name: {
-            type: 'string',
-            title: 'File Name'
-        },
-        state: {
-            $ref: '#/components/schemas/TransferItemState'
-        },
-        attempts: {
-            type: 'integer',
-            title: 'Attempts'
-        },
-        error: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Error'
-        },
-        moved_at: {
-            anyOf: [
-                {
-                    type: 'string',
-                    format: 'date-time'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Moved At'
-        },
-        updated_at: {
-            type: 'string',
-            format: 'date-time',
-            title: 'Updated At'
-        }
-    },
-    type: 'object',
-    required: [
-        'id',
-        'fid',
-        'file_name',
-        'state',
-        'attempts',
-        'error',
-        'moved_at',
-        'updated_at'
-    ],
-    title: 'TransferItemResponse',
-    description: '一条逐文件状态; ``error`` 在跳过时承载原因, 在失败时承载错误.'
-} as const;
-
-export const TransferItemStateSchema = {
-    type: 'string',
-    enum: [
-        'pending',
-        'moved',
-        'skipped',
-        'failed'
-    ],
-    title: 'TransferItemState'
-} as const;
-
-export const TransferLoginClientSchema = {
-    type: 'string',
-    enum: [
-        'web',
-        'android',
-        'ios',
-        'windows',
-        'mac',
-        'linux',
-        'tv'
-    ],
-    title: 'TransferLoginClient',
-    description: '扫码登录按哪个客户端换 token. 不同客户端的接口域与 Cookie 用途不同, 默认网页端.'
-} as const;
-
-export const TransferQrPollResponseSchema = {
-    properties: {
-        status: {
-            type: 'string',
-            enum: [
-                'waiting',
-                'scanned',
-                'confirmed',
-                'expired'
-            ],
-            title: 'Status'
-        },
-        saved: {
-            type: 'boolean',
-            title: 'Saved',
-            default: false
-        }
-    },
-    type: 'object',
-    required: [
-        'status'
-    ],
-    title: 'TransferQrPollResponse'
-} as const;
-
-export const TransferQrStartRequestSchema = {
-    properties: {
-        client: {
-            $ref: '#/components/schemas/TransferLoginClient',
-            default: 'web'
-        }
-    },
-    type: 'object',
-    title: 'TransferQrStartRequest',
-    description: '要按哪个客户端换二维码; 不同客户端拿到的 Cookie 只能用于对应接口.'
-} as const;
-
-export const TransferQrTicketResponseSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled'
-        },
-        uid: {
-            type: 'string',
-            title: 'Uid'
-        },
-        time: {
-            type: 'string',
-            title: 'Time'
-        },
-        sign: {
-            type: 'string',
-            title: 'Sign'
-        },
-        client: {
-            $ref: '#/components/schemas/TransferLoginClient'
-        },
-        qrcode_url: {
-            type: 'string',
-            title: 'Qrcode Url'
-        },
-        expires_in: {
-            type: 'integer',
-            title: 'Expires In'
-        }
-    },
-    type: 'object',
-    required: [
-        'enabled',
-        'uid',
-        'time',
-        'sign',
-        'client',
-        'qrcode_url',
-        'expires_in'
-    ],
-    title: 'TransferQrTicketResponse',
-    description: '一张待扫的二维码; 前端拿 ``uid`` / ``time`` / ``sign`` 轮询, 拿 ``qrcode_url`` 显示.'
-} as const;
-
-export const TransferStatusResponseSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled'
-        },
-        reason: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Reason'
-        },
-        pending: {
-            type: 'integer',
-            title: 'Pending'
-        },
-        moved: {
-            type: 'integer',
-            title: 'Moved'
-        },
-        skipped: {
-            type: 'integer',
-            title: 'Skipped'
-        },
-        failed: {
-            type: 'integer',
-            title: 'Failed'
-        }
-    },
-    type: 'object',
-    required: [
-        'enabled',
-        'reason',
-        'pending',
-        'moved',
-        'skipped',
-        'failed'
-    ],
-    title: 'TransferStatusResponse'
 } as const;
 
 export const TrashSummaryResponseSchema = {

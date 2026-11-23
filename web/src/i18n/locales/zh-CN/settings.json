@@ -11,7 +11,6 @@
     "watermark": "水印",
     "llm": "LLM 翻译",
     "r18": "R18 数据源",
-    "transfer": "115 中转",
     "subtitles": "字幕补全",
     "wash": "洗版",
     "notify": "通知",
@@ -868,46 +867,6 @@
         "description": "单个文件最多尝试的次数"
       }
     },
-    "transfer": {
-      "label": "115 中转",
-      "description": "把 115 网盘目录里的文件搬到本地 STRM 根, 供 STRM 洗版与入库使用",
-      "enabled": {
-        "label": "启用",
-        "description": "关闭后中转任务直接跳过"
-      },
-      "interval_minutes": {
-        "label": "自动中转间隔（分钟）",
-        "description": "0 表示不自动跑, 只接受手动与接口提交; 到点时上一轮还没结束会跳过"
-      },
-      "cookies": {
-        "label": "115 Cookie",
-        "description": "115 网盘 Cookie 串; 与两个目录 ID 同时填齐才启用"
-      },
-      "source_cid": {
-        "label": "源目录 ID",
-        "description": "115 网盘侧待搬运目录的目录 ID"
-      },
-      "target_cid": {
-        "label": "目标目录 ID",
-        "description": "搬运到的 115 网盘目录 ID"
-      },
-      "ad_keywords": {
-        "label": "广告关键词",
-        "description": "文件名命中任一关键词即视为广告文件"
-      },
-      "ad_action": {
-        "label": "广告处理",
-        "description": "命中广告关键词时的处理方式",
-        "options": {
-          "skip": "跳过",
-          "trash": "移入回收站"
-        }
-      },
-      "max_moves_per_run": {
-        "label": "单轮上限",
-        "description": "一轮最多搬移多少个文件; 剩余的下轮继续"
-      }
-    },
     "wash": {
       "label": "洗版",
       "description": "同一番号存在多份文件时保留最优的一份",
@@ -1055,8 +1014,7 @@
             "queue": "队列与失败",
             "types": "类型分布",
             "library": "媒体库缺口",
-            "wash": "洗版回收站",
-            "transfer": "115 中转"
+            "wash": "洗版回收站"
           }
         }
       }

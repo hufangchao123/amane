@@ -40,7 +40,6 @@ from ..handlers import (
     SemanticIndexHandler,
     SubtitleAuditHandler,
     SubtitleFetchHandler,
-    Transfer115Handler,
     UpscaleHandler,
     WashApplyHandler,
     WashScanHandler,
@@ -618,7 +617,6 @@ def build_handlers(
     }
     # 媒体运维: 由各自的库配置或热配置决定是否真的动作, 未启用时任务成功但只记说明.
     handlers[TaskType.SCRAPE_TRANSFER] = ScrapeTransferHandler(repo, hot, library_locks, inventory_store)
-    handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot, max_moves=hot.transfer.max_moves_per_run)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo, hot)
     handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, hot, library_locks)

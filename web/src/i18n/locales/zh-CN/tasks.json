@@ -72,7 +72,6 @@
     "semantic_index": "语义索引",
     "semantic_benchmark": "性能测试",
     "actor_push": "推送演员",
-    "transfer_115": "115 中转",
     "subtitle_fetch": "字幕下载",
     "wash_scan": "洗版扫描",
     "wash_apply": "洗版执行",
@@ -157,9 +156,6 @@
     "actorPushMissing": "缺少演员 {{value}}",
     "actorPushFailed": "失败 {{value}}",
     "counts": {
-      "scanned": "扫描",
-      "moved": "搬移",
-      "waiting": "等写入完成",
       "skipped": "跳过",
       "failed": "失败",
       "fetched": "已下载",
@@ -214,7 +210,6 @@
       "semantic_index": "语义索引",
       "semantic_benchmark": "性能测试",
       "actor_push": "推送演员",
-      "transfer_115": "115 中转",
       "wash_scan": "洗版扫描",
       "wash_purge": "删除到期洗版文件",
       "backup": "备份",
@@ -481,12 +476,6 @@
       "force": {
         "label": "强制覆盖",
         "description": "覆盖媒体服务器上已有的头像与人物字段"
-      }
-    },
-    "transfer_115": {
-      "full": {
-        "label": "全量重扫",
-        "description": "忽略已搬过的记录, 重新判定源目录全部文件"
       }
     },
     "subtitle_fetch": {
