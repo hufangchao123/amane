@@ -901,7 +901,9 @@ class WashConfig(BaseModel):
     """参与洗版的本地文件."""
     min_size_mb: int = Field(default=300, ge=0)
     """本地文件小于此体积不参与洗版, 避免误删样片; STRM 指针不受此限 (指针本身只有几百字节)."""
-    prefer: list[WashPrefer] = Field(default_factory=lambda: [WashPrefer.QUALITY], json_schema_extra={"x-ordered": True})
+    prefer: list[WashPrefer] = Field(
+        default_factory=lambda: [WashPrefer.QUALITY], json_schema_extra={"x-ordered": True}
+    )
     """本地文件留哪一份: 按顺序比较, 排前面的维度先分出高下.
 
     画质这一维内部仍是「分辨率 → 码率 → 体积」; 字幕维度按「文件名带中文字幕标记 → 有外挂字幕 →

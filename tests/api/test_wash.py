@@ -321,9 +321,7 @@ async def test_ignore_group_hides_its_drops(wash_client: AsyncClient, wash_repo:
     for name in ("ABC-200-1080p.mkv", "ABC-200-720p.mp4"):
         await wash_repo.create_media_file(library.id, path=str(root / name), number="ABC-200")
 
-    await wash_client.put(
-        "wash/choices", json={"group_key": f"lib{library.id}:ABC-200", "action": "ignore"}
-    )
+    await wash_client.put("wash/choices", json={"group_key": f"lib{library.id}:ABC-200", "action": "ignore"})
     item = (await wash_client.get("wash/candidates", params={"kind": "local"})).json()["items"][0]
 
     assert item["ignored"] is True

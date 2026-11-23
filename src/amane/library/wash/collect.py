@@ -72,8 +72,24 @@ def _mtime_of(path: str) -> float | None:
         return None
 
 
+def _parse_target(path: str, library_root: Path | None) -> str:
+    """解析番号时只看到库根之下的部分.
+
+    整条绝对路径会把库根之上的目录名也交给解析器: 库外叫 ``PT-12`` / ``2024`` 这类目录会让
+    一份没有番号的文件凭空得到一个番号, 进而与别的文件错误地成组.
+    """
+    if library_root is None:
+        return path
+    try:
+        return str(Path(path).relative_to(library_root))
+    except ValueError:
+        return path
+
+
 @in_thread
-def entries_from_rows(rows: Sequence[IndexRow], *, library_id: int) -> list[WashEntry]:
+def entries_from_rows(
+    rows: Sequence[IndexRow], *, library_id: int, library_root: Path | None = None
+) -> list[WashEntry]:
     """把一批索引行变成参与比较的条目; 磁盘上已经不存在的本地文件直接丢弃.
 
     丢弃而不是记一条候选: 洗版的落选者要被搬走, 搬不存在的文件只会制造一条无法解释的失败记录.
@@ -89,7 +105,7 @@ def entries_from_rows(rows: Sequence[IndexRow], *, library_id: int) -> list[Wash
         kind = _kind_of(path)
         if kind is None:
             continue
-        info = parse_file_info(path=path)
+        info = parse_file_info(path=_parse_target(path, library_root))
         number = (row.number or "").strip() or (info.number or "").strip()
         if not number:
             # 番号解析不出来的文件没有分组依据.
@@ -174,7 +190,7 @@ async def collect_entries(
             for media in await repo.list_media_files(library_id=library.id, limit=None)
             if is_under_any(media.path, roots)
         ]
-        entries.extend(await entries_from_rows(rows, library_id=library.id))
+        entries.extend(await entries_from_rows(rows, library_id=library.id, library_root=Path(library.path)))
     if len(wanted) == 1:
         only = next(iter(wanted))
         entries = [entry for entry in entries if entry.kind is only]

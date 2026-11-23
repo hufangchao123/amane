@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.config.manager import HotSettings, SubtitleFetchConfig
+from amane.db.models import MediaFileStatus
 from amane.handlers import subtitle_fetch as module
 from amane.handlers.models import SubtitleFetchPayload
 from amane.handlers.subtitle_fetch import SubtitleFetchHandler
@@ -69,6 +70,60 @@ class TestTargets:
         refreshed = await repo.get_media_file(media.id)
         assert refreshed is not None
         assert refreshed.has_external_subtitle is True
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_file_outside_the_library_gets_the_subtitle_next_to_it(
+        self,
+        repo: Repository,
+        tmp_path: Path,
+        subtitle_config: SubtitleFetchConfig,
+        subtitlecat_pages: dict[str, str],
+    ):
+        """还在输入目录里的文件按库模板算不出位置: 字幕落在它旁边, 随文件一起被转移带走.
+
+        库模板默认用绝对路径 ``{link_dir}/{raw_srt_name}.{ext}``, 基准目录只有库根, 于是
+        「落位」会抛 ``ValueError: 路径越界`` —— 2026-11-24 实测就是这样把整条补全任务打成失败的.
+        """
+        root = tmp_path / "lib"
+        root.mkdir()
+        library = await repo.create_library(
+            name="lib-downloads",
+            path=str(root),
+            subtitle_extensions=[".srt"],
+            write_nfo=False,
+        )
+        assert library.id is not None
+        staging = tmp_path / "downloads"
+        staging.mkdir()
+        video = staging / "AD-2.mp4"
+        video.write_bytes(b"not a real video")
+        await repo.upsert_metadata(number="AD-2", title="AD-2 标题")
+        metadata = await repo.get_metadata_by_number("AD-2")
+        assert metadata is not None
+        media = await repo.create_media_file(
+            library.id,
+            path=str(video),
+            number="AD-2",
+            metadata_id=metadata.id,
+            status=MediaFileStatus.SCRAPED,
+        )
+        assert media.id is not None
+
+        pages = dict(subtitlecat_pages)
+        pages["https://www.subtitlecat.com/index.php?search=AD-2"] = (
+            '<html><body><a href="subs/300/ad-2-chinese.html">AD-2 中文字幕</a></body></html>'
+        )
+        pages["https://www.subtitlecat.com/subs/300/ad-2-chinese.html"] = (
+            '<html><body><a href="/subs/300/ad-2-zh-CN.srt">简体</a></body></html>'
+        )
+        web = FakeHttp(texts=pages)
+        result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
+
+        assert result.success is True
+        assert result.result is not None
+        assert result.result.fetched == 1
+        assert (staging / "AD-2.zh.srt").exists()
+        assert not (root / "AD-2.zh.srt").exists()
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_library_without_subtitle_extensions_is_skipped(

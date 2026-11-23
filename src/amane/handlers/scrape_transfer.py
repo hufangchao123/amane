@@ -72,9 +72,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         async with await self._library_locks.get(library.id):
             return await self._transfer_locked(payload, file, library, Path(destination), result)
 
-    def _organize_followups(
-        self, library: Library, file: MediaFile, destination: Path
-    ) -> list[FollowupTask]:
+    def _organize_followups(self, library: Library, file: MediaFile, destination: Path) -> list[FollowupTask]:
         """落点就是库根时补一次整理, 让搬进来的文件按模板重命名归位.
 
         落点是单独的成品目录 (显式 ``scrape_ok_dir``) 时不整理: 那是使用者已经排好的树, 再按模板搬
@@ -88,9 +86,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
             FollowupTask(
                 key=f"organize:{file.id}",
                 task_type=TaskType.ORGANIZE,
-                payload=OrganizePayload(library_id=library.id, media_file_ids=[file.id]).model_dump(
-                    mode="json"
-                ),
+                payload=OrganizePayload(library_id=library.id, media_file_ids=[file.id]).model_dump(mode="json"),
                 priority=-1,
             )
         ]

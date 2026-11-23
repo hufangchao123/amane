@@ -17,7 +17,7 @@ import structlog
 
 from ..db.models import MediaFileStatus
 from ..enums import MoveMode
-from ..library.rules import has_companion_subtitle, is_video_media
+from ..library.rules import has_companion_subtitle, is_under_any, is_video_media, publish_roots
 from ..organize.path_templates import resolve_subtitle_path
 from ..organize.subtitles import place_subtitles
 from ..parsing.file_info import parse_file_info
@@ -237,12 +237,15 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         临时文件叫 ``<视频 stem>.zh<suffix>``: 默认字幕模板是 ``{raw_srt_name}.{ext}``, 临时文件
         的 stem 会直接成为成品名的主干, 语言标记只能在这一步加进去.
         """
-        path = Path(media.path)
         if library.id is None:
             return _TargetOutcome(_Outcome.FAILED, "媒体库尚未落库")
         lock = await self._library_locks.get(library.id)
         async with lock:
-            return await self._place_locked(media, library, metadata, download, path)
+            # 拿锁之后再读一次路径: 转移与整理会动同一个文件, 用进入任务时的旧路径会往
+            # 已经不存在的位置落字幕.
+            fresh = await self._repo.get_media_file(media.id) if media.id is not None else None
+            current = fresh or media
+            return await self._place_locked(current, library, metadata, download, Path(current.path))
 
     async def _place_locked(
         self,
@@ -261,6 +264,11 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
                 media.path,
                 has_external_subtitle=media.has_external_subtitle,
             )
+            # 成品目录之外的文件(还在输入目录里)按同一套模板算不出位置: 默认模板用绝对路径
+            # ``{link_dir}``, 基准目录只有库根, 于是报「路径越界」. 这类文件的字幕先落在它
+            # 自己旁边, 随文件一起被转移与整理带走.
+            in_library = is_under_any(path, publish_roots(path=library.path, ok_dir=library.scrape_ok_dir))
+            safe_dirs: tuple[Path, ...] = () if in_library else (path.parent,)
             expected = resolve_subtitle_path(
                 library,
                 metadata,
@@ -269,7 +277,7 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
                 video_dest=path,
                 source_path=path,
                 file_info=file_info,
-                safe_dirs=(),
+                safe_dirs=safe_dirs,
             )
             conflicts = await place_subtitles(
                 [staged],
@@ -280,6 +288,7 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
                 file_info=file_info,
                 # 临时文件必须搬走, 不能按库的 move_mode 变成硬链/软链: 临时目录随后会被删.
                 mode=MoveMode.MOVE,
+                safe_dirs=safe_dirs,
             )
             placed = not conflicts and await asyncio.to_thread(expected.exists)
         except OSError as exc:
