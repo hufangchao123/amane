@@ -679,16 +679,38 @@ class TestConfigManagerLoad:
         mgr = ConfigManager.with_cold(cold)
         assert mgr.hot.worker.concurrency == 4
 
-    def test_legacy_backup_section_dropped(self, tmp_path: Path):
-        """备份功能已移除, 旧 TOML 的 [backup] 被忽略, 不让整份配置校验失败."""
+    @pytest.mark.parametrize(
+        ("section", "body"),
+        [
+            ("paths", 'move_mode = "hardlink"'),
+            ("backup", "enabled = true\nkeep_db = 7"),
+            ("transfer", 'enabled = true\ncookies = "UID=1_A1"'),
+        ],
+    )
+    def test_legacy_removed_section_dropped(self, tmp_path: Path, section: str, body: str):
+        """已移除的分段被忽略, 不让 extra=forbid 把整份配置判成非法.
+
+        这几种旧 TOML 是真实升级路径: 残留一段就会启动失败, 因此每个删过的分段都要有覆盖.
+        """
         config_path = tmp_path / "config.toml"
-        config_path.write_text("[backup]\nenabled = true\nkeep_db = 7\n\n[worker]\nconcurrency = 4\n")
+        config_path.write_text(f"[{section}]\n{body}\n\n[worker]\nconcurrency = 4\n")
 
         with patch.dict(os.environ, {"AMANE_DATA_DIR": str(tmp_path)}, clear=False):
             cold = ColdSettings()
 
         mgr = ConfigManager.with_cold(cold)
         assert mgr.hot.worker.concurrency == 4
+
+    def test_legacy_notify_section_dropped(self, tmp_path: Path):
+        """旧 TOML 的 notify.sections 里可能还有已删的 transfer 段."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text('[notify]\nsections = ["queue", "transfer"]\n')
+
+        with patch.dict(os.environ, {"AMANE_DATA_DIR": str(tmp_path)}, clear=False):
+            cold = ColdSettings()
+
+        mgr = ConfigManager.with_cold(cold)
+        assert mgr.hot.notify.sections == ["queue"]
 
     def test_round_trip_preserves_values(self, tmp_path: Path):
         """load → update → load 往返保留所有值"""

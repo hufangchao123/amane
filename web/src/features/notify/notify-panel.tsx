@@ -10,22 +10,28 @@ import { extractErrorMessage } from "@/lib/api-error";
 
 type Translate = TFunction<["ops"]>;
 
-/** 渠道名固定四种: 用显式分支, 模板键会让抽取器插占位键. */
+/**
+ * 渠道名固定四种: 用显式分支, 模板键会让抽取器插占位键.
+ *
+ * 键带 `ops:` 前缀: 这里的 `t` 是参数, 抽取器读不出它的命名空间, 会把这些键记到默认命名空间.
+ */
 function channelLabel(t: Translate, kind: string): string {
   switch (kind) {
     case "bark":
-      return t("notify.kinds.bark");
+      return t("ops:notify.kinds.bark");
     case "serverchan":
-      return t("notify.kinds.serverchan");
+      return t("ops:notify.kinds.serverchan");
     case "telegram":
-      return t("notify.kinds.telegram");
+      return t("ops:notify.kinds.telegram");
     default:
-      return t("notify.kinds.webhook");
+      return t("ops:notify.kinds.webhook");
   }
 }
 
 function recordKindLabel(t: Translate, kind: string): string {
-  return kind === "digest" ? t("notify.recordKinds.digest") : t("notify.recordKinds.message");
+  return kind === "digest"
+    ? t("ops:notify.recordKinds.digest")
+    : t("ops:notify.recordKinds.message");
 }
 
 /**

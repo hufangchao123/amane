@@ -1,4 +1,5 @@
 import {
+  Alert,
   Badge,
   Button,
   Center,
@@ -11,7 +12,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconRestore, IconTrash } from "@tabler/icons-react";
+import { IconAlertCircle, IconRestore, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -127,7 +128,13 @@ export function WashRecords() {
       }),
   });
 
-  function startRestore() {
+  async function startRestore() {
+    const ok = await confirm({
+      title: t("wash.confirmRestoreTitle"),
+      message: t("wash.confirmRestoreMessage"),
+      danger: false,
+    });
+    if (!ok) return;
     restore.mutate({ body: { ids: [...selected] } });
   }
 
@@ -161,7 +168,7 @@ export function WashRecords() {
             leftSection={<IconRestore size={14} />}
             disabled={selected.size === 0}
             loading={restore.isPending}
-            onClick={startRestore}
+            onClick={() => void startRestore()}
           >
             {t("wash.restore")}
           </Button>
@@ -177,7 +184,14 @@ export function WashRecords() {
           </Button>
         </Group>
       </Group>
-      {query.isPending ? (
+      {query.isError ? (
+        <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
+          <Text size="sm">{t("wash.recordsLoadFailed")}</Text>
+          <Text size="xs" c="dimmed">
+            {extractErrorMessage(query.error, t("common:toast.operationFailed"))}
+          </Text>
+        </Alert>
+      ) : query.isPending ? (
         <Center py="md">
           <Loader size="sm" />
         </Center>

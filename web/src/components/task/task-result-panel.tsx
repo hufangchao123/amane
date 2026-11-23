@@ -186,16 +186,19 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
-    case "media_refresh":
+    case "media_refresh": {
+      // 后端给的是 emby / jellyfin 这类枚举值, 展示成品牌名.
+      const kind = result.kind ?? "";
+      const kindLabel = kind ? t(`result.mediaServer.${kind}`, { defaultValue: kind }) : "—";
       return (
         <Stack gap="xs">
-          <Text size="sm">{t("result.counts.refreshed", { kind: result.kind })}</Text>
+          <Text size="sm">{t("result.counts.refreshed", { kind: kindLabel })}</Text>
           <Text size="sm" c="dimmed">
             {result.url}
           </Text>
-          <EmptyHint visible={!failed} />
         </Stack>
       );
+    }
     case "notify":
       return (
         <CountBadges
@@ -227,7 +230,7 @@ interface CountEntry {
 
 /** 计数徽标: 零值不显示, 全零时回落到「没有需要处理的」提示. */
 function CountBadges({ entries, failed }: { entries: CountEntry[]; failed: boolean }) {
-  const shown = entries.filter((entry) => entry.value !== 0);
+  const shown = entries.filter((entry) => !isZero(entry.value));
   return (
     <>
       <Group gap="xs">
@@ -240,6 +243,12 @@ function CountBadges({ entries, failed }: { entries: CountEntry[]; failed: boole
       <EmptyHint visible={!failed && shown.length === 0} />
     </>
   );
+}
+
+/** 计数可能是格式化后的体积字符串, "0 B" 这类零值同样不显示. */
+function isZero(value: number | string): boolean {
+  if (typeof value === "number") return value === 0;
+  return /^0(?:\.0+)?\s*[A-Za-z]*$/.test(value.trim());
 }
 
 function SemanticCounts({ result }: { result: Extract<TaskResult, { type: "semantic_index" }> }) {

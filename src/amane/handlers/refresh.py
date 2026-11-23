@@ -176,8 +176,18 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
             if want_remove:
                 if seen is not None:
                     # 后转移目的目录不在扫描范围内, 记录仍属于本库.
+                    # 后转移目的目录与输入目录都不在本次扫描范围内, 它们里面的记录仍属于本库:
+                    # 输入目录读不到 (网络挂载还没就绪) 时更要靠这一条把在册行留住.
                     landing = (
-                        [Path(dir_) for dir_ in (library.scrape_ok_dir, library.scrape_fail_dir) if dir_]
+                        [
+                            Path(dir_)
+                            for dir_ in (
+                                library.scrape_input_dir,
+                                library.scrape_ok_dir,
+                                library.scrape_fail_dir,
+                            )
+                            if dir_
+                        ]
                         if library is not None
                         else []
                     )

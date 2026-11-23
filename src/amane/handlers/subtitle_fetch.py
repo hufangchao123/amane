@@ -201,7 +201,7 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
             return _TargetOutcome(_Outcome.FAILED, "缺少元数据, 无法按模板落位")
 
         try:
-            download = await fetch_subtitle(web, config, number)
+            download = await fetch_subtitle(web, config, number, preferred_suffixes=tuple(extensions))
         except SubtitleSourceError as exc:
             if exc.transient:
                 # 限流与断连说明"这一轮没取到", 不说明"来源没有这份字幕": 记成缺口会让人以为

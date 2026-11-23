@@ -1,6 +1,17 @@
-import { Badge, Button, Card, Group, Loader, Select, Stack, Table, Text } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Table,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconReload, IconTrashX } from "@tabler/icons-react";
+import { IconAlertCircle, IconReload, IconTrashX } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +21,7 @@ import {
   listAuditQueryKey,
 } from "@/client/@tanstack/react-query.gen";
 import { extractErrorMessage } from "@/lib/api-error";
+import { confirm } from "@/lib/confirm";
 
 const METHOD_FILTERS = ["", "POST", "PUT", "PATCH", "DELETE"] as const;
 
@@ -19,6 +31,7 @@ const METHOD_FILTERS = ["", "POST", "PUT", "PATCH", "DELETE"] as const;
  */
 export function AuditPanel() {
   const { t, i18n } = useTranslation("ops");
+  const { t: tCommon } = useTranslation("common");
   const queryClient = useQueryClient();
   const [method, setMethod] = useState<string>("");
   const query = useQuery(listAuditOptions({ query: { limit: 100, method: method || undefined } }));
@@ -39,6 +52,15 @@ export function AuditPanel() {
 
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
+
+  async function startClear() {
+    const ok = await confirm({
+      title: t("audit.confirmClearTitle"),
+      message: t("audit.confirmClearMessage"),
+    });
+    if (!ok) return;
+    clearMutation.mutate({});
+  }
 
   return (
     <Stack gap="md">
@@ -65,64 +87,77 @@ export function AuditPanel() {
           variant="light"
           leftSection={<IconTrashX size={16} />}
           loading={clearMutation.isPending}
-          onClick={() => clearMutation.mutate({})}
+          onClick={() => void startClear()}
         >
           {t("audit.clear")}
         </Button>
       </Group>
 
       <Card withBorder padding="md">
-        <Text size="sm" c="dimmed">
-          {t("audit.summary", { total })}
-        </Text>
-        {query.isLoading ? (
-          <Group justify="center" py="md">
-            <Loader size="sm" />
-          </Group>
-        ) : items.length === 0 ? (
-          <Text size="sm" c="dimmed" py="md">
-            {t("audit.empty")}
-          </Text>
+        {query.isError ? (
+          <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
+            <Text size="sm">{t("audit.loadFailed")}</Text>
+            <Text size="xs" c="dimmed">
+              {extractErrorMessage(query.error, tCommon("toast.operationFailed"))}
+            </Text>
+          </Alert>
         ) : (
-          <Table.ScrollContainer minWidth={720}>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>{t("audit.columns.time")}</Table.Th>
-                  <Table.Th>{t("audit.columns.method")}</Table.Th>
-                  <Table.Th>{t("audit.columns.path")}</Table.Th>
-                  <Table.Th>{t("audit.columns.status")}</Table.Th>
-                  <Table.Th>{t("audit.columns.client")}</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {items.map((item) => (
-                  <Table.Tr key={item.id}>
-                    <Table.Td>{new Date(item.created_at).toLocaleString(i18n.language)}</Table.Td>
-                    <Table.Td>
-                      <Badge variant="light">{item.method}</Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" ff="monospace">
-                        {item.path}
-                        {item.query ? `?${item.query}` : ""}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={item.status < 400 ? "teal" : "red"} variant="light">
-                        {item.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {item.client || "-"}
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
+          <>
+            <Text size="sm" c="dimmed">
+              {t("audit.summary", { total })}
+            </Text>
+            {query.isLoading ? (
+              <Group justify="center" py="md">
+                <Loader size="sm" />
+              </Group>
+            ) : items.length === 0 ? (
+              <Text size="sm" c="dimmed" py="md">
+                {t("audit.empty")}
+              </Text>
+            ) : (
+              <Table.ScrollContainer minWidth={720}>
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>{t("audit.columns.time")}</Table.Th>
+                      <Table.Th>{t("audit.columns.method")}</Table.Th>
+                      <Table.Th>{t("audit.columns.path")}</Table.Th>
+                      <Table.Th>{t("audit.columns.status")}</Table.Th>
+                      <Table.Th>{t("audit.columns.client")}</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {items.map((item) => (
+                      <Table.Tr key={item.id}>
+                        <Table.Td>
+                          {new Date(item.created_at).toLocaleString(i18n.language)}
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge variant="light">{item.method}</Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm" ff="monospace">
+                            {item.path}
+                            {item.query ? `?${item.query}` : ""}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge color={item.status < 400 ? "teal" : "red"} variant="light">
+                            {item.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm" c="dimmed">
+                            {item.client || "-"}
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+          </>
         )}
       </Card>
     </Stack>

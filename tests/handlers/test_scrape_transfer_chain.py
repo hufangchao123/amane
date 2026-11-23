@@ -87,7 +87,10 @@ async def test_success_chains_transfer_into_library_root(repo: Repository, tmp_p
     assert len(transfers) == 1
     assert transfers[0].key == f"scrape-transfer:{media_id}"
     assert transfers[0].priority == -1
-    assert transfers[0].payload == {"media_file_id": media_id, "outcome": "ok"}
+    assert transfers[0].payload["media_file_id"] == media_id
+    assert transfers[0].payload["outcome"] == "ok"
+    # 重试补搬附属文件时按这个目录找留下来的一份.
+    assert transfers[0].payload["source_dir"] == str(tmp_path / "in" / "incoming")
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -109,7 +112,8 @@ async def test_failure_followups_use_fail_dir(repo: Repository, tmp_path: Path) 
     followups = await _handler(repo).failure_followups(ScrapePayload(number="MIDV-123", media_file_id=media_id))
 
     assert [f.task_type for f in followups] == [TaskType.SCRAPE_TRANSFER]
-    assert followups[0].payload == {"media_file_id": media_id, "outcome": "failed"}
+    assert followups[0].payload["media_file_id"] == media_id
+    assert followups[0].payload["outcome"] == "failed"
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -153,8 +157,8 @@ async def test_failure_followups_skip_deleted_file(repo: Repository, tmp_path: P
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_transfer_followup_precedes_organize(repo: Repository, tmp_path: Path) -> None:
-    """同时开自动整理与转移时, 转移后继排在整理之前 —— 顺序即执行顺序."""
+async def test_transfer_replaces_organize(repo: Repository, tmp_path: Path) -> None:
+    """同时开自动整理与转移时只排转移: 两条链争同一把库锁, 谁先赢决定文件最终在哪."""
     lib_root, pending = tmp_path / "done", tmp_path / "in"
     lib_root.mkdir()
     pending.mkdir()
@@ -171,7 +175,6 @@ async def test_transfer_followup_precedes_organize(repo: Repository, tmp_path: P
 
     result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media.id))
 
-    assert [f.task_type for f in result.followups][-2:] == [
-        TaskType.SCRAPE_TRANSFER,
-        TaskType.ORGANIZE,
-    ]
+    types = [f.task_type for f in result.followups]
+    assert types.count(TaskType.SCRAPE_TRANSFER) == 1
+    assert TaskType.ORGANIZE not in types

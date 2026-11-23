@@ -39,7 +39,9 @@ def _scope_tasks[T](
     if task_types:
         stmt = stmt.where(col(Task.type).in_(list(task_types)))
     if since is not None:
-        stmt = stmt.where(col(Task.created_at) >= since)
+        # 时间窗按终态时刻算: 一个跑了三小时的任务属于它结束的那一刻, 不属于它提交的那一刻.
+        # 排队中的任务没有终态, 用创建时间兜底.
+        stmt = stmt.where(coalesce(col(Task.finished_at), col(Task.created_at)) >= since)
     return stmt
 
 
@@ -173,11 +175,13 @@ _IS_CHAIN_ROOT = (col(Task.root_task_id).is_(None)) | (col(Task.root_task_id) ==
 
 
 def _matching_root_ids(
-    statuses: Iterable[TaskStatus] | None, task_types: Iterable[TaskType] | None
+    statuses: Iterable[TaskStatus] | None,
+    task_types: Iterable[TaskType] | None,
+    since: datetime | None = None,
 ) -> SelectOfScalar[int]:
-    """有 root 用 root, 裸任务用自身 id."""
+    """有 root 用 root, 裸任务用自身 id; ``since`` 与列表其余分支同口径."""
     stmt = select(coalesce(col(Task.root_task_id), col(Task.id)))
-    return _scope_tasks(stmt, statuses=statuses, task_types=task_types).distinct()
+    return _scope_tasks(stmt, statuses=statuses, task_types=task_types, since=since).distinct()
 
 
 async def _ids_with_external_descendants(session: AsyncSession, ids: Sequence[int]) -> set[int]:
@@ -244,6 +248,40 @@ class TasksRepoMixin(RepositoryMixinBase):
             connection = await session.connection()
             await connection.exec_driver_sql("BEGIN IMMEDIATE")
             tasks = await _insert_tasks(session, pending)
+            await session.commit()
+            return tasks
+
+    async def create_followups_unless_queued(
+        self,
+        pending: Sequence[tuple[TaskType, dict[str, object] | BaseModel, int]],
+    ) -> list[Task]:
+        """批量建后继任务, 跳过与排队中/执行中任务完全同型的那些.
+
+        一百个文件各自扇出一次整库刷新, 会把队列塞满同款扫描; 后继键里的库与原因已经决定了载荷,
+        因此「同类型 + 同载荷」就是重复. 判重与插入在同一把写锁与同一事务里, 两个并发后继不会都插进去.
+        """
+        if not pending:
+            return []
+        rows = [(_type, _payload_dict(payload), priority) for _type, payload, priority in pending]
+        async with self._task_insert_lock, self._session() as session:
+            connection = await session.connection()
+            await connection.exec_driver_sql("BEGIN IMMEDIATE")
+            live: dict[TaskType, list[dict]] = {}
+            for task_type in {task_type for task_type, _, _ in rows}:
+                result = await session.exec(
+                    select(col(Task.payload)).where(
+                        col(Task.type) == task_type,
+                        col(Task.status).in_((TaskStatus.QUEUED, TaskStatus.RUNNING)),
+                    )
+                )
+                live[task_type] = [dict(payload) for payload in result.all()]
+            keep: list[_PendingTask] = []
+            for task_type, payload, priority in rows:
+                if payload in live[task_type]:
+                    continue
+                live[task_type].append(payload)
+                keep.append(_PendingTask(task_type, payload, priority))
+            tasks = await _insert_tasks(session, keep)
             await session.commit()
             return tasks
 
@@ -415,7 +453,9 @@ class TasksRepoMixin(RepositoryMixinBase):
         async with self._session() as session:
             if roots_only and (statuses or task_types):
                 # roots_only 只约束列表显示哪一层: 筛选仍匹配全部任务, 再还原链根.
-                stmt = select(Task).where(col(Task.id).in_(_matching_root_ids(statuses, task_types)), _IS_CHAIN_ROOT)
+                stmt = select(Task).where(
+                    col(Task.id).in_(_matching_root_ids(statuses, task_types, since)), _IS_CHAIN_ROOT
+                )
             else:
                 stmt = _scope_tasks(select(Task), statuses=statuses, task_types=task_types, since=since)
                 if roots_only:
@@ -451,7 +491,7 @@ class TasksRepoMixin(RepositoryMixinBase):
         """按任务类型统计条数 (可只算某时刻之后), 供摘要类输出使用."""
         stmt = select(col(Task.type), count()).group_by(col(Task.type))
         if since is not None:
-            stmt = stmt.where(col(Task.created_at) >= since)
+            stmt = stmt.where(coalesce(col(Task.finished_at), col(Task.created_at)) >= since)
         async with self._session() as session:
             result = await session.exec(stmt)
             return {row[0]: int(row[1]) for row in result.all()}

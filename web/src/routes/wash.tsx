@@ -1,4 +1,5 @@
-import { Center, Loader, Stack } from "@mantine/core";
+import { Alert, Center, Loader, Stack, Text } from "@mantine/core";
+import { IconAlertCircle } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -8,6 +9,7 @@ import { WashCandidates } from "@/features/wash/wash-candidates";
 import { WashRecords } from "@/features/wash/wash-records";
 import { WashStatus } from "@/features/wash/wash-status";
 import { useWashRefresh } from "@/features/wash/use-wash-refresh";
+import { extractErrorMessage } from "@/lib/api-error";
 
 export const Route = createFileRoute("/wash")({
   component: WashPage,
@@ -21,7 +23,14 @@ function WashPage() {
   return (
     <OpsPageShell title={t("wash.title")} hint={t("wash.hint")} settingsSection="wash">
       <Stack gap="lg">
-        {statusQuery.data ? (
+        {statusQuery.isError ? (
+          <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
+            <Text size="sm">{t("wash.statusLoadFailed")}</Text>
+            <Text size="xs" c="dimmed">
+              {extractErrorMessage(statusQuery.error, t("common:toast.operationFailed"))}
+            </Text>
+          </Alert>
+        ) : statusQuery.data ? (
           <WashStatus status={statusQuery.data} onRefresh={refresh} />
         ) : (
           <Center py="md">

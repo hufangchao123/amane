@@ -18,6 +18,7 @@ from ..library import (
     ancestor_dirs,
     is_under_any,
     prune_empty_dirs,
+    same_path,
     scope_roots,
 )
 from ..library.rules import is_in_trash
@@ -542,6 +543,8 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
             ok_dir=library.scrape_ok_dir,
             fail_dir=library.scrape_fail_dir,
         )
+        # 库根之外的授权根: 文件从输入目录搬进库根后, 空掉的是那边的一层层目录.
+        prune_bases = tuple(Path(root) for root in tracked_roots if not same_path(Path(root), library_root))
         media_extensions = frozenset(self._config.watcher.media_extensions) or MEDIA_EXTENSIONS
         scan = LibraryScan(
             trailer_pattern=library.trailer_pattern,
@@ -624,7 +627,9 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                     case PlaceOutcome.PLACED:
                         organized += 1
                         if collect_prune:
-                            prune_candidates.update(ancestor_dirs(file_path, library_root=library_root))
+                            prune_candidates.update(
+                                ancestor_dirs(file_path, library_root=library_root, bases=prune_bases)
+                            )
                         # 字幕冲突的 path 是留在原处的那条字幕, 不是视频源路径.
                         conflicted += _record_conflicts(
                             conflicts,
@@ -658,7 +663,9 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
 
         pruned_dirs = 0
         if prune_candidates:
-            pruned_dirs = (await prune_empty_dirs(prune_candidates, library_root=library_root)).removed
+            pruned_dirs = (
+                await prune_empty_dirs(prune_candidates, library_root=library_root, bases=prune_bases)
+            ).removed
 
         logger.info(
             "organize completed",
@@ -751,10 +758,17 @@ def _missing_media_ids(rows: Sequence[tuple[int, str]]) -> list[int]:
 class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
     """不因缺少 MediaFile 而删除 Metadata."""
 
-    def __init__(self, repo: Repository, resource_store: ResourceStore):
+    def __init__(
+        self,
+        repo: Repository,
+        resource_store: ResourceStore,
+        *,
+        library_locks: LibraryTaskLocks | None = None,
+    ):
         super().__init__(payload_t=CleanupPayload, result_t=CleanupResult)
         self._repo = repo
         self._resource_store = resource_store
+        self._library_locks = library_locks if library_locks is not None else LibraryTaskLocks()
 
     async def handle(self, payload: CleanupPayload) -> TaskResult[CleanupResult]:
         files_removed = 0
@@ -762,20 +776,7 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
 
         # 删除磁盘上不存在的 MediaFile 记录.
         if payload.remove_missing_files:
-            missing_ids: list[int] = []
-            offset = 0
-            page = 500
-            while True:
-                batch = await self._repo.list_media_files(limit=page, offset=offset)
-                if not batch:
-                    break
-                missing_ids.extend(await _missing_media_ids([(mf.id, mf.path) for mf in batch if mf.id is not None]))
-                offset += len(batch)
-                if len(batch) < page:
-                    break
-            for media_id in missing_ids:
-                await self._repo.delete_media_file(media_id)
-                files_removed += 1
+            files_removed = await self._remove_missing_files()
 
         # 删除不被 Metadata / Actor URL 引用的 Resource.
         if payload.remove_unreferenced_resources:
@@ -785,3 +786,32 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
         logger.info("cleanup completed", files_removed=files_removed, resources_removed=resources_removed)
 
         return TaskResult(True, result=CleanupResult(files_removed=files_removed, resources_removed=resources_removed))
+
+    async def _remove_missing_files(self) -> int:
+        """按库取锁后删掉磁盘上已不存在的行, 返回删掉的条数.
+
+        必须持库锁: 转移与洗版是「先搬文件, 后改/删行」两步, 中间有毫秒级窗口源路径已经空了.
+        不取锁的清理会把这行当「文件消失」删掉, 而新落点又不在任何扫描范围内, 文件就此在库里失踪.
+        分批按库取锁, 一个库一把, 与刷新 / 整理 / 转移共用同一个 ``LibraryTaskLocks`` 实例.
+        """
+        removed = 0
+        offset = 0
+        page = 500
+        while True:
+            batch = await self._repo.list_media_files(limit=page, offset=offset)
+            if not batch:
+                break
+            by_library: dict[int, list[tuple[int, str]]] = {}
+            for media_file in batch:
+                if media_file.id is None:
+                    continue
+                by_library.setdefault(media_file.library_id, []).append((media_file.id, media_file.path))
+            for library_id, rows in by_library.items():
+                async with await self._library_locks.get(library_id):
+                    for media_id in await _missing_media_ids(rows):
+                        await self._repo.delete_media_file(media_id)
+                        removed += 1
+            offset += len(batch)
+            if len(batch) < page:
+                break
+        return removed

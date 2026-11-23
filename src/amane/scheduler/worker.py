@@ -9,10 +9,10 @@ import structlog
 from pydantic import BaseModel
 
 from ..config import HotSettings
-from ..db.models import TaskType
+from ..db.models import TaskStatus, TaskType
 from ..events import EventType
 from ..handlers.models import NOTIFY_BODY_LIMIT, NotifyPayload
-from ..handlers.protocol import TaskResult
+from ..handlers.protocol import FollowupTask, TaskResult
 from ..observability import Recorder
 
 if TYPE_CHECKING:
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 CANCEL_ERROR = "已由用户取消"
+# 一天待发通知算「同一件事」: 失败通知按任务类型合并, 队列里有一条就不再排.
+PENDING_NOTIFY_STATUSES = (TaskStatus.QUEUED, TaskStatus.RUNNING)
 
 _DEFAULT_SHUTDOWN_TIMEOUT = 0
 # 关闭时等待主循环 (含尚未结算的认领) 退出的兜底阈值; 正常路径只等它自己退出.
@@ -304,6 +306,11 @@ class AsyncWorker:
                 if hot is None or not hot.notify.enabled or task_type_str == TaskType.NOTIFY.value:
                     return
                 try:
+                    # 队列里已有一条未发出的失败通知就不再排: 站点挂掉时是成批失败, 逐条推会把真正的
+                    # 异常刷没; 一条待发通知足以说明有人失败, 具体清单仍看任务列表.
+                    if await self._repo.count_tasks(PENDING_NOTIFY_STATUSES, [TaskType.NOTIFY]) > 0:
+                        logger.info("failure notify coalesced", task_type=task_type_str)
+                        return
                     await self._repo.create_task(
                         TaskType.NOTIFY,
                         NotifyPayload(
@@ -313,18 +320,34 @@ class AsyncWorker:
                 except Exception:
                     logger.warning("failure notify failed", task_type=task_type_str)
 
-            async def _failure_followups() -> None:
-                """失败后继: 钩子出错不影响失败处理, 后继逐个入队且不与失败任务结对."""
+            async def _enqueue(pending: list[FollowupTask]) -> None:
+                """批量入队; 与排队中任务完全同型的后继跳过, 整批失败只记日志, 不影响任务结算.
+
+                批量入库时每个文件都扇出一次整库刷新, 逐条建会把队列塞满同款扫描; 判重放在写锁内
+                一次完成, 两个并发父任务不会都插进去.
+                """
+                if not pending:
+                    return
+                rows = [(f.task_type, f.payload, f.priority) for f in pending]
                 try:
-                    pending = await handler.failure_followups(typed_payload)
+                    await self._repo.create_followups_unless_queued(rows)
+                except Exception:
+                    logger.exception("followup enqueue failed", task_id=task_id, keys=[f.key for f in pending])
+
+            async def _failure_followups(result: TaskResult | None) -> None:
+                """失败后继: 钩子出错不影响失败处理, 后继逐个入队且不与失败任务结对.
+
+                失败任务的链不写 (``handlers/protocol.py``), 但 handler 挂在失败结果上的后继照旧入队 ——
+                部分成功时盘上已经变了, 媒体服务器仍需重扫.
+                """
+                try:
+                    pending = list(await handler.failure_followups(typed_payload))
                 except Exception:
                     logger.exception("failure followups build failed", task_id=task_id)
-                    return
-                for followup in pending:
-                    try:
-                        await self._repo.create_task(followup.task_type, followup.payload, priority=followup.priority)
-                    except Exception:
-                        logger.exception("failure followup enqueue failed", task_id=task_id, key=followup.key)
+                    pending = []
+                if result is not None:
+                    pending.extend(result.followups or [])
+                await _enqueue(pending)
 
             async def _finalize_recorder(*, success: bool, error: str | None) -> None:
                 if rec is None:
@@ -355,7 +378,7 @@ class AsyncWorker:
                     duration_s = round(time.monotonic() - start_time, 2)
                     logger.exception("task crashed", error=str(e), duration_s=duration_s)
                     await self._repo.fail_task(task_id, error=str(e), result=_failure_payload())
-                    await _failure_followups()
+                    await _failure_followups(None)
                     await _notify_failure(task_type_str, str(e))
                     await _finalize_recorder(success=False, error=str(e))
                     if self._event_bus:
@@ -374,6 +397,8 @@ class AsyncWorker:
                     except Exception as e:
                         logger.exception("task complete with followups failed", error=str(e), duration_s=duration_s)
                         await self._repo.fail_task(task_id, error=str(e))
+                        # 结算写库失败是最该被推开的事故: 整批任务其实都没落地, 只在列表里看不出来.
+                        await _notify_failure(task_type_str, str(e))
                         await _finalize_recorder(success=False, error=str(e))
                         if self._event_bus:
                             await self._event_bus.emit(
@@ -393,7 +418,7 @@ class AsyncWorker:
                     duration_s = round(time.monotonic() - start_time, 2)
                     err = result.error or "Unknown error"
                     await self._repo.fail_task(task_id, error=err, result=result.as_dict())
-                    await _failure_followups()
+                    await _failure_followups(result)
                     await _notify_failure(task_type_str, err)
                     logger.warning("task failed", error=result.error, duration_s=duration_s)
                     await _finalize_recorder(success=False, error=err)

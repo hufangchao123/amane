@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.avatars import MAX_IMAGE_BYTES, WebAvatarSource, looks_like_image, verify_location
-from amane.config import HotSettings
 from amane.db.repo_types import WriteMode
 from amane.handlers.avatar_check import AvatarCheckHandler
 from amane.handlers.models import AvatarCheckPayload
@@ -76,7 +75,7 @@ async def _seed(repo: Repository, number: str, name: str, urls: list[str]) -> in
 
 
 def _handler(repo: Repository, source: _FakeSource, tmp_path: Path) -> AvatarCheckHandler:
-    return AvatarCheckHandler(repo, HotSettings(), source, state_dir=tmp_path, egress=_OpenPolicy())
+    return AvatarCheckHandler(repo, source, state_dir=tmp_path, egress=_OpenPolicy())
 
 
 def test_looks_like_image_cases() -> None:

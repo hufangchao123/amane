@@ -90,9 +90,14 @@ class WashService:
         return bool(self._config.enabled and (self._config.local or self._config.strm))
 
     def kinds(self, kind: WashKindFilter) -> list[WashRecordKind]:
-        """把 ``kind`` 过滤展开成实际参与的实体类型; 关闭的一侧不参与."""
+        """把 ``kind`` 过滤展开成实际参与的实体类型; 关闭的一侧不参与.
+
+        显式指定一侧时同样要过开关: 候选页的筛选、任务载荷与助理提交都能直接给出 ``kind``,
+        关掉 STRM 洗版后一个 ``kind=strm`` 就能把播放直链移进回收站.
+        """
         if kind is not None:
-            return [kind]
+            enabled = self._config.local if kind is WashRecordKind.LOCAL else self._config.strm
+            return [kind] if enabled else []
         out: list[WashRecordKind] = []
         if self._config.local:
             out.append(WashRecordKind.LOCAL)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, Protocol
 
@@ -110,6 +111,7 @@ async def download_subtitle(
     provider: SubtitleProvider,
     description: str,
     name_hint: str = "",
+    preferred_suffixes: Sequence[str] = (),
 ) -> SubtitleDownload:
     """校验 → 限长下载到临时文件 → 解包校验, 返回可落位的字幕正文.
 
@@ -134,5 +136,5 @@ async def download_subtitle(
 
     if len(payload) > MAX_SUBTITLE_BYTES:
         raise SubtitleSourceError(f"字幕超过大小上限 {MAX_SUBTITLE_BYTES} 字节", transient=False)
-    content, suffix = unwrap_subtitle(payload, name_hint=name_hint)
+    content, suffix = unwrap_subtitle(payload, name_hint=name_hint, preferred_suffixes=preferred_suffixes)
     return SubtitleDownload(content=content, suffix=suffix, provider=provider, description=description)

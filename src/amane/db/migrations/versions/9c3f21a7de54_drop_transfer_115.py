@@ -24,6 +24,13 @@ REMOVED_TYPES = ("TRANSFER_115", "transfer_115")
 
 
 def upgrade() -> None:
+    # 先清后继边, 否则删掉任务行会留下指向空号的 task_links.
+    op.execute(
+        sa.text(
+            "DELETE FROM task_links WHERE parent_task_id IN (SELECT id FROM tasks WHERE type IN :types)"
+            " OR child_task_id IN (SELECT id FROM tasks WHERE type IN :types)"
+        ).bindparams(sa.bindparam("types", value=REMOVED_TYPES, expanding=True))
+    )
     op.execute(
         sa.text("DELETE FROM tasks WHERE type IN :types").bindparams(
             sa.bindparam("types", value=REMOVED_TYPES, expanding=True)

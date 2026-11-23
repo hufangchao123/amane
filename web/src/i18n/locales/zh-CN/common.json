@@ -169,6 +169,9 @@
     "retry": "重试",
     "switchServer": "切换服务器"
   },
+  "fieldGroups": {
+    "shared": "两种文件共用"
+  },
   "notify": {
     "kinds": {
       "bark": "notify.kinds.bark",
@@ -180,8 +183,5 @@
       "digest": "notify.recordKinds.digest",
       "message": "notify.recordKinds.message"
     }
-  },
-  "fieldGroups": {
-    "shared": "两种文件共用"
   }
 }

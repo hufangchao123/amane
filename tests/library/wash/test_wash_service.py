@@ -70,7 +70,8 @@ KIND_CASES = [
     pytest.param(None, (True, False), [LOCAL], id="all-local-only"),
     pytest.param(None, (False, True), [STRM], id="all-strm-only"),
     pytest.param(LOCAL, (True, True), [LOCAL], id="explicit-local"),
-    pytest.param(STRM, (False, False), [STRM], id="explicit-strm-wins"),
+    pytest.param(STRM, (False, False), [], id="explicit-strm-respects-switch"),
+    pytest.param(LOCAL, (False, True), [], id="explicit-local-respects-switch"),
 ]
 
 
@@ -81,7 +82,7 @@ def test_kinds_expands_filter(
     sides: tuple[bool, bool],
     expected: list[WashRecordKind],
 ) -> None:
-    """``kind=None`` 由配置决定, 明确指定时以请求为准."""
+    """``kind=None`` 由配置决定; 明确指定也要过开关, 关掉的一侧不给参与."""
     service = WashService(WashConfig(enabled=True, local=sides[0], strm=sides[1]), wash_lib.repo)
     assert service.kinds(kind) == expected
 

@@ -186,6 +186,10 @@
       "status": "状态码",
       "size": "占用",
       "autoGroups": "自动执行"
+    },
+    "mediaServer": {
+      "emby": "Emby",
+      "jellyfin": "Jellyfin"
     }
   },
   "status": {
@@ -212,9 +216,7 @@
       "actor_push": "推送演员",
       "wash_scan": "洗版扫描",
       "wash_purge": "删除到期洗版文件",
-      "backup": "备份",
       "media_refresh": "媒体库刷新",
-      "trash_purge": "清理旧版回收站",
       "notify_digest": "通知摘要",
       "subtitle_fetch": "字幕补全",
       "subtitle_audit": "字幕巡检",
@@ -590,6 +592,10 @@
           "ok": "刮削成功",
           "failed": "刮削失败"
         }
+      },
+      "source_dir": {
+        "label": "来源目录",
+        "description": "刮削时文件所在的目录; 自动填写, 重试时用来补搬留在原处的附属文件"
       }
     }
   },

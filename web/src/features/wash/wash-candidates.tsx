@@ -1,4 +1,5 @@
-import { Badge, Center, Group, Loader, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Badge, Center, Group, Loader, Stack, Table, Text, Title } from "@mantine/core";
+import { IconAlertCircle } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,6 +7,7 @@ import { washCandidatesOptions } from "@/client/@tanstack/react-query.gen";
 import type { WashRecordKind } from "@/client/types.gen";
 import { ListPagination } from "@/components/common/list-pagination";
 import { PageSizeSelect } from "@/components/common/page-size-select";
+import { extractErrorMessage } from "@/lib/api-error";
 import { formatFileSize } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui";
 import { groupNumber, pathName } from "./path-name";
@@ -41,7 +43,14 @@ export function WashCandidates() {
         <Title order={4}>{t("wash.candidateTitle")}</Title>
         <PageSizeSelect sizeKey="washCandidates" onChanged={() => setPage(1)} />
       </Group>
-      {query.isPending ? (
+      {query.isError ? (
+        <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
+          <Text size="sm">{t("wash.candidatesLoadFailed")}</Text>
+          <Text size="xs" c="dimmed">
+            {extractErrorMessage(query.error, t("common:toast.operationFailed"))}
+          </Text>
+        </Alert>
+      ) : query.isPending ? (
         <Center py="md">
           <Loader size="sm" />
         </Center>

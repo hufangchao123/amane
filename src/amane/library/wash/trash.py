@@ -120,6 +120,27 @@ def _trash_anchor(path: Path) -> Path | None:
     return None
 
 
+def _match_base(source: Path, bases: Sequence[Path]) -> tuple[Path, Path] | None:
+    """找出 ``source`` 所属的成品目录, 返回 (base, 相对路径).
+
+    多个成品目录 (库根与刮削成功目录) 时取最长匹配: 成功目录常常嵌在库根之下, 取短的那个会把
+    ``.amane_wash/<库根名>/...`` 的相对路径算错, 还原时落不回原位.
+    """
+    matched: tuple[Path, Path] | None = None
+    for base in bases:
+        if not path_is_under(source, base):
+            continue
+        try:
+            relative = Path(os.path.relpath(source, base))
+        except ValueError:
+            continue
+        if relative.parts and relative.parts[0] == "..":
+            continue
+        if matched is None or len(base.parts) > len(matched[0].parts):
+            matched = (base, relative)
+    return matched
+
+
 def trash_target(library_root: str | Path, *, kind: WashRecordKind, relative: Path) -> Path:
     """库内文件在回收站里的落点; ``relative`` 是相对库根的路径."""
     return trash_root(library_root) / kind.value / relative
@@ -153,27 +174,35 @@ def _freed_size(path: Path) -> int:
 
 
 @in_thread
-def move_into_trash(source: str | Path, *, library_root: str | Path, kind: WashRecordKind) -> MoveOutcome:
-    """把库内的一份落选文件搬进回收站, 返回落点与实际腾出的字节.
+def move_into_trash(
+    source: str | Path,
+    *,
+    library_root: str | Path,
+    kind: WashRecordKind,
+    bases: Sequence[str | Path] | None = None,
+) -> MoveOutcome:
+    """把成品目录里的一份落选文件搬进回收站, 返回落点与实际腾出的字节.
 
-    拒绝库根之外、回收站之内与 ``.amane_trash`` 之内的源; 目标已存在时返回 ``occupied``
+    ``bases`` 给出允许的源根, 默认只有库根; 开了刮削后转移的库要把成功目录一并传进来 ——
+    收集侧 (``publish_roots``) 把成功目录里的文件当成品候选, 执行侧不认这个目录的话那些组永远搬不动.
+
+    拒绝源根之外、回收站之内与 ``.amane_trash`` 之内的源; 目标已存在时返回 ``occupied``
     而不是覆盖.
     """
     src = existing_disk_path(source, follow_symlinks=False)
     if src is None:
         return MoveOutcome(status="missing")
-    root = Path(library_root)
-    if not path_is_under(src, root):
+    roots = [Path(item) for item in (bases or (library_root,))]
+    matched = _match_base(src, roots)
+    if matched is None:
         return MoveOutcome(status="failed", error=f"source outside library root: {src}")
     if is_trash_path(src):
         return MoveOutcome(status="failed", error=f"source already in wash trash: {src}")
     if src.is_dir():
         return MoveOutcome(status="failed", error=f"source is a directory: {src}")
 
-    relative = Path(os.path.relpath(src, root))
-    if relative.parts and relative.parts[0] == "..":
-        return MoveOutcome(status="failed", error=f"source outside library root: {src}")
-    target = trash_target(root, kind=kind, relative=relative)
+    base, relative = matched
+    target = trash_target(base, kind=kind, relative=relative)
     try:
         if existing_disk_path(target, follow_symlinks=False) is not None:
             return MoveOutcome(status="occupied", target=target, error=f"trash slot occupied: {target}")
@@ -187,14 +216,28 @@ def move_into_trash(source: str | Path, *, library_root: str | Path, kind: WashR
 
 
 @in_thread
-def restore_from_trash(removed_path: str | Path, *, library_root: str | Path, kind: WashRecordKind) -> MoveOutcome:
-    """把回收站里的一份搬回库内原位; 原位已被占用时返回 ``occupied`` 而不是覆盖."""
+def restore_from_trash(
+    removed_path: str | Path,
+    *,
+    library_root: str | Path,
+    kind: WashRecordKind,
+    bases: Sequence[str | Path] | None = None,
+) -> MoveOutcome:
+    """把回收站里的一份搬回原位; 原位已被占用时返回 ``occupied`` 而不是覆盖.
+
+    回收站按成品目录分开放 (``<成品目录父级>/.amane_wash/<成品目录名>/...``), 因此 ``bases`` 里
+    哪个根对得上回收站路径, 就还原到哪个根.
+    """
     src = existing_disk_path(removed_path, follow_symlinks=False)
     if src is None:
         return MoveOutcome(status="missing")
     if not is_trash_path(src):
         return MoveOutcome(status="failed", error=f"not a wash trash path: {src}")
-    target = restore_target(src, library_root=library_root, kind=kind)
+    target: Path | None = None
+    for base in [Path(item) for item in (bases or (library_root,))]:
+        target = restore_target(src, library_root=base, kind=kind)
+        if target is not None:
+            break
     if target is None:
         return MoveOutcome(status="failed", error=f"trash record does not match library root: {src}")
     try:

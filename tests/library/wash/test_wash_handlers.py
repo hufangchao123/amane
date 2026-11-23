@@ -112,7 +112,7 @@ async def test_apply_washes_all_groups_without_keys(
     """不指定 ``group_keys`` 等于「全部候选」, 结果里如实报搬了几份."""
     await seed_library(wash_lib)
 
-    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload())
+    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(library_id=wash_lib.library.id))
 
     assert result.success is True
     assert result.result is not None
@@ -155,7 +155,7 @@ async def test_apply_reports_disabled_and_bad_library(
 
 async def washed(wash_lib: WashLibrary, locks: LibraryTaskLocks) -> list[WashRecord]:
     await seed_library(wash_lib)
-    await apply_handler(wash_lib, locks).handle(WashApplyPayload())
+    await apply_handler(wash_lib, locks).handle(WashApplyPayload(library_id=wash_lib.library.id))
     records, _ = await wash_lib.repo.list_wash_records(limit=10)
     return records
 
@@ -242,7 +242,7 @@ async def test_trash_drops_the_index_row(
     dropped = wash_lib.root / "2024/ABC-123/ABC-123-720p.mp4"
     assert await wash_lib.repo.get_media_file_by_path(str(dropped)) is not None
 
-    await apply_handler(wash_lib, locks).handle(WashApplyPayload())
+    await apply_handler(wash_lib, locks).handle(WashApplyPayload(library_id=wash_lib.library.id))
 
     assert not dropped.exists()
     assert await wash_lib.repo.get_media_file_by_path(str(dropped)) is None

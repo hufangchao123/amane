@@ -5010,6 +5010,10 @@ export type ScrapeTransferSubmission = {
      */
     outcome?: 'ok' | 'failed';
     /**
+     * Source Dir
+     */
+    source_dir?: string;
+    /**
      * Type
      */
     type: 'scrape_transfer';
@@ -5690,6 +5694,8 @@ export type SubtitleFetchConfig = {
     providers?: Array<'assrt' | 'subtitlecat'>;
     /**
      * Languages
+     *
+     * 优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级
      */
     languages?: Array<string>;
     /**

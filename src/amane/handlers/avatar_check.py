@@ -18,7 +18,6 @@ from .protocol import TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..avatars.audit import AvatarSource
-    from ..config import HotSettings
     from ..db.repository import Repository
 
 logger = structlog.get_logger(__name__)
@@ -36,7 +35,6 @@ class AvatarCheckHandler(TaskHandler[AvatarCheckPayload, AvatarCheckResult]):
     def __init__(
         self,
         repo: Repository,
-        hot: HotSettings,
         source: AvatarSource,
         *,
         state_dir: Path | None = None,
@@ -44,7 +42,6 @@ class AvatarCheckHandler(TaskHandler[AvatarCheckPayload, AvatarCheckResult]):
     ) -> None:
         super().__init__(payload_t=AvatarCheckPayload, result_t=AvatarCheckResult)
         self._repo = repo
-        self._hot = hot
         self._source = source
         self._state_dir = state_dir if state_dir is not None else Path("./data")
         self._egress = egress if egress is not None else EgressPolicy()

@@ -14,6 +14,7 @@
     "fetchStarted": "已提交字幕补全任务",
     "recentTitle": "最近补全",
     "recentEmpty": "还没有补全记录.",
+    "recentLoadFailed": "补全记录加载失败",
     "recentStatus": "状态",
     "recentFetched": "落位",
     "recentMissing": "缺口",
@@ -31,6 +32,9 @@
     "statRestorable": "可回收体积",
     "statTrashed": "回收站条数",
     "disabled": "洗版未启用, 先在设置里打开才会扫描候选.",
+    "statusLoadFailed": "洗版状态加载失败",
+    "candidatesLoadFailed": "候选分组加载失败",
+    "recordsLoadFailed": "回收站加载失败",
     "scan": "扫描",
     "apply": "执行",
     "restore": "还原",
@@ -69,6 +73,8 @@
     "purgeStarted": "已提交清理任务",
     "confirmApplyTitle": "执行洗版",
     "confirmApplyMessage": "落选文件会被移进回收站, 到期后可清理; 保留的一份不受影响. 继续?",
+    "confirmRestoreTitle": "确认还原?",
+    "confirmRestoreMessage": "选中的文件会从回收站移回原位, 目标位置已有文件时按冲突规则处理. 继续?",
     "confirmPurgeTitle": "清理回收站",
     "confirmPurgeMessage": "只有已到期的记录会被真正删除, 未到期的继续留着. 继续?",
     "selected": "已选 {{count}} 条"
@@ -156,8 +162,11 @@
     "clear": "清空",
     "cleared": "已清空",
     "clearFailed": "清空失败",
-    "summary": "共 {total} 条",
+    "confirmClearTitle": "确认清空全部留痕？",
+    "confirmClearMessage": "清空后不可恢复，全部写操作留痕都会被删除。",
+    "summary": "共 {{total}} 条",
     "empty": "暂无留痕",
+    "loadFailed": "留痕加载失败",
     "columns": {
       "time": "时间",
       "method": "方法",
@@ -168,8 +177,7 @@
     "filter": {
       "method": "方法",
       "all": "全部"
-    },
-    "note": "写操作留痕来自请求路径上的队列，可能比刚发生的操作晚一拍。"
+    }
   },
   "configure": "去设置"
 }

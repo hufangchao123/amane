@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel
@@ -47,7 +48,13 @@ def usable_providers(config: SubtitleFetchConfig) -> tuple[SubtitleProvider, ...
     return tuple(providers)
 
 
-async def fetch_subtitle(web: SubtitleHttp, config: SubtitleFetchConfig, number: str) -> SubtitleDownload:
+async def fetch_subtitle(
+    web: SubtitleHttp,
+    config: SubtitleFetchConfig,
+    number: str,
+    *,
+    preferred_suffixes: Sequence[str] = (),
+) -> SubtitleDownload:
     """按配置顺序问各家来源, 拿到第一份就返回.
 
     每个来源最多 ``max_attempts`` 次, 且只重试临时失败 (限流/断连); 确定性失败 (未搜到、
@@ -63,7 +70,7 @@ async def fetch_subtitle(web: SubtitleHttp, config: SubtitleFetchConfig, number:
     for provider in providers:
         for attempt in range(attempts):
             try:
-                return await _fetch_from(web, provider, number, config)
+                return await _fetch_from(web, provider, number, config, preferred_suffixes=preferred_suffixes)
             except SubtitleSourceError as exc:
                 if exc.transient and attempt + 1 < attempts:
                     await asyncio.sleep(_RETRY_BACKOFF_SECONDS * (attempt + 1))
@@ -82,14 +89,18 @@ async def _fetch_from(
     provider: SubtitleProvider,
     number: str,
     config: SubtitleFetchConfig,
+    *,
+    preferred_suffixes: Sequence[str] = (),
 ) -> SubtitleDownload:
     if provider == "assrt":
         token = (config.assrt_token or "").strip()
         if not token:
             # usable_providers 已经剔除过; 这里只是类型上的收窄, 顺手给出可读原因.
             raise SubtitleSourceError("assrt 未配置 token", transient=False)
-        return await assrt.fetch(web, number, token=token, languages=config.languages)
-    return await subtitlecat.fetch(web, number, languages=config.languages)
+        return await assrt.fetch(
+            web, number, token=token, languages=config.languages, preferred_suffixes=preferred_suffixes
+        )
+    return await subtitlecat.fetch(web, number, languages=config.languages, preferred_suffixes=preferred_suffixes)
 
 
 class SubtitleFetcher:

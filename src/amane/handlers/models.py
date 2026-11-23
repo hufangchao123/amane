@@ -622,6 +622,8 @@ class ScrapeTransferPayload(BaseModel):
 
     media_file_id: int
     outcome: ScrapeTransferOutcome = "ok"
+    source_dir: str = ""
+    """刮削时文件所在目录; 重试补搬附属文件时按它去找留下来的一份."""
 
 
 class ScrapeTransferResult(BaseModel):

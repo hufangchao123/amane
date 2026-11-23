@@ -70,7 +70,9 @@ class NfoPatchHandler(TaskHandler[NfoPatchPayload, NfoPatchResult]):
         )
         # 改过 NFO 就让媒体服务器重读; 多库任务只沿用单库指向的库 (逐库拆分没有意义, 一次刷新即可).
         refresh = (
-            media_refresh_followups(self._hot, libraries[0], changed=total.changed, reason="nfo")
+            media_refresh_followups(
+                self._hot, libraries[0], changed=0 if payload.dry_run else total.changed, reason="nfo"
+            )
             if payload.library_id is not None and len(libraries) == 1
             else []
         )

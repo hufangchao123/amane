@@ -298,6 +298,25 @@ class TestAncestorDirs:
 
         assert ancestor_dirs(lib, library_root=lib) == []
 
+    def test_extra_bases_are_prunable(self, tmp_path: Path) -> None:
+        """库根之外的授权根 (刮削输入目录) 之下同样成链, 但不含根本身."""
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        incoming = tmp_path / "in"
+        (incoming / "a" / "b").mkdir(parents=True)
+
+        got = ancestor_dirs(incoming / "a" / "b" / "x.mkv", library_root=lib, bases=(incoming,))
+
+        assert [path.relative_to(incoming).as_posix() for path in got] == ["a/b", "a"]
+
+    def test_extra_base_itself_is_not_pruned(self, tmp_path: Path) -> None:
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        incoming = tmp_path / "in"
+        incoming.mkdir()
+
+        assert ancestor_dirs(incoming, library_root=lib, bases=(incoming,)) == []
+
 
 class TestPruneEmptyDirs:
     def test_removes_chain_bottom_up(self, tmp_path: Path) -> None:
@@ -310,6 +329,21 @@ class TestPruneEmptyDirs:
 
         assert result.removed == 2
         assert not (lib / "incoming").exists()
+
+    def test_extra_bases_are_pruned_up_to_the_root(self, tmp_path: Path) -> None:
+        """输入目录空掉后整条链删到根本身, 根留着等下一批下载进来."""
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        incoming = tmp_path / "in"
+        deep = incoming / "a" / "b"
+        deep.mkdir(parents=True)
+        candidates = ancestor_dirs(deep / "x.mkv", library_root=lib, bases=(incoming,))
+
+        result = prune_empty_dirs.sync(candidates, library_root=lib, bases=(incoming,))
+
+        assert result.removed == 2
+        assert incoming.exists()
+        assert not (incoming / "a").exists()
 
     def test_non_empty_directory_kept(self, tmp_path: Path) -> None:
         lib = tmp_path / "lib"

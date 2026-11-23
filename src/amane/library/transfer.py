@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -72,24 +73,41 @@ def _prefixes(video: Path) -> set[str]:
     return prefixes
 
 
-def _free_target(directory: Path, name: str) -> Path:
-    """目的目录里已存在同名文件时加序号, 不覆盖已有文件."""
-    target = directory / name
-    if not target.exists():
-        return target
+def _free_target(directory: Path, name: str) -> Path | None:
+    """在目的目录里原子占一个名字, 已存在就加序号, 绝不覆盖已有文件.
+
+    「先看存在再搬」在并发下会失效: 两个库共用同一个成品目录时, 各自持自己的库锁, 都能通过
+    存在性检查拿到同一个目标, 后搬的那次会把先到的那份直接覆盖掉. 这里用 ``O_CREAT|O_EXCL``
+    先把名字占住, 抢不到就顺延序号.
+    """
     stem, suffix = Path(name).stem, Path(name).suffix
-    index = 2
-    while (candidate := directory / f"{stem} ({index}){suffix}").exists():
-        index += 1
-    return candidate
+    for index in range(1, 1000):
+        candidate = directory / (name if index == 1 else f"{stem} ({index}){suffix}")
+        try:
+            os.close(os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        except FileExistsError:
+            continue
+        except OSError:
+            return None
+        return candidate
+    return None
 
 
-def collect_sidecars(video: Path, subtitle_suffixes: Sequence[str]) -> list[Path]:
-    """视频同目录下需要一起搬走的附属文件; 视频本身不在内."""
+def collect_sidecars(
+    video: Path,
+    subtitle_suffixes: Sequence[str],
+    *,
+    directory: Path | None = None,
+) -> list[Path]:
+    """视频同目录下需要一起搬走的附属文件; 视频本身不在内.
+
+    ``directory`` 用于重试: 视频已在目的目录, 而字幕/NFO/封面还留在原目录里.
+    """
     allowed = {suffix.lower() for suffix in subtitle_suffixes} | EXTRA_SIDECAR_SUFFIXES
     prefixes = _prefixes(video)
+    base = directory or video.parent
     siblings: list[Path] = []
-    for entry in video.parent.iterdir():
+    for entry in base.iterdir():
         if not entry.is_file() or entry == video:
             continue
         if entry.suffix.lower() not in allowed:
@@ -101,12 +119,31 @@ def collect_sidecars(video: Path, subtitle_suffixes: Sequence[str]) -> list[Path
     return sorted(siblings, key=lambda path: path.name)
 
 
-def _remove_empty_dir(directory: Path) -> bool:
-    try:
-        directory.rmdir()
-    except OSError:
-        return False
-    return True
+def _prune_source_dir(directory: Path, keep_dir: Path | None) -> bool:
+    """自下而上删空目录, 停在 ``keep_dir`` (库根) 之前; 返回是否删掉了至少一层.
+
+    只删一层是不够的: 输入目录常按 `/in/2026/11/ABC-123/` 分层, 删掉最末一层后上面两层永远留着.
+    """
+    removed = False
+    current = directory
+    while True:
+        if keep_dir is not None and _same_path(current, keep_dir):
+            break
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        removed = True
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    return removed
+
+
+def _same_path(left: Path, right: Path) -> bool:
+    """字面比较两个路径, 不解析符号链接 (与 ``path_is_under`` 的口径一致)."""
+    return os.path.normcase(os.path.normpath(str(left))) == os.path.normcase(os.path.normpath(str(right)))
 
 
 @in_thread
@@ -117,32 +154,45 @@ def transfer_scrape_result(
     *,
     keep_dir: Path | None = None,
     keep_source_dirs: bool = False,
+    sidecars_only: bool = False,
+    sidecar_dir: Path | None = None,
 ) -> TransferOutcome:
     """把视频与附属文件搬到 ``destination``, 返回新路径与统计.
 
     单个文件搬不动只记进 ``failed``, 其余继续; 视频本身失败时 ``video_path`` 仍是原位,
-    调用方据此判断要不要改库里的路径. 搬完若原目录空了则删掉这一层, 除非 ``keep_source_dirs``
-    要求保留; ``keep_dir`` (库根) 即使空了也保留, 删掉库根会让后续扫描失去目标.
+    调用方据此判断要不要改库里的路径. 搬完若原目录空了则逐层删到 ``keep_dir`` 为止, 除非
+    ``keep_source_dirs`` 要求保留; ``keep_dir`` (库根) 即使空了也保留, 删掉库根会让后续扫描失去目标.
+
+    ``sidecars_only`` 用于重试: 视频上一轮已经搬过去了, 这一轮只补搬当时失败的字幕/NFO/封面.
     """
     destination.mkdir(parents=True, exist_ok=True)
     moved = 0
     written = 0
     failed: list[str] = []
     new_video = video
-    for source in [video, *collect_sidecars(video, subtitle_suffixes)]:
+    sidecars = collect_sidecars(video, subtitle_suffixes, directory=sidecar_dir)
+    sources = sidecars if sidecars_only else [video, *sidecars]
+    for source in sources:
         target = _free_target(destination, source.name)
+        if target is None:
+            failed.append(source.name)
+            continue
         try:
             size = source.stat().st_size
             shutil.move(str(source), str(target))
         except OSError:
+            # 占位文件没被搬移覆盖掉: 删掉, 否则目的目录里留下一个 0 字节的影子文件.
+            target.unlink(missing_ok=True)
             failed.append(source.name)
             continue
         moved += 1
         written += size
         if source == video:
             new_video = target
-    removable = not keep_source_dirs and new_video != video and (keep_dir is None or video.parent != keep_dir)
-    removed = _remove_empty_dir(video.parent) if removable else False
+    source_dir = sidecar_dir or video.parent
+    vacuumed = sidecars_only or new_video != video
+    removable = not keep_source_dirs and vacuumed and (keep_dir is None or not _same_path(source_dir, keep_dir))
+    removed = _prune_source_dir(source_dir, keep_dir) if removable else False
     return TransferOutcome(
         destination=destination,
         video_path=new_video,

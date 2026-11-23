@@ -109,7 +109,14 @@ def rank_candidates(candidates: Sequence[AssrtCandidate], number: str, tags: Seq
     return sorted(matched, key=lambda c: score_title(c.title, tags), reverse=True)
 
 
-async def fetch(web: SubtitleHttp, number: str, *, token: str, languages: Sequence[str]) -> SubtitleDownload:
+async def fetch(
+    web: SubtitleHttp,
+    number: str,
+    *,
+    token: str,
+    languages: Sequence[str],
+    preferred_suffixes: Sequence[str] = (),
+) -> SubtitleDownload:
     """按番号取一份字幕; 调用方已确保 ``token`` 非空."""
     results = await _search(web, number, token=token)
     candidates = rank_candidates(parse_search(results), number, language_tags(languages))
@@ -132,6 +139,7 @@ async def fetch(web: SubtitleHttp, number: str, *, token: str, languages: Sequen
             provider="assrt",
             description=f"{number} ← {remote.name or candidate.title}",
             name_hint=remote.name,
+            preferred_suffixes=preferred_suffixes,
         )
     if last_error is not None:
         raise last_error

@@ -857,8 +857,27 @@ class SubtitleFetchConfig(BaseModel):
 
     assrt_token: str | None = Field(default=None, description="Assrt API Token")
     providers: list[SubtitleProvider] = Field(default_factory=lambda: list(DEFAULT_SUBTITLE_PROVIDERS))
-    languages: list[str] = Field(default_factory=lambda: ["zh-CN", "zh-TW"])
+    languages: list[str] = Field(
+        default_factory=lambda: ["zh-CN", "zh-TW"],
+        description="优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级",
+    )
     max_attempts: int = Field(default=3, ge=1, le=10)
+
+    @field_validator("languages")
+    @classmethod
+    def _check_languages(cls, value: list[str]) -> list[str]:
+        """只接受中文语言码, 并去重保序.
+
+        来源只提供中文字幕, 别的语言码进了配置不会报错却会静默退化成「随便一份中文」:
+        ``language_tags`` 会把它丢掉, 排在最后的总是 ``zh``. 宁可在加载时报错.
+        """
+        languages = [item.strip() for item in value if item.strip()]
+        if not languages:
+            raise ValueError("至少保留一个字幕语言")
+        for language in languages:
+            if not language.casefold().startswith("zh"):
+                raise ValueError(f"字幕语言只支持中文: {language}")
+        return list(dict.fromkeys(languages))
 
 
 class WashConfig(BaseModel):
@@ -892,7 +911,7 @@ class WashConfig(BaseModel):
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]
 NotifySection = Literal["queue", "types", "library", "wash"]
-"""周报里可选的段: 队列与失败 / 类型分布 / 媒体库缺口 / 洗版回收站 / 115 中转."""
+"""周报里可选的段: 队列与失败 / 类型分布 / 媒体库缺口 / 洗版回收站."""
 
 DEFAULT_NOTIFY_SECTIONS: list[NotifySection] = ["queue", "types", "library", "wash"]
 
@@ -914,7 +933,7 @@ class NotifyConfig(BaseModel):
     @field_validator("sections", mode="before")
     @classmethod
     def _drop_removed_sections(cls, value: Any) -> Any:
-        """丢弃已移除的分段; 115 中转移除后旧配置里还会留着 ``transfer``."""
+        """丢弃已移除的分段; 旧配置里还会留着 ``paths`` / ``backup`` / ``transfer``."""
         if isinstance(value, list):
             return [item for item in value if item != "transfer"]
         return value

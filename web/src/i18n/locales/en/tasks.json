@@ -62,8 +62,8 @@
     "imagesPerSecond": "Image embedding {{value}} images/s",
     "queryMs": "Single query {{value}} ms",
     "samples": "{{count}} samples",
-    "samples_one": "benchmark.samples",
-    "samples_other": "benchmark.samples"
+    "samples_one": "{{count}} sample",
+    "samples_other": "{{count}} samples"
   },
   "filters": {
     "all": "All",
@@ -217,6 +217,10 @@
       "status": "Status",
       "size": "Size",
       "autoGroups": "Auto"
+    },
+    "mediaServer": {
+      "emby": "Emby",
+      "jellyfin": "Jellyfin"
     }
   },
   "status": {
@@ -244,9 +248,7 @@
       "actor_push": "Push actors",
       "wash_scan": "Wash scan",
       "wash_purge": "Purge expired wash files",
-      "backup": "Backup",
       "media_refresh": "Media refresh",
-      "trash_purge": "Clean legacy trash",
       "notify_digest": "Notify digest",
       "subtitle_fetch": "Subtitle fill",
       "subtitle_audit": "Subtitle audit",
@@ -621,6 +623,10 @@
           "ok": "After success",
           "failed": "After failure"
         }
+      },
+      "source_dir": {
+        "label": "Source directory",
+        "description": "Directory the file was in when scraped; filled automatically, used to move leftover sidecar files on retry"
       }
     }
   },

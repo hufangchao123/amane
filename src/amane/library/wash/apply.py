@@ -22,8 +22,10 @@ import structlog
 
 from ...db.models import MediaFileStatus, WashRecordState
 from ...parsing import parse_file_info
+from ...utils.path import path_is_under
 from ...utils.threads import path_is_dir
 from ..delete import prune_empty_dirs
+from ..rules import publish_roots
 from . import trash
 from .model import library_id_of
 
@@ -110,17 +112,25 @@ async def wash_groups(
             report.failed += sum(len(group.drops) for group in library_groups)
             report.errors.append(f"库目录不可用: {root}")
             continue
+        # 成品可能在库根, 也可能在刮削成功目录: 收集侧两处都算候选, 执行侧必须同样认这两个根.
+        bases = publish_roots(path=library.path, ok_dir=library.scrape_ok_dir)
         async with await lock_for(library_id):
             emptied: set[Path] = set()
             for group in library_groups:
                 for drop in group.drops:
                     await _trash_one(
-                        repo, drop.path, group=group, root=root, expires_at=expires_at, known=known, report=report
+                        repo,
+                        drop.path,
+                        group=group,
+                        bases=bases,
+                        expires_at=expires_at,
+                        known=known,
+                        report=report,
                     )
                     emptied.add(Path(drop.path).parent)
                     done += 1
                     await _report(progress, done, total, Path(drop.path).name)
-            await _prune(root, emptied)
+            await _prune(bases, emptied, keep_source_dirs=library.keep_source_dirs)
     await _report(progress, total, total, "done")
     return report
 
@@ -130,13 +140,13 @@ async def _trash_one(
     source: str,
     *,
     group: WashGroup,
-    root: Path,
+    bases: Sequence[Path],
     expires_at: datetime,
     known: set[str],
     report: ApplyReport,
 ) -> None:
     """搬一份落选文件; 任何结果都只影响这一份, 由调用方继续下一份."""
-    outcome = await trash.move_into_trash(source, library_root=root, kind=group.kind)
+    outcome = await trash.move_into_trash(source, library_root=bases[0], kind=group.kind, bases=bases)
     if outcome.status == "missing":
         # 索引比磁盘旧: 文件已经被人删了, 不是错误, 但也没腾出空间.
         report.skipped += 1
@@ -204,7 +214,10 @@ async def restore_records(
                     report.skipped += 1
                     continue
                 outcome = await trash.restore_from_trash(
-                    record.removed_path, library_root=library.path, kind=record.kind
+                    record.removed_path,
+                    library_root=library.path,
+                    kind=record.kind,
+                    bases=publish_roots(path=library.path, ok_dir=library.scrape_ok_dir),
                 )
                 if outcome.status == "occupied":
                     report.skipped += 1
@@ -242,11 +255,14 @@ async def _restore_index(repo: Repository, library: Library, restored: Path | No
         return
     number = parse_file_info(str(restored)).number
     if not number:
+        # 认不出番号: 建出来的行与扫描发现的待刮削行一致, 交给常规流程.
         return
     metadata = await repo.get_metadata_by_number(number)
     if metadata is None or metadata.id is None:
+        # 有番号但没有元数据: 番号也要落库, 否则列表番号列为空、按番号检索查不到.
+        await repo.update_media_file(media.id, number=number)
         return
-    await repo.update_media_file(media.id, metadata_id=metadata.id, status=MediaFileStatus.SCRAPED)
+    await repo.update_media_file(media.id, number=number, metadata_id=metadata.id, status=MediaFileStatus.SCRAPED)
 
 
 async def purge_records(
@@ -259,8 +275,8 @@ async def purge_records(
 ) -> ApplyReport:
     """真删已到期的回收站文件, 记录推进到 ``purged``.
 
-    这是洗版里唯一允许 ``unlink`` 的路径, 且只在 ``expires_at`` 已过时走. 不取库锁: 回收站在库根
-    之外, 动它不改变任何库内路径.
+    这是洗版里唯一允许 ``unlink`` 的路径, 且只在 ``expires_at`` 已过时走. 取库锁 (``lock_for``):
+    回收站虽然挂在库根之外, 但同一库的还原会把文件搬回库内, 与真删同一个目录树, 两个动作要互斥.
 
     文件已经不在回收站里的记录同样置 ``purged``: 它已经无法还原, 留在 ``trashed`` 里会让状态卡
     永远显示一份不存在的可还原体积.
@@ -331,18 +347,25 @@ async def _report(progress: ProgressFn | None, current: int, total: int, message
         await progress(current, total, message)
 
 
-async def _prune(root: Path, directories: Collection[Path]) -> None:
+async def _prune(bases: Sequence[Path], directories: Collection[Path], *, keep_source_dirs: bool) -> None:
     """搬空之后回收库内空目录; 失败只记日志, 不影响已经成功的搬移.
+
+    ``keep_source_dirs`` 与整理 / 转移 / 删除剪枝同语义: 打开后不删空目录 (下载器要复用固定目录).
+    回收站按各自成品目录分开放, 因此剪枝也按根分组, 每组只剪自己根下的目录.
 
     ``prune_empty_dirs`` 自己就是 ``@in_thread`` 的, 这里直接 ``await``: 再套一层
     ``asyncio.to_thread`` 只会拿到一个没人等待的协程.
     """
-    if not directories:
+    if not directories or keep_source_dirs:
         return
-    try:
-        await prune_empty_dirs(directories, library_root=root)
-    except OSError as exc:
-        logger.warning("wash prune failed", library_root=str(root), error=str(exc))
+    for base in bases:
+        subset = [directory for directory in directories if path_is_under(directory, base)]
+        if not subset:
+            continue
+        try:
+            await prune_empty_dirs(subset, library_root=base)
+        except OSError as exc:
+            logger.warning("wash prune failed", library_root=str(base), error=str(exc))
 
 
 async def expired_record_ids(repo: Repository, *, now: datetime | None = None) -> list[int]:

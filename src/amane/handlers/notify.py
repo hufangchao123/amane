@@ -47,6 +47,7 @@ _TYPE_LABELS: dict[TaskType, str] = {
     TaskType.WASH_SCAN: "洗版扫描",
     TaskType.WASH_APPLY: "洗版",
     TaskType.MEDIA_REFRESH: "媒体库刷新",
+    TaskType.SCRAPE_TRANSFER: "刮削后转移",
 }
 
 

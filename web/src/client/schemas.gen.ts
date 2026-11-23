@@ -9469,6 +9469,11 @@ export const ScrapeTransferSubmissionSchema = {
             title: 'Outcome',
             default: 'ok'
         },
+        source_dir: {
+            type: 'string',
+            title: 'Source Dir',
+            default: ''
+        },
         type: {
             type: 'string',
             const: 'scrape_transfer',
@@ -10730,7 +10735,8 @@ export const SubtitleFetchConfigSchema = {
                 type: 'string'
             },
             type: 'array',
-            title: 'Languages'
+            title: 'Languages',
+            description: '优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级'
         },
         max_attempts: {
             type: 'integer',

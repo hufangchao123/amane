@@ -19,6 +19,7 @@ from .protocol import TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config import HotSettings
+    from ..db.models import Library, MediaFile
     from ..db.repository import Repository
     from ..library import InventoryStore
     from ._common import LibraryTaskLocks
@@ -42,49 +43,62 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         self._library_locks = library_locks
 
     async def handle(self, payload: ScrapeTransferPayload) -> TaskResult[ScrapeTransferResult]:
+        result = ScrapeTransferResult(outcome=payload.outcome)
         file = await self._repo.get_media_file(payload.media_file_id)
         if file is None or file.id is None:
             return TaskResult(success=False, error=f"媒体文件 {payload.media_file_id} 不存在")
         library = await self._repo.get_library(file.library_id)
         if library is None:
             return TaskResult(success=False, error=f"媒体库 {file.library_id} 不存在")
-
-        result = ScrapeTransferResult(outcome=payload.outcome)
         if not library.scrape_transfer:
             result.note = "该媒体库未开启刮削后转移"
             return TaskResult(success=True, result=result)
         destination = scrape_transfer_destination(library, payload.outcome)
-        if not destination:
-            result.note = "文件已在原处, 无需转移"
+        if not destination or library.id is None:
+            result.note = "文件已在原处, 无需转移" if not destination else result.note
             return TaskResult(success=True, result=result)
 
-        video = Path(file.path)
-        if not await path_exists(video):
-            result.destination = destination
-            return TaskResult(success=False, result=result, error=f"源文件已不在: {file.path}")
-
-        if Path(destination).resolve() == video.parent.resolve():
-            result.note = "文件已在目的目录, 未搬动"
-            return TaskResult(success=True, result=result)
-
-        if library.id is None:
-            return TaskResult(success=False, error="媒体库尚未落库")
+        # 路径判定必须与搬移在同一把锁里: 锁外读到的路径可能已被整理任务改掉, 拿旧路径去搬会把
+        # 刚整理好的成品再搬出库根.
         async with await self._library_locks.get(library.id):
-            outcome = await transfer_scrape_result(
-                video,
-                Path(destination),
-                library.subtitle_extensions,
-                keep_dir=Path(library.path),
-                keep_source_dirs=library.keep_source_dirs,
-            )
-            if outcome.video_path != video:
-                await self._repo.update_media_file(file.id, path=str(outcome.video_path))
-                # 字幕跟着搬过去了, 角标要按新目录重算; 清单里的旧路径也已失效.
-                await refresh_external_subtitle(self._repo, file, library)
-                if self._inventory_store is not None and library.id is not None:
-                    self._inventory_store.drop_library(library.id)
+            return await self._transfer_locked(payload, file, library, Path(destination), result)
 
-        result.destination = str(outcome.destination)
+    async def _transfer_locked(
+        self,
+        payload: ScrapeTransferPayload,
+        file: MediaFile,
+        library: Library,
+        destination: Path,
+        result: ScrapeTransferResult,
+    ) -> TaskResult[ScrapeTransferResult]:
+        """持锁之后再读一次当前路径, 再决定搬什么; 视频已在目的目录时只补搬附属文件."""
+        assert file.id is not None
+        fresh = await self._repo.get_media_file(file.id) or file
+        assert fresh.id is not None
+        video = Path(fresh.path)
+        result.destination = str(destination)
+        already_there = Path(destination).resolve() == video.parent.resolve()
+        if not already_there and not await path_exists(video):
+            return TaskResult(success=False, result=result, error=f"源文件已不在: {fresh.path}")
+
+        outcome = await transfer_scrape_result(
+            video,
+            destination,
+            library.subtitle_extensions,
+            keep_dir=Path(library.path),
+            keep_source_dirs=library.keep_source_dirs,
+            sidecars_only=already_there,
+            sidecar_dir=Path(payload.source_dir) if payload.source_dir else None,
+        )
+        if outcome.video_path != video:
+            await self._repo.update_media_file(fresh.id, path=str(outcome.video_path))
+            # 字幕跟着搬过去了, 角标要按新目录重算; 清单里的旧路径也已失效.
+            await refresh_external_subtitle(self._repo, fresh, library)
+            if self._inventory_store is not None and library.id is not None:
+                self._inventory_store.drop_library(library.id)
+        elif already_there and outcome.files == 0 and not outcome.failed:
+            result.note = "文件已在目的目录, 未搬动"
+
         result.files = outcome.files
         result.bytes = outcome.bytes
         result.failed = len(outcome.failed)

@@ -14,7 +14,7 @@ from __future__ import annotations
 import errno
 import os
 import stat
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -138,40 +138,50 @@ def _links(item: DeletedFile) -> int:
     return max(item.nlink, 1)
 
 
-def ancestor_dirs(path: Path, *, library_root: Path) -> list[Path]:
-    """``path`` 到库根之间的祖先目录, 由深到浅.
+def ancestor_dirs(path: Path, *, library_root: Path, bases: Sequence[Path] = ()) -> list[Path]:
+    """``path`` 到「最近的授权根」之间的祖先目录, 由深到浅.
 
-    不含库根与 ``.amane_trash``; 传入路径不在库内时返回空列表 —
-    剪枝只在库内进行, 库外目录不在清单的授权范围内.
+    不含根本身与 ``.amane_trash``; 传入路径不在任何授权根之下时返回空列表 ——
+    剪枝只在授权范围内进行, 库外目录不在清单的授权范围内.
+
+    ``bases`` 是库根之外的授权根 (刮削的输入目录、成品目录): 文件从那里搬进库根后,
+    空掉的是那边的一层层目录, 只看库根会让它们永远留着.
     """
-    if not path_is_under(path, library_root):
+    roots = (library_root, *bases)
+    if any(same_path(path, root) for root in roots):
         return []
-    trash_root = library_root / TRASH_DIRNAME
+    if not any(path_is_under(path, root) for root in roots):
+        return []
+    trash_roots = {str(root / TRASH_DIRNAME) for root in roots}
     out: list[Path] = []
     for parent in Path(path).parents:
-        if not path_is_under(parent, library_root):
+        if same_path(parent, library_root) or str(parent) in trash_roots:
             break
-        if same_path(parent, library_root) or same_path(parent, trash_root):
-            break
-        out.append(parent)
+        if not any(same_path(parent, root) for root in roots):
+            out.append(parent)
+            continue
+        break
     return out
 
 
 @in_thread
-def prune_empty_dirs(directories: Iterable[Path], *, library_root: Path) -> PruneResult:
-    """自底向上删除已经空的目录, 只尝试传入的目录, 不向库根扩展.
+def prune_empty_dirs(directories: Iterable[Path], *, library_root: Path, bases: Sequence[Path] = ()) -> PruneResult:
+    """自底向上删除已经空的目录, 只尝试传入的目录, 不向授权根扩展.
 
     只有 ``ENOTEMPTY`` 视为「非空」并跳过: 依赖目录删除对非空目录报错来保证确实为空,
     权限、忙、只读等其余错误记入 ``failed``, 不当作「非空」静默停下.
+    ``bases`` 与 :func:`ancestor_dirs` 同义: 库根之外还允许剪的目录.
     """
     removed = 0
     failed = 0
-    trash_root = library_root / TRASH_DIRNAME
+    roots = (library_root, *bases)
+    trash_roots = {str(root / TRASH_DIRNAME) for root in roots}
+    skip = {str(root) for root in roots} | trash_roots
     candidates = sorted({Path(directory) for directory in directories}, key=_depth, reverse=True)
     for directory in candidates:
-        if same_path(directory, library_root) or same_path(directory, trash_root):
+        if str(directory) in skip:
             continue
-        if not path_is_under(directory, library_root):
+        if not any(path_is_under(directory, root) for root in roots):
             continue
         try:
             directory.rmdir()

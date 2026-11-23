@@ -83,7 +83,13 @@ def pick_download_path(html: str, tags: Sequence[str]) -> str | None:
     return ranked[0][2]
 
 
-async def fetch(web: SubtitleHttp, number: str, *, languages: Sequence[str]) -> SubtitleDownload:
+async def fetch(
+    web: SubtitleHttp,
+    number: str,
+    *,
+    languages: Sequence[str],
+    preferred_suffixes: Sequence[str] = (),
+) -> SubtitleDownload:
     """按番号取一份字幕."""
     tags = language_tags(languages)
     search_url = f"{SUBTITLECAT_BASE}/index.php?search={quote(number)}"

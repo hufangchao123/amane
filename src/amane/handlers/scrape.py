@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from structlog.contextvars import bind_contextvars
@@ -302,6 +303,11 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
                 return []
             if not library.auto_organize:
                 return []
+            if library.scrape_transfer:
+                # 刮削后转移自己就是落盘那一步: 两条链同时跑会争同一把库锁, 谁先赢决定文件最终在库根
+                # 还是在成品目录, 顺序不能靠运气.
+                current().debug("auto organize skipped: scrape transfer handles the move", library_id=library.id)
+                return []
             organize = OrganizePayload(library_id=file.library_id, media_file_ids=[file.id])
             return [
                 FollowupTask(
@@ -342,7 +348,9 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
                 return []
             if not scrape_transfer_destination(library, outcome):
                 return []
-            transfer = ScrapeTransferPayload(media_file_id=file.id, outcome=outcome)
+            transfer = ScrapeTransferPayload(
+                media_file_id=file.id, outcome=outcome, source_dir=str(Path(file.path).parent)
+            )
             return [
                 FollowupTask(
                     key=f"scrape-transfer:{file.id}",

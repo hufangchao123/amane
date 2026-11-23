@@ -25,6 +25,13 @@ REMOVED_ROUTINE_TYPES = ("BACKUP", "TRASH_PURGE", "TRANSFER_115", "backup", "tra
 
 
 def upgrade() -> None:
+    # 先清后继边: 直接删任务行会留下指向已删任务的 task_links, 那些边再也解释不了.
+    op.execute(
+        sa.text(
+            "DELETE FROM task_links WHERE parent_task_id IN (SELECT id FROM tasks WHERE type IN :types)"
+            " OR child_task_id IN (SELECT id FROM tasks WHERE type IN :types)"
+        ).bindparams(sa.bindparam("types", value=REMOVED_TASK_TYPES, expanding=True))
+    )
     op.execute(
         sa.text("DELETE FROM tasks WHERE type IN :types").bindparams(
             sa.bindparam("types", value=REMOVED_TASK_TYPES, expanding=True)

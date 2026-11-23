@@ -14,6 +14,7 @@
     "fetchStarted": "Subtitle fetch task submitted",
     "recentTitle": "Recent runs",
     "recentEmpty": "No runs yet.",
+    "recentLoadFailed": "Failed to load runs",
     "recentStatus": "Status",
     "recentFetched": "Placed",
     "recentMissing": "Missing",
@@ -31,6 +32,9 @@
     "statRestorable": "Restorable size",
     "statTrashed": "Items in trash",
     "disabled": "Wash is off; enable it in settings to scan candidates.",
+    "statusLoadFailed": "Failed to load wash status",
+    "candidatesLoadFailed": "Failed to load candidate groups",
+    "recordsLoadFailed": "Failed to load the trash",
     "scan": "Scan",
     "apply": "Apply",
     "restore": "Restore",
@@ -69,6 +73,8 @@
     "purgeStarted": "Purge task submitted",
     "confirmApplyTitle": "Apply wash",
     "confirmApplyMessage": "Losing copies move into the trash and can be purged after expiry; the kept copy is untouched. Continue?",
+    "confirmRestoreTitle": "Restore selected files?",
+    "confirmRestoreMessage": "Selected files move back from the trash; files already at the destination follow the conflict rules. Continue?",
     "confirmPurgeTitle": "Purge trash",
     "confirmPurgeMessage": "Only expired records are really deleted; the rest stay. Continue?",
     "selected_one": "{{count}} selected",
@@ -157,8 +163,11 @@
     "clear": "Clear",
     "cleared": "Cleared",
     "clearFailed": "Clear failed",
-    "summary": "{total} records",
+    "confirmClearTitle": "Clear the whole audit trail?",
+    "confirmClearMessage": "This cannot be undone; every recorded write operation is removed.",
+    "summary": "{{total}} records",
     "empty": "Nothing recorded yet",
+    "loadFailed": "Failed to load the audit trail",
     "columns": {
       "time": "Time",
       "method": "Method",
@@ -169,8 +178,7 @@
     "filter": {
       "method": "Method",
       "all": "All"
-    },
-    "note": "The trail comes from a queue on the request path, so it may lag the action slightly."
+    }
   },
   "configure": "Open settings"
 }

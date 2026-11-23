@@ -609,7 +609,7 @@ def build_handlers(
         ),
         TaskType.SCAN_INVALID: ScanInvalidHandler(repo, hot, inventory_store),
         TaskType.DELETE: DeleteHandler(repo, inventory_store, hot, library_locks=library_locks),
-        TaskType.CLEANUP: CleanupHandler(repo=repo, resource_store=resource_store),
+        TaskType.CLEANUP: CleanupHandler(repo=repo, resource_store=resource_store, library_locks=library_locks),
         TaskType.UPSCALE: UpscaleHandler(resource_store, hot),
         TaskType.RESCRAPE: RescrapeHandler(repo),
         TaskType.SEMANTIC_INDEX: SemanticIndexHandler(semantic),
@@ -621,7 +621,7 @@ def build_handlers(
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo, hot)
     handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, hot, library_locks)
     handlers[TaskType.NOTIFY] = NotifyHandler(repo, hot)
-    handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, hot, WebAvatarSource(web_client), state_dir=state_dir)
+    handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, WebAvatarSource(web_client), state_dir=state_dir)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
     handlers[TaskType.MEDIA_REFRESH] = MediaRefreshHandler(hot)

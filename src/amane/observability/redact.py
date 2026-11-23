@@ -36,6 +36,9 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     llm = hot_dump.get("llm")
     if isinstance(llm, dict) and llm.get("api_key"):
         return True
+    agent = hot_dump.get("agent")
+    if isinstance(agent, dict) and agent.get("api_key"):
+        return True
     media_server = hot_dump.get("media_server")
     if isinstance(media_server, dict) and media_server.get("api_key"):
         return True
@@ -52,10 +55,8 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     subtitles = hot_dump.get("subtitles")
     if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
         return True
-    notify = hot_dump.get("notify")
-    if isinstance(notify, dict) and notify.get("url"):
-        return True
-
+    # notify.url 是风险最低的一类密钥 (Bark 设备键 / Server 酱 SENDKEY): 它为真不该把整份含站点
+    # cookie 与 LLM 密钥的配置搬进明文旁路文件, 因此不再参与这个判定; 它本身仍进脱敏名单.
     plugins = hot_dump.get("plugins")
     if isinstance(plugins, dict):
         for plugin in plugins.values():
@@ -88,13 +89,22 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
     if isinstance(llm, dict) and llm.get("api_key"):
         llm["api_key"] = REDACTION_PLACEHOLDER
 
+    agent = out.get("agent")
+    if isinstance(agent, dict) and agent.get("api_key"):
+        agent["api_key"] = REDACTION_PLACEHOLDER
+
     media_server = out.get("media_server")
     if isinstance(media_server, dict) and media_server.get("api_key"):
         media_server["api_key"] = REDACTION_PLACEHOLDER
 
     network = out.get("network")
-    if isinstance(network, dict) and network.get("proxy"):
-        network["proxy"] = redact_proxy(str(network["proxy"]))
+    if isinstance(network, dict):
+        if network.get("proxy"):
+            network["proxy"] = redact_proxy(str(network["proxy"]))
+        # 浏览器解题服务地址允许带 userinfo (http://user:pass@host:8191), 与 proxy 同一口径处理.
+        browser = network.get("browser")
+        if isinstance(browser, dict) and browser.get("solver_url"):
+            browser["solver_url"] = redact_proxy(str(browser["solver_url"]))
 
     r18 = out.get("r18")
     if isinstance(r18, dict):

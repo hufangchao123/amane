@@ -179,6 +179,9 @@
     "retry": "Retry",
     "switchServer": "Switch server"
   },
+  "fieldGroups": {
+    "shared": "Shared by both"
+  },
   "notify": {
     "kinds": {
       "bark": "",
@@ -190,8 +193,5 @@
       "digest": "",
       "message": ""
     }
-  },
-  "fieldGroups": {
-    "shared": "Shared by both"
   }
 }

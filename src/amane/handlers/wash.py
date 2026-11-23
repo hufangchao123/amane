@@ -4,13 +4,14 @@ from ..db.models import TaskType, WashRecord
 from ..library.wash import apply as wash_apply
 from ..library.wash.model import WashGroup, is_unambiguous
 from ..library.wash.service import WashKindFilter, WashService, parse_kind
+from ._common import media_refresh_followups
 from .models import WashApplyPayload, WashApplyResult, WashScanPayload, WashScanResult
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config.manager import HotSettings
     from ..db.repository import Repository
-    from ._common import LibraryTaskLocks, media_refresh_followups
+    from ._common import LibraryTaskLocks
 
 
 class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
@@ -36,34 +37,35 @@ class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
         await self.report_progress(1, 1, "done")
 
         # 只把「档位不同」或「同档位体积明显更大」的组交给自动执行; 其余仍在清单里等人挑.
-        auto_keys = (
+        auto_groups = (
             [
-                group.group_key
+                group
                 for group in groups
                 if is_unambiguous(group, min_gain_percent=self._hot.wash.auto_execute_min_gain_percent)
             ]
             if self._hot.wash.auto_execute
             else []
         )
-        followups: list[FollowupTask] = []
-        if auto_keys:
-            followups.append(
-                FollowupTask(
-                    key="wash-apply:" + ",".join(sorted(auto_keys)),
-                    task_type=TaskType.WASH_APPLY,
-                    payload=WashApplyPayload(
-                        group_keys=auto_keys, kind="local", library_id=payload.library_id
-                    ).model_dump(mode="json"),
-                    priority=-1,
-                )
+        # 按库分开发: 执行侧要求「有分组键或明确库」, 全库扫描时必须把每个组的库带上, 否则整批被拒.
+        per_library: dict[int, list[str]] = {}
+        for group in auto_groups:
+            per_library.setdefault(group.library_id, []).append(group.group_key)
+        followups = [
+            FollowupTask(
+                key=f"wash-apply:{library_id}:" + ",".join(sorted(keys)),
+                task_type=TaskType.WASH_APPLY,
+                payload=WashApplyPayload(group_keys=keys, kind="local", library_id=library_id).model_dump(mode="json"),
+                priority=-1,
             )
+            for library_id, keys in sorted(per_library.items())
+        ]
         return TaskResult(
             success=True,
             result=WashScanResult(
                 groups=len(groups),
                 droppable=sum(len(group.drops) for group in groups),
                 bytes_freed=sum(group.bytes_freed for group in groups),
-                auto_groups=len(auto_keys),
+                auto_groups=len(auto_groups),
             ),
             followups=followups,
         )
@@ -89,6 +91,10 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
             return TaskResult(success=False, error="洗版未启用, 请先在设置里打开洗版")
         if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
             return TaskResult(success=False, error=f"媒体库 {payload.library_id} 不存在")
+        if not (payload.group_keys or payload.restore_ids or payload.purge_ids) and payload.library_id is None:
+            # 三个清单都空、又没有库, 等于「所有库按当前策略全洗一遍」: 一次误点会动到用户没在看的库.
+            # 全量重算必须显式指定媒体库; 逐组执行要给分组键; 还原与清理要给记录 id.
+            return TaskResult(success=False, error="洗版需要指定媒体库或具体分组")
 
         # 计数按动作分开: 还原往库里写文件, 与洗版释放的字节数不能加在一起.
         report = wash_apply.ApplyReport()
