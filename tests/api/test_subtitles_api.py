@@ -25,4 +25,4 @@ class TestSubtitleTask:
         assert empty.status_code == 202
         by_library = await client.post("tasks", json={"type": "subtitle_fetch", "library_id": 1})
         assert by_library.status_code == 202
-        assert by_library.json()["payload"] == {"media_file_id": None, "library_id": 1}
+        assert by_library.json()["payload"] == {"media_file_id": None, "library_id": 1, "limit": 50}

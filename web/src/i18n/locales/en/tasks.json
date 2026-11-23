@@ -519,6 +519,10 @@
       "library_id": {
         "label": "Library",
         "description": "Pick files missing subtitles in that library"
+      },
+      "limit": {
+        "label": "Files per run",
+        "description": "How many files one run may fill; raise it when catching up a whole library."
       }
     },
     "wash_scan": {

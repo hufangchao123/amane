@@ -63,7 +63,7 @@ MEDIA_OPS_TASK_TYPES = {
     "avatar_check",
     "media_refresh",
 }
-MEDIA_OPS_ROUTINE_TYPES = {"wash_scan", "wash_purge", "notify_digest", "media_refresh"}
+MEDIA_OPS_ROUTINE_TYPES = {"wash_scan", "wash_purge", "subtitle_audit", "notify_digest", "media_refresh"}
 
 
 def test_media_ops_types_are_admitted() -> None:

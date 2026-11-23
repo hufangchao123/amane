@@ -11,7 +11,7 @@ import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -40,9 +40,6 @@ if TYPE_CHECKING:
     from ..subtitles import SubtitleDownload, SubtitleHttp
 
 logger = structlog.get_logger()
-
-MAX_TARGETS_PER_RUN: Final[int] = 50
-"""单轮最多补几份. 来源有限流, 一次挑太多会让任务跑很久, 也让失败重试变得难以界定."""
 
 
 class _Outcome(StrEnum):
@@ -164,12 +161,12 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
                 status=[MediaFileStatus.SCRAPED],
                 library_id=payload.library_id,
                 has_subtitle=False,
-                limit=MAX_TARGETS_PER_RUN,
+                limit=payload.limit,
             )
         return await self._repo.list_media_files(
             status=[MediaFileStatus.SCRAPED],
             has_subtitle=False,
-            limit=MAX_TARGETS_PER_RUN,
+            limit=payload.limit,
         )
 
     async def _process(

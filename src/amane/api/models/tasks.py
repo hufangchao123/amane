@@ -405,6 +405,13 @@ class MediaRefreshRoutine(BaseModel):
     type: Literal["media_refresh"] = "media_refresh"
 
 
+class SubtitleAuditRoutine(BaseModel):
+    """字幕巡检的例行; 指定库时巡检后会自动排一轮补全, 不指定则只统计全部库."""
+
+    type: Literal["subtitle_audit"] = "subtitle_audit"
+    library_id: int | None = None
+
+
 RoutineSubmission = Annotated[
     CleanupSubmission
     | UpscaleSubmission
@@ -413,6 +420,7 @@ RoutineSubmission = Annotated[
     | SemanticIndexSubmission
     | WashScanSubmission
     | WashPurgeRoutine
+    | SubtitleAuditRoutine
     | NotifyDigestRoutine
     | MediaRefreshRoutine,
     Field(discriminator="type"),

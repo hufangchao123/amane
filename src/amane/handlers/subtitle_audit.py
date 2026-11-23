@@ -82,7 +82,7 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
             FollowupTask(
                 key=f"subtitle-fetch:{library.id}",
                 task_type=TaskType.SUBTITLE_FETCH,
-                payload=SubtitleFetchPayload(library_id=library.id).model_dump(mode="json"),
+                payload=SubtitleFetchPayload(library_id=library.id, limit=200).model_dump(mode="json"),
                 priority=-1,
             )
         ]

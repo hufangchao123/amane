@@ -95,6 +95,11 @@
       "summary": "Push a digest",
       "scope": "Scope",
       "wholeServer": "Whole instance"
+    },
+    "subtitle_audit": {
+      "summary": "Audits subtitle gaps; a chosen library chains one fill run",
+      "scope": "Scope",
+      "wholeServer": "Every library"
     }
   },
   "labels": {

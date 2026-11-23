@@ -488,6 +488,10 @@
       "library_id": {
         "label": "媒体库",
         "description": "范围内全库挑缺字幕的文件"
+      },
+      "limit": {
+        "label": "单轮份数",
+        "description": "这一轮最多补几份; 手动补一个库时可以调大, 自动排队用默认值."
       }
     },
     "wash_scan": {

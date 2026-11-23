@@ -23,7 +23,12 @@
     "recentLegend": "缺口是来源确实没有这份字幕; 失败是这一轮没办成 (缺元数据、落位冲突或来源临时不可用), 下一轮还会再试.",
     "justNow": "刚刚",
     "audit": "巡检",
-    "auditStarted": "字幕巡检已入队"
+    "auditStarted": "字幕巡检已入队",
+    "libraryLabel": "指定媒体库",
+    "libraryHint": "选一个库后, 下面两个按钮只处理这个库.",
+    "libraryPlaceholder": "不选则针对全部库",
+    "auditLibrary": "巡检此库",
+    "fetchLibrary": "补全此库"
   },
   "wash": {
     "title": "洗版",

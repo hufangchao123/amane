@@ -30,6 +30,7 @@ from ..api.models.tasks import (
     ScanInvalidSubmission,
     ScrapeSubmission,
     ScrapeTransferSubmission,
+    SubtitleAuditRoutine,
     SubtitleAuditSubmission,
     SubtitleFetchSubmission,
     TaskSubmission,
@@ -66,6 +67,7 @@ RoutineSubmissionType = Literal[
     "rescrape",
     "wash_scan",
     "wash_purge",
+    "subtitle_audit",
     "notify_digest",
     "media_refresh",
 ]
@@ -97,6 +99,7 @@ _ROUTINE_MEMBERS: dict[str, type[BaseModel]] = {
     "rescrape": RescrapeSubmission,
     "wash_scan": WashScanSubmission,
     "wash_purge": WashPurgeRoutine,
+    "subtitle_audit": SubtitleAuditRoutine,
     "notify_digest": NotifyDigestRoutine,
     "media_refresh": MediaRefreshRoutine,
 }

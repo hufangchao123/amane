@@ -4501,7 +4501,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'wash_scan' | 'wash_purge' | 'media_refresh' | 'notify_digest';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'wash_scan' | 'wash_purge' | 'subtitle_audit' | 'media_refresh' | 'notify_digest';
 
 /**
  * RuntimePaths
@@ -4812,6 +4812,8 @@ export type ScheduleCreateRequest = {
     } & WashScanSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'subtitle_audit';
+    } & SubtitleAuditRoutine) | ({
         type: 'notify_digest';
     } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
@@ -4867,6 +4869,8 @@ export type ScheduleResponse = {
     } & WashScanSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'subtitle_audit';
+    } & SubtitleAuditRoutine) | ({
         type: 'notify_digest';
     } & NotifyDigestRoutine) | ({
         type: 'media_refresh';
@@ -5657,6 +5661,22 @@ export type SubtitleAuditResult = {
 };
 
 /**
+ * SubtitleAuditRoutine
+ *
+ * 字幕巡检的例行; 指定库时巡检后会自动排一轮补全, 不指定则只统计全部库.
+ */
+export type SubtitleAuditRoutine = {
+    /**
+     * Type
+     */
+    type?: 'subtitle_audit';
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+};
+
+/**
  * SubtitleAuditSubmission
  *
  * 巡检范围; 空表示全部媒体库.
@@ -5740,6 +5760,10 @@ export type SubtitleFetchSubmission = {
      * Library Id
      */
     library_id?: number | null;
+    /**
+     * Limit
+     */
+    limit?: number;
     /**
      * Type
      */

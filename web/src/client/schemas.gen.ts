@@ -8615,6 +8615,7 @@ export const RoutineTypeSchema = {
         'semantic_index',
         'wash_scan',
         'wash_purge',
+        'subtitle_audit',
         'media_refresh',
         'notify_digest'
     ],
@@ -9100,6 +9101,9 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/SubtitleAuditRoutine'
+                },
+                {
                     $ref: '#/components/schemas/NotifyDigestRoutine'
                 },
                 {
@@ -9116,6 +9120,7 @@ export const ScheduleCreateRequestSchema = {
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
+                    subtitle_audit: '#/components/schemas/SubtitleAuditRoutine',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -9201,6 +9206,9 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/SubtitleAuditRoutine'
+                },
+                {
                     $ref: '#/components/schemas/NotifyDigestRoutine'
                 },
                 {
@@ -9217,6 +9225,7 @@ export const ScheduleResponseSchema = {
                     r18_import: '#/components/schemas/R18ImportSubmission',
                     rescrape: '#/components/schemas/RescrapeSubmission',
                     semantic_index: '#/components/schemas/SemanticIndexSubmission',
+                    subtitle_audit: '#/components/schemas/SubtitleAuditRoutine',
                     upscale: '#/components/schemas/UpscaleSubmission',
                     wash_purge: '#/components/schemas/WashPurgeRoutine',
                     wash_scan: '#/components/schemas/WashScanSubmission'
@@ -10676,6 +10685,31 @@ export const SubtitleAuditResultSchema = {
     description: '``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径.'
 } as const;
 
+export const SubtitleAuditRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'subtitle_audit',
+            title: 'Type',
+            default: 'subtitle_audit'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        }
+    },
+    type: 'object',
+    title: 'SubtitleAuditRoutine',
+    description: '字幕巡检的例行; 指定库时巡检后会自动排一轮补全, 不指定则只统计全部库.'
+} as const;
+
 export const SubtitleAuditSubmissionSchema = {
     properties: {
         library_id: {
@@ -10805,6 +10839,13 @@ export const SubtitleFetchSubmissionSchema = {
                 }
             ],
             title: 'Library Id'
+        },
+        limit: {
+            type: 'integer',
+            maximum: 500,
+            minimum: 1,
+            title: 'Limit',
+            default: 50
         },
         type: {
             type: 'string',

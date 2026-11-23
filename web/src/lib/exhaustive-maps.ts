@@ -161,6 +161,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "semantic_index",
   "wash_scan",
   "wash_purge",
+  "subtitle_audit",
   "media_refresh",
   "notify_digest",
 );

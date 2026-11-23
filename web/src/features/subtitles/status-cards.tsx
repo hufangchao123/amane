@@ -1,9 +1,11 @@
-import { Badge, Button, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Badge, Button, Card, Group, Select, SimpleGrid, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconDownload, IconListSearch } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import {
+  listLibrariesOptions,
   listTasksQueryKey,
   subtitleStatusOptions,
   subtitleStatusQueryKey,
@@ -48,6 +50,8 @@ function StatCard({ label, value, hint }: StatCardProps) {
 export function SubtitleStatusCards() {
   const { t } = useTranslation(["ops", "common"]);
   const queryClient = useQueryClient();
+  const [libraryId, setLibraryId] = useState<number | null>(null);
+  const librariesQuery = useQuery(listLibrariesOptions());
   const statusQuery = useQuery({
     ...subtitleStatusOptions(),
     refetchInterval: STATUS_POLL_MS,
@@ -126,6 +130,46 @@ export function SubtitleStatusCards() {
             onClick={() => submit.mutate({ body: { type: "subtitle_fetch" } })}
           >
             {t("ops:subtitles.fetch")}
+          </Button>
+        </Group>
+      </Group>
+      <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
+        <Select
+          label={t("ops:subtitles.libraryLabel")}
+          description={t("ops:subtitles.libraryHint")}
+          placeholder={t("ops:subtitles.libraryPlaceholder")}
+          data={(librariesQuery.data?.items ?? []).map((library) => ({
+            value: String(library.id),
+            label: library.name,
+          }))}
+          value={libraryId === null ? null : String(libraryId)}
+          onChange={(value) => setLibraryId(value === null ? null : Number(value))}
+          clearable
+          w={280}
+        />
+        <Group gap="sm">
+          <Button
+            variant="default"
+            leftSection={<IconListSearch size={16} />}
+            loading={audit.isPending}
+            disabled={libraryId === null}
+            onClick={() =>
+              audit.mutate({ body: { type: "subtitle_audit", library_id: libraryId } })
+            }
+          >
+            {t("ops:subtitles.auditLibrary")}
+          </Button>
+          <Button
+            leftSection={<IconDownload size={16} />}
+            loading={submit.isPending}
+            disabled={!enabled || libraryId === null}
+            onClick={() =>
+              submit.mutate({
+                body: { type: "subtitle_fetch", library_id: libraryId, limit: 200 },
+              })
+            }
+          >
+            {t("ops:subtitles.fetchLibrary")}
           </Button>
         </Group>
       </Group>

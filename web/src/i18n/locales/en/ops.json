@@ -23,7 +23,12 @@
     "recentLegend": "Missing means the sources have no subtitle for this title; failed means the run could not finish it (no metadata, placement conflict or a transient source error) and the next run retries.",
     "justNow": "just now",
     "audit": "Audit",
-    "auditStarted": "Subtitle audit queued"
+    "auditStarted": "Subtitle audit queued",
+    "libraryLabel": "Library",
+    "libraryHint": "With a library selected, the two buttons below only touch it.",
+    "libraryPlaceholder": "Leave empty for every library",
+    "auditLibrary": "Audit this library",
+    "fetchLibrary": "Fill this library"
   },
   "wash": {
     "title": "Wash",

@@ -443,6 +443,8 @@ class SubtitleFetchPayload(BaseModel):
 
     media_file_id: int | None = None
     library_id: int | None = None
+    limit: int = Field(default=50, ge=1, le=500)
+    """单轮最多补几份; 手动补一个库时调大, 例行与自动扇出保持默认."""
 
 
 class SubtitleFetchResult(BaseModel):

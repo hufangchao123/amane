@@ -137,6 +137,8 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       ];
     case "wash_purge":
       return [t("schedules:payload.wash_purge.summary")];
+    case "subtitle_audit":
+      return [t("schedules:payload.subtitle_audit.summary")];
     case "media_refresh":
       return [t("schedules:payload.media_refresh.summary")];
     case "notify_digest":
@@ -246,6 +248,16 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         {
           label: t("schedules:payload.wash_purge.scope"),
           value: t("schedules:payload.wash_purge.expired"),
+        },
+      ];
+    case "subtitle_audit":
+      return [
+        {
+          label: t("schedules:payload.subtitle_audit.scope"),
+          value:
+            payload.library_id == null
+              ? t("schedules:payload.subtitle_audit.wholeServer")
+              : formatNumber(payload.library_id),
         },
       ];
     case "media_refresh":

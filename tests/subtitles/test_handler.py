@@ -167,6 +167,28 @@ class TestTargets:
         assert [url for url in web.calls if "index.php" in url] == ["https://www.subtitlecat.com/index.php?search=AD-1"]
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_library_payload_respects_the_limit(
+        self,
+        repo: Repository,
+        tmp_path: Path,
+        subtitle_config: SubtitleFetchConfig,
+        subtitlecat_pages: dict[str, str],
+    ):
+        library, _ = await seed_media(repo, tmp_path / "lib" / "AD-1", number="AD-1")
+        for number in ("AD-2", "AD-3"):
+            await seed_media(repo, tmp_path / "lib" / number, number=number, library=library)
+
+        pages = dict(subtitlecat_pages)
+        for number in ("AD-2", "AD-3"):
+            pages[f"https://www.subtitlecat.com/index.php?search={number}"] = "<html><body></body></html>"
+        web = FakeHttp(texts=pages)
+        result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(library_id=library.id, limit=2))
+
+        assert result.success is True
+        assert result.result is not None
+        assert len([url for url in web.calls if "index.php" in url]) == 2
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_missing_media_file_fails_loudly(self, repo: Repository, subtitle_config: SubtitleFetchConfig):
         result = await _handler(repo, FakeHttp(), subtitle_config).handle(SubtitleFetchPayload(media_file_id=999999))
 

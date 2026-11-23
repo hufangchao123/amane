@@ -65,6 +65,7 @@ class RoutineType(StrEnum):
     SEMANTIC_INDEX = "semantic_index"
     WASH_SCAN = "wash_scan"
     WASH_PURGE = "wash_purge"
+    SUBTITLE_AUDIT = "subtitle_audit"
     MEDIA_REFRESH = "media_refresh"
     NOTIFY_DIGEST = "notify_digest"
 

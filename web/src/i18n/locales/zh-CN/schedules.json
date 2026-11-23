@@ -95,6 +95,11 @@
       "summary": "推送一份摘要",
       "scope": "范围",
       "wholeServer": "整个实例"
+    },
+    "subtitle_audit": {
+      "summary": "巡检字幕缺口; 指定库时巡检后会排一轮补全",
+      "scope": "巡检范围",
+      "wholeServer": "全部媒体库"
     }
   },
   "labels": {

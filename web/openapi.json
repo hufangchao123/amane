@@ -15834,6 +15834,7 @@
           "semantic_index",
           "wash_scan",
           "wash_purge",
+          "subtitle_audit",
           "media_refresh",
           "notify_digest"
         ],
@@ -16305,6 +16306,9 @@
                 "$ref": "#/components/schemas/WashPurgeRoutine"
               },
               {
+                "$ref": "#/components/schemas/SubtitleAuditRoutine"
+              },
+              {
                 "$ref": "#/components/schemas/NotifyDigestRoutine"
               },
               {
@@ -16321,6 +16325,7 @@
                 "r18_import": "#/components/schemas/R18ImportSubmission",
                 "rescrape": "#/components/schemas/RescrapeSubmission",
                 "semantic_index": "#/components/schemas/SemanticIndexSubmission",
+                "subtitle_audit": "#/components/schemas/SubtitleAuditRoutine",
                 "upscale": "#/components/schemas/UpscaleSubmission",
                 "wash_purge": "#/components/schemas/WashPurgeRoutine",
                 "wash_scan": "#/components/schemas/WashScanSubmission"
@@ -16404,6 +16409,9 @@
                 "$ref": "#/components/schemas/WashPurgeRoutine"
               },
               {
+                "$ref": "#/components/schemas/SubtitleAuditRoutine"
+              },
+              {
                 "$ref": "#/components/schemas/NotifyDigestRoutine"
               },
               {
@@ -16420,6 +16428,7 @@
                 "r18_import": "#/components/schemas/R18ImportSubmission",
                 "rescrape": "#/components/schemas/RescrapeSubmission",
                 "semantic_index": "#/components/schemas/SemanticIndexSubmission",
+                "subtitle_audit": "#/components/schemas/SubtitleAuditRoutine",
                 "upscale": "#/components/schemas/UpscaleSubmission",
                 "wash_purge": "#/components/schemas/WashPurgeRoutine",
                 "wash_scan": "#/components/schemas/WashScanSubmission"
@@ -17848,6 +17857,30 @@
         "title": "SubtitleAuditResult",
         "description": "``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径."
       },
+      "SubtitleAuditRoutine": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "subtitle_audit",
+            "title": "Type",
+            "default": "subtitle_audit"
+          },
+          "library_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Library Id"
+          }
+        },
+        "type": "object",
+        "title": "SubtitleAuditRoutine",
+        "description": "字幕巡检的例行; 指定库时巡检后会自动排一轮补全, 不指定则只统计全部库."
+      },
       "SubtitleAuditSubmission": {
         "properties": {
           "library_id": {
@@ -17974,6 +18007,13 @@
               }
             ],
             "title": "Library Id"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 50
           },
           "type": {
             "type": "string",

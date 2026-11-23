@@ -135,6 +135,23 @@ async def test_due_media_refresh_schedule_enqueues_refresh_task(repo: Repository
 
 
 @pytest.mark.asyncio
+async def test_due_subtitle_audit_schedule_enqueues_audit_task(repo: Repository) -> None:
+    """字幕巡检例行按库入队; 补齐由巡检自己在单库范围内扇出."""
+    await repo.create_schedule(
+        cron="0 3 * * 1",
+        task_type=RoutineType.SUBTITLE_AUDIT,
+        payload={"type": "subtitle_audit", "library_id": 7},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    tasks = await repo.list_tasks(task_types=[TaskType.SUBTITLE_AUDIT])
+    assert len(tasks) == 1
+    assert tasks[0].payload["library_id"] == 7
+
+
+@pytest.mark.asyncio
 async def test_due_notify_digest_schedule_enqueues_digest_task(repo: Repository) -> None:
     """周报例行只入队 digest 任务, 摘要由任务现算."""
     await repo.create_schedule(

@@ -19,6 +19,7 @@ from ..handlers import (
     R18ImportPayload,
     RescrapePayload,
     SemanticIndexPayload,
+    SubtitleAuditPayload,
     UpscalePayload,
     WashApplyPayload,
     WashScanPayload,
@@ -118,6 +119,12 @@ class CronScheduler:
                 await self._repo.create_task(TaskType.SEMANTIC_INDEX, SemanticIndexPayload.model_validate(payload))
             case RoutineType.NOTIFY_DIGEST:
                 await self._repo.create_task(TaskType.NOTIFY, NotifyPayload(kind="digest"))
+            case RoutineType.SUBTITLE_AUDIT:
+                # 巡检只统计缺口; 指定库时巡检自己会排一轮补全, 这里不再重复排队
+                await self._repo.create_task(
+                    TaskType.SUBTITLE_AUDIT,
+                    SubtitleAuditPayload(library_id=payload.get("library_id")),
+                )
             case RoutineType.MEDIA_REFRESH:
                 await self._repo.create_task(TaskType.MEDIA_REFRESH, MediaRefreshPayload())
             case RoutineType.WASH_SCAN:
