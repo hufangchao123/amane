@@ -17,7 +17,7 @@ from ..library import (
 from ..parsing import parse_file_info
 from ..utils.path import nfc_path
 from ..utils.threads import path_exists, path_is_dir
-from ._common import register_media_file
+from ._common import LibraryTaskLocks, register_media_file
 from .models import RefreshPayload, RefreshResult, ScanMode, ScrapePayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
@@ -54,13 +54,21 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
         repo: Repository,
         media_extensions: Sequence[str] | None = None,
         inventory_store: InventoryStore | None = None,
+        library_locks: LibraryTaskLocks | None = None,
     ):
         super().__init__(payload_t=RefreshPayload, result_t=RefreshResult)
         self._repo = repo
+        # 刷新与整理/删除/洗版/字幕落位动同一批路径, 必须共用库锁: 洗版搬到一半时刷新会把这些
+        # 文件判成"已消失"并删掉索引行.
+        self._library_locks = library_locks if library_locks is not None else LibraryTaskLocks()
         self._media_extensions = frozenset(media_extensions) if media_extensions else MEDIA_EXTENSIONS
         self._inventory_store = inventory_store
 
     async def handle(self, payload: RefreshPayload) -> TaskResult[RefreshResult]:
+        async with await self._library_locks.get(payload.library_id):
+            return await self._scan(payload)
+
+    async def _scan(self, payload: RefreshPayload) -> TaskResult[RefreshResult]:
         scan_dir = Path(payload.path)
         if not await path_is_dir(scan_dir):
             return TaskResult(success=False, error=f"不是目录: {payload.path}")

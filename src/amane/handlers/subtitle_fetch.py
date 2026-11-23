@@ -29,9 +29,9 @@ from ..subtitles import (
     staging_dir,
     usable_providers,
 )
-from ._common import LibraryTaskLocks, refresh_external_subtitle
+from ._common import LibraryTaskLocks, media_refresh_followups, refresh_external_subtitle
 from .models import SubtitleFetchPayload, SubtitleFetchResult
-from .protocol import TaskHandler, TaskResult
+from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config.manager import HotSettings, SubtitleFetchConfig
@@ -114,7 +114,25 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
                 await owned.close()
 
         # success 表示「这一轮跑完了」: 单份取不到的计数在结果里, 由页面显示, 不把整轮标失败.
-        return TaskResult(success=True, result=self._summarize(outcomes))
+        result = self._summarize(outcomes)
+        return TaskResult(success=True, result=result, followups=await self._refresh_followups(payload, result))
+
+    async def _refresh_followups(
+        self, payload: SubtitleFetchPayload, result: SubtitleFetchResult
+    ) -> list[FollowupTask]:
+        """补到字幕的文件要出现在媒体服务器里; 落了字幕后 Emby 不会自己重读目录."""
+        if result.fetched == 0:
+            return []
+        library_id = payload.library_id
+        if library_id is None and payload.media_file_id is not None:
+            media = await self._repo.get_media_file(payload.media_file_id)
+            library_id = media.library_id if media is not None else None
+        if library_id is None:
+            return []
+        library = await self._repo.get_library(library_id)
+        if library is None:
+            return []
+        return media_refresh_followups(self._hot, library, changed=result.fetched, reason="subtitles")
 
     def _summarize(self, outcomes: list[_TargetOutcome]) -> SubtitleFetchResult:
         placed = sum(1 for item in outcomes if item.outcome is _Outcome.PLACED)
@@ -273,6 +291,12 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         if not placed:
             return _TargetOutcome(_Outcome.FAILED, "目标已存在同名字幕或落位失败, 未覆盖")
         await refresh_external_subtitle(self._repo, media, library)
+        if not media.has_external_subtitle:
+            # 落位的扩展名不在库的 subtitle_extensions 里: 文件在磁盘上但库不认, 下一轮还会重抓同一份.
+            return _TargetOutcome(
+                _Outcome.FAILED,
+                f"库的字幕扩展名不含 {download.suffix}, 已落位但不会被识别",
+            )
         logger.info(
             "subtitles.placed",
             media_file_id=media.id,

@@ -13,20 +13,32 @@ from typing import TYPE_CHECKING
 
 from ..library.transfer import scrape_transfer_destination, transfer_scrape_result
 from ..utils.threads import path_exists
+from ._common import media_refresh_followups, refresh_external_subtitle
 from .models import ScrapeTransferPayload, ScrapeTransferResult
 from .protocol import TaskHandler, TaskResult
 
 if TYPE_CHECKING:
+    from ..config import HotSettings
     from ..db.repository import Repository
+    from ..library import InventoryStore
     from ._common import LibraryTaskLocks
 
 
 class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferResult]):
     """单文件转移; 一个任务只处理一次刮削的那一个文件."""
 
-    def __init__(self, repo: Repository, library_locks: LibraryTaskLocks) -> None:
+    def __init__(
+        self,
+        repo: Repository,
+        hot: HotSettings,
+        library_locks: LibraryTaskLocks,
+        inventory_store: InventoryStore | None = None,
+    ) -> None:
         super().__init__(payload_t=ScrapeTransferPayload, result_t=ScrapeTransferResult)
         self._repo = repo
+        self._hot = hot
+        # 搬动改变了库内路径, 清理清单里的条目随即过期.
+        self._inventory_store = inventory_store
         self._library_locks = library_locks
 
     async def handle(self, payload: ScrapeTransferPayload) -> TaskResult[ScrapeTransferResult]:
@@ -67,15 +79,22 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
             )
             if outcome.video_path != video:
                 await self._repo.update_media_file(file.id, path=str(outcome.video_path))
+                # 字幕跟着搬过去了, 角标要按新目录重算; 清单里的旧路径也已失效.
+                await refresh_external_subtitle(self._repo, file, library)
+                if self._inventory_store is not None and library.id is not None:
+                    self._inventory_store.drop_library(library.id)
 
         result.destination = str(outcome.destination)
         result.files = outcome.files
         result.bytes = outcome.bytes
         result.failed = len(outcome.failed)
+        # 成品刚搬进库根: 与整理同口径, 让媒体服务器重扫一次.
+        refresh = media_refresh_followups(self._hot, library, changed=outcome.files, reason="transfer")
         if outcome.failed:
             return TaskResult(
                 success=False,
                 result=result,
                 error=f"有 {len(outcome.failed)} 个文件未搬动: {', '.join(outcome.failed)}",
+                followups=refresh,
             )
-        return TaskResult(success=True, result=result)
+        return TaskResult(success=True, result=result, followups=refresh)

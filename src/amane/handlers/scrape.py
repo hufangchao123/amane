@@ -22,6 +22,7 @@ from .models import (
     ScrapeResult,
     ScrapeTransferOutcome,
     ScrapeTransferPayload,
+    SubtitleFetchPayload,
 )
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
@@ -218,6 +219,8 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
         organize_followups = await self._auto_organize_followups(payload, file)
         # 库开启刮削后转移时把该文件搬到成功目录.
         transfer_followups = await self._scrape_transfer_followups(payload, outcome="ok")
+        # 刮削完就有番号了, 缺字幕的文件顺手排一次补全 (开关在字幕补全那边).
+        subtitle_followups = self._subtitle_followups(file)
 
         await self.report_progress(progress_total, progress_total, "done")
 
@@ -230,6 +233,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             actor_followups=len(actor_followups),
             organize_followups=len(organize_followups),
             transfer_followups=len(transfer_followups),
+            subtitle_followups=len(subtitle_followups),
         )
 
         assert meta.id is not None
@@ -242,7 +246,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
                 outcomes=current().site_outcomes(),
             ),
             # 顺序即执行顺序: 先搬 (落点由库配置决定), 整理再按新路径落盘.
-            followups=[*actor_followups, *transfer_followups, *organize_followups],
+            followups=[*actor_followups, *transfer_followups, *organize_followups, *subtitle_followups],
         )
 
     def failure_result(self, payload: ScrapePayload) -> ScrapeResult | None:
@@ -255,6 +259,25 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             failed_sites=[row.site for row in outcomes if row.outcome is SiteOutcomeKind.FAILED],
             outcomes=outcomes,
         )
+
+    def _subtitle_followups(self, file: MediaFile | None) -> list[FollowupTask]:
+        """刮削成功后给缺外挂字幕的文件排一次补全.
+
+        只在字幕补全启用、且该文件确实没有字幕时排队; 没有可落盘的 ``MediaFile`` 就无从指向,
+        直接跳过. ``priority=-1`` 与其它后继一致, 不抢交互任务.
+        """
+        if file is None or file.id is None or not self._config.subtitles.enabled:
+            return []
+        if file.has_subtitle_in_name or file.has_external_subtitle:
+            return []
+        return [
+            FollowupTask(
+                key=f"subtitle-fetch:{file.id}",
+                task_type=TaskType.SUBTITLE_FETCH,
+                payload=SubtitleFetchPayload(media_file_id=file.id).model_dump(mode="json"),
+                priority=-1,
+            )
+        ]
 
     async def _auto_organize_followups(self, payload: ScrapePayload, file: MediaFile | None) -> list[FollowupTask]:
         """库开启自动整理时为本次刮削的那一个文件描述 ORGANIZE 后继.

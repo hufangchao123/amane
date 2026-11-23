@@ -9,7 +9,9 @@ import structlog
 from pydantic import BaseModel
 
 from ..config import HotSettings
+from ..db.models import TaskType
 from ..events import EventType
+from ..handlers.models import NOTIFY_BODY_LIMIT, NotifyPayload
 from ..handlers.protocol import TaskResult
 from ..observability import Recorder
 
@@ -292,6 +294,25 @@ class AsyncWorker:
                     return None
                 return TaskResult(success=False, result=failure).as_dict()
 
+            async def _notify_failure(task_type_str: str, error: str) -> None:
+                """任务失败时推一条通知.
+
+                「通知」自身失败不再推, 否则配置错一个地址就会自激; 未启用、或队列写失败都只记日志 ——
+                通知是旁路, 不能反过来把任务判失败.
+                """
+                hot = self._get_hot() if self._get_hot is not None else None
+                if hot is None or not hot.notify.enabled or task_type_str == TaskType.NOTIFY.value:
+                    return
+                try:
+                    await self._repo.create_task(
+                        TaskType.NOTIFY,
+                        NotifyPayload(
+                            kind="message", title=f"任务失败: {task_type_str}", body=error[:NOTIFY_BODY_LIMIT]
+                        ),
+                    )
+                except Exception:
+                    logger.warning("failure notify failed", task_type=task_type_str)
+
             async def _failure_followups() -> None:
                 """失败后继: 钩子出错不影响失败处理, 后继逐个入队且不与失败任务结对."""
                 try:
@@ -335,6 +356,7 @@ class AsyncWorker:
                     logger.exception("task crashed", error=str(e), duration_s=duration_s)
                     await self._repo.fail_task(task_id, error=str(e), result=_failure_payload())
                     await _failure_followups()
+                    await _notify_failure(task_type_str, str(e))
                     await _finalize_recorder(success=False, error=str(e))
                     if self._event_bus:
                         await self._event_bus.emit(
@@ -372,6 +394,7 @@ class AsyncWorker:
                     err = result.error or "Unknown error"
                     await self._repo.fail_task(task_id, error=err, result=result.as_dict())
                     await _failure_followups()
+                    await _notify_failure(task_type_str, err)
                     logger.warning("task failed", error=result.error, duration_s=duration_s)
                     await _finalize_recorder(success=False, error=err)
                     if self._event_bus:

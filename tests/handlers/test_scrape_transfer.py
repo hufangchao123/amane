@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from amane.config import HotSettings
+from amane.config.manager import MediaServerConfig
 from amane.handlers import ScrapeTransferHandler, ScrapeTransferPayload
 from amane.handlers._common import LibraryTaskLocks
 
@@ -51,7 +53,7 @@ async def test_success_moves_into_library_root_and_updates_path(repo: Repository
     media_id = await _media(repo, library_id, video)
     (video.parent / "ABC-123-1080p.srt").write_text("srt", encoding="utf-8")
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
@@ -75,7 +77,7 @@ async def test_failure_moves_into_fail_dir(repo: Repository, tmp_path: Path) -> 
     video = pending / "ABC-123.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="failed")
     )
 
@@ -94,7 +96,7 @@ async def test_switch_off_reports_note_without_moving(repo: Repository, tmp_path
     video = root / "ABC-123.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
@@ -112,7 +114,7 @@ async def test_failure_without_fail_dir_stays_in_input(repo: Repository, tmp_pat
     video = pending / "ABC-123.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="failed")
     )
 
@@ -131,7 +133,7 @@ async def test_missing_source_fails(repo: Repository, tmp_path: Path) -> None:
     media_id = await _media(repo, library_id, video)
     video.unlink()
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
@@ -148,7 +150,7 @@ async def test_success_moves_from_library_root_into_ok_dir(repo: Repository, tmp
     video = root / "ABC-123" / "ABC-123-1080p.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
@@ -169,7 +171,7 @@ async def test_success_without_ok_dir_leaves_file_in_place(repo: Repository, tmp
     video = root / "ABC-123" / "ABC-123-1080p.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
@@ -190,10 +192,42 @@ async def test_keep_source_dirs_leaves_empty_folder(repo: Repository, tmp_path: 
     video = pending / "ABC-123" / "ABC-123-1080p.mp4"
     media_id = await _media(repo, library_id, video)
 
-    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
     )
 
     assert result.success, result.error
     assert (done / video.name).exists()
     assert video.parent.is_dir()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_success_refreshes_media_server(repo: Repository, tmp_path: Path) -> None:
+    """成品搬进库根后让媒体服务器重扫; 开关关着时只搬不刷."""
+    hot = HotSettings(media_server=MediaServerConfig(url="http://emby.local:8096", api_key="k", auto_refresh=True))
+    hot_off = HotSettings(media_server=MediaServerConfig(url="http://emby.local:8096", api_key="k"))
+    for settings, expected in ((hot, 1), (hot_off, 0)):
+        root, pending, ok_dir = (tmp_path / name for name in ("lib", "pending", "done"))
+        for path in (root, pending, ok_dir):
+            path.mkdir(exist_ok=True)
+        (pending / "TRN-900-1080p.mp4").write_bytes(b"x" * 16)
+        lib = await repo.create_library(
+            name=f"t{expected}",
+            path=str(root),
+            scrape_transfer=True,
+            scrape_input_dir=str(pending),
+            scrape_ok_dir=str(ok_dir),
+            auto_organize=False,
+        )
+        assert lib.id is not None
+        media = await repo.create_media_file(lib.id, path=str(pending / "TRN-900-1080p.mp4"))
+        assert media.id is not None
+
+        result = await ScrapeTransferHandler(repo, settings, LibraryTaskLocks()).handle(
+            ScrapeTransferPayload(media_file_id=media.id)
+        )
+
+        assert result.success is True
+        assert len(result.followups) == expected
+        if expected:
+            assert result.followups[0].task_type.value == "media_refresh"

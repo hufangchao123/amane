@@ -6429,10 +6429,6 @@ export type TransferConfig = {
      */
     ad_action?: 'skip' | 'trash';
     /**
-     * Interval Minutes
-     */
-    interval_minutes?: number;
-    /**
      * Max Moves Per Run
      *
      * 单轮最多搬移的文件数

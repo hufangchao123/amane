@@ -4,14 +4,16 @@ import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..db import Library, MediaFileStatus
+from ..db import Library, MediaFileStatus, TaskType
 from ..library import LibraryHit, LibraryScan, has_companion_subtitle
 from ..utils.oshash import compute_oshash
 from ..utils.threads import existing_disk_path, in_thread
 
 if TYPE_CHECKING:
+    from ..config import HotSettings
     from ..db.models import MediaFile
     from ..db.repository import Repository
+    from .protocol import FollowupTask
 
 
 class LibraryTaskLocks:
@@ -93,3 +95,25 @@ async def finalize_media_file(repo: Repository, media_file_id: int | None, metad
     if media_file_id is None:
         return
     await repo.update_media_file(media_file_id, status=MediaFileStatus.SCRAPED, metadata_id=metadata_id)
+
+
+def media_refresh_followups(hot: HotSettings, library: Library, *, changed: int, reason: str) -> list[FollowupTask]:
+    """有文件变动时让媒体服务器重扫媒体库.
+
+    五条会改盘上内容的路径共用这一处判定: 整理、刮削后转移、洗版、NFO 修补、删除. 未配置
+    ``media_server``、或 ``auto_refresh`` 关着时不入队 —— 那是「不想让 amane 动媒体服务器」,
+    与具体是哪个任务无关.
+    """
+    from .models import MediaRefreshPayload  # 局部导入: models 依赖 db, 与本模块无循环
+    from .protocol import FollowupTask
+
+    if changed <= 0 or not hot.media_server.enabled or not hot.media_server.auto_refresh:
+        return []
+    return [
+        FollowupTask(
+            key=f"media-refresh:{library.id}:{reason}",
+            task_type=TaskType.MEDIA_REFRESH,
+            payload=MediaRefreshPayload().model_dump(mode="json"),
+            priority=-1,
+        )
+    ]

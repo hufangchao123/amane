@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from amane.config import HotSettings
 from amane.db.models import MediaFileStatus
 from amane.handlers import SubtitleAuditHandler, SubtitleAuditPayload
 from amane.subtitles.audit import scan_library
@@ -75,7 +76,7 @@ async def test_handler_counts_missing_and_orphans(repo: Repository, tmp_path: Pa
     # 未刮削的行不进补全队列, 因此不计入缺口.
     await repo.create_media_file(library.id, path=_write(root / "XYZ-9" / "XYZ-9.mp4"))
 
-    result = await SubtitleAuditHandler(repo).handle(SubtitleAuditPayload())
+    result = await SubtitleAuditHandler(repo, HotSettings()).handle(SubtitleAuditPayload())
 
     assert result.success
     assert result.result is not None
@@ -86,7 +87,7 @@ async def test_handler_counts_missing_and_orphans(repo: Repository, tmp_path: Pa
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_handler_rejects_unknown_library(repo: Repository) -> None:
-    result = await SubtitleAuditHandler(repo).handle(SubtitleAuditPayload(library_id=4242))
+    result = await SubtitleAuditHandler(repo, HotSettings()).handle(SubtitleAuditPayload(library_id=4242))
 
     assert not result.success
     assert result.error == "媒体库 4242 不存在"

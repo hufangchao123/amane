@@ -5,12 +5,12 @@ from ..library.wash import apply as wash_apply
 from ..library.wash.model import WashGroup
 from ..library.wash.service import WashKindFilter, WashService, parse_kind
 from .models import WashApplyPayload, WashApplyResult, WashScanPayload, WashScanResult
-from .protocol import TaskHandler, TaskResult
+from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config.manager import HotSettings
     from ..db.repository import Repository
-    from ._common import LibraryTaskLocks
+    from ._common import LibraryTaskLocks, media_refresh_followups
 
 
 class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
@@ -85,6 +85,7 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
                 await wash_apply.purge_records(
                     self._repo,
                     await self._fetch(payload.purge_ids, report),
+                    lock_for=self._library_locks.get,
                     progress=self.report_progress,
                 )
             )
@@ -109,6 +110,17 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
 
         reports = (report, restored, purged, trashed)
         failed = sum(item.failed for item in reports)
+        # 洗掉/还原/真删都改了盘上内容, 媒体服务器得重扫; 未指定库时没有可指向的库, 不入队.
+        refresh: list[FollowupTask] = []
+        if payload.library_id is not None:
+            library = await self._repo.get_library(payload.library_id)
+            if library is not None:
+                refresh = media_refresh_followups(
+                    self._hot,
+                    library,
+                    changed=trashed.done + restored.done + purged.done,
+                    reason="wash",
+                )
         return TaskResult(
             success=failed == 0,
             result=WashApplyResult(
@@ -121,6 +133,7 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
                 failed=failed,
             ),
             error="; ".join(error for item in reports for error in item.errors) or None,
+            followups=refresh,
         )
 
     @staticmethod

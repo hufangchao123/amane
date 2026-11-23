@@ -12,10 +12,12 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ..library.nfo.patch import NfoPatchOutcome, fill_actor_thumbs, strip_directors
+from ._common import media_refresh_followups
 from .models import NfoPatchPayload, NfoPatchResult
 from .protocol import TaskHandler, TaskResult
 
 if TYPE_CHECKING:
+    from ..config import HotSettings
     from ..db.models import Library
     from ..db.repository import Repository
     from ._common import LibraryTaskLocks
@@ -28,9 +30,10 @@ ACTOR_PAGE = 500
 class NfoPatchHandler(TaskHandler[NfoPatchPayload, NfoPatchResult]):
     """两类修补共用一套流程: 选库 → 逐库扫 NFO → 按 ``kind`` 改写."""
 
-    def __init__(self, repo: Repository, library_locks: LibraryTaskLocks) -> None:
+    def __init__(self, repo: Repository, hot: HotSettings, library_locks: LibraryTaskLocks) -> None:
         super().__init__(payload_t=NfoPatchPayload, result_t=NfoPatchResult)
         self._repo = repo
+        self._hot = hot
         self._library_locks = library_locks
 
     async def handle(self, payload: NfoPatchPayload) -> TaskResult[NfoPatchResult]:
@@ -65,7 +68,13 @@ class NfoPatchHandler(TaskHandler[NfoPatchPayload, NfoPatchResult]):
             changed=total.changed,
             failed=result.failed,
         )
-        return TaskResult(success=result.failed == 0, result=result)
+        # 改过 NFO 就让媒体服务器重读; 多库任务只沿用单库指向的库 (逐库拆分没有意义, 一次刷新即可).
+        refresh = (
+            media_refresh_followups(self._hot, libraries[0], changed=total.changed, reason="nfo")
+            if payload.library_id is not None and len(libraries) == 1
+            else []
+        )
+        return TaskResult(success=result.failed == 0, result=result, followups=refresh)
 
     async def _select_libraries(self, payload: NfoPatchPayload) -> list[Library] | None:
         if payload.library_id is None:

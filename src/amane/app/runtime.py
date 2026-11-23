@@ -587,7 +587,7 @@ def build_handlers(
     if inventory_store is None:
         inventory_store = InventoryStore()
     handlers: dict[TaskType, TaskHandler[Any, Any]] = {
-        TaskType.REFRESH: RefreshHandler(repo, hot.watcher.media_extensions, inventory_store),
+        TaskType.REFRESH: RefreshHandler(repo, hot.watcher.media_extensions, inventory_store, library_locks),
         TaskType.SCRAPE: ScrapeHandler(
             repo,
             factory,
@@ -617,11 +617,11 @@ def build_handlers(
         TaskType.SEMANTIC_BENCHMARK: SemanticBenchmarkHandler(semantic),
     }
     # 媒体运维: 由各自的库配置或热配置决定是否真的动作, 未启用时任务成功但只记说明.
-    handlers[TaskType.SCRAPE_TRANSFER] = ScrapeTransferHandler(repo, library_locks)
+    handlers[TaskType.SCRAPE_TRANSFER] = ScrapeTransferHandler(repo, hot, library_locks, inventory_store)
     handlers[TaskType.TRANSFER_115] = Transfer115Handler(repo, hot, max_moves=hot.transfer.max_moves_per_run)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
-    handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo)
-    handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, library_locks)
+    handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo, hot)
+    handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, hot, library_locks)
     handlers[TaskType.NOTIFY] = NotifyHandler(repo, hot)
     handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, hot, WebAvatarSource(web_client), state_dir=state_dir)
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)

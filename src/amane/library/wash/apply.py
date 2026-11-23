@@ -20,7 +20,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from ...db.models import WashRecordState
+from ...db.models import MediaFileStatus, WashRecordState
+from ...parsing import parse_file_info
 from ...utils.threads import path_is_dir
 from ..delete import prune_empty_dirs
 from . import trash
@@ -29,7 +30,7 @@ from .model import library_id_of
 if TYPE_CHECKING:
     from collections.abc import Collection, Sequence
 
-    from ...db.models import WashRecord
+    from ...db.models import Library, WashRecord
     from ...db.repository import Repository
     from .model import WashGroup
 
@@ -148,6 +149,10 @@ async def _trash_one(
         return
     report.done += 1
     report.bytes += outcome.size
+    # 文件已不在库内: 索引行留着会让播放与清理都按旧路径解读, 由还原重建.
+    media = await repo.get_media_file_by_path(source)
+    if media is not None and media.id is not None:
+        await repo.delete_media_file(media.id)
     removed_path = str(outcome.target)
     if removed_path in known:
         # 上一轮已经登记过同一个落点 (文件后来被人放回原位又洗了一次): 只搬不重复记.
@@ -212,6 +217,7 @@ async def restore_records(
                     continue
                 assert record.id is not None
                 await repo.set_wash_record_state([record.id], WashRecordState.RESTORED)
+                await _restore_index(repo, library, outcome.target)
                 report.done += 1
                 report.bytes += outcome.size
                 done += 1
@@ -219,10 +225,35 @@ async def restore_records(
     return report
 
 
+async def _restore_index(repo: Repository, library: Library, restored: Path | None) -> None:
+    """把还原回来的文件重新登记进索引, 能认出番号时顺手挂回元数据.
+
+    洗版搬走时删掉了索引行 (文件确实离开了库), 还原只把文件搬回来, 不重建就会变成"磁盘上有、
+    面板里没有", 直到下一次刷新才被扫成 PENDING 空行再重刮一遍.
+    """
+    if restored is None:
+        return
+    existing = await repo.get_media_file_by_path(str(restored))
+    if existing is not None:
+        return
+    assert library.id is not None
+    media = await repo.create_media_file(library_id=library.id, path=str(restored))
+    if media.id is None:
+        return
+    number = parse_file_info(str(restored)).number
+    if not number:
+        return
+    metadata = await repo.get_metadata_by_number(number)
+    if metadata is None or metadata.id is None:
+        return
+    await repo.update_media_file(media.id, metadata_id=metadata.id, status=MediaFileStatus.SCRAPED)
+
+
 async def purge_records(
     repo: Repository,
     records: Sequence[WashRecord],
     *,
+    lock_for: LockGetter | None = None,
     now: datetime | None = None,
     progress: ProgressFn | None = None,
 ) -> ApplyReport:
@@ -249,6 +280,19 @@ async def purge_records(
             continue
         expired.append(record)
     if not expired:
+        return report
+
+    if lock_for is not None:
+        # 与还原共用同一把锁: 同一条记录不能被"真删"和"还原"同时处理.
+        by_library: dict[int | None, list[WashRecord]] = {}
+        for record in expired:
+            by_library.setdefault(library_id_of(record.group_key), []).append(record)
+        for library_id, group in sorted(by_library.items(), key=lambda item: (item[0] is None, item[0] or 0)):
+            if library_id is None:
+                report.absorb(await purge_records(repo, group, now=now, progress=progress))
+                continue
+            async with await lock_for(library_id):
+                report.absorb(await purge_records(repo, group, now=now, progress=progress))
         return report
 
     await _report(progress, 0, len(expired), "purge")

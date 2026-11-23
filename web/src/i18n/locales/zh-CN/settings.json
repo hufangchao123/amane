@@ -899,10 +899,6 @@
           "trash": "移入回收站"
         }
       },
-      "interval_minutes": {
-        "label": "间隔 (分钟)",
-        "description": "定时中转的轮询间隔"
-      },
       "max_moves_per_run": {
         "label": "单轮上限",
         "description": "一轮最多搬移多少个文件; 剩余的下轮继续"

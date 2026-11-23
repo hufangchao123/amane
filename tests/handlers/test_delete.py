@@ -753,3 +753,32 @@ def test_reverify_subtree_reports_unreadable(tmp_path: Path, mode: int, expected
 
     assert refusal is not None
     assert refusal.startswith(expected)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_delete_keeps_source_dir_when_library_asks(repo: Repository, tmp_path: Path) -> None:
+    """库上要求搬空后保留来源目录时, 删除任务也不能把它剪掉 (与整理/转移同口径)."""
+    lib_root = tmp_path / "lib"
+    (lib_root / "work").mkdir(parents=True)
+    ad = lib_root / "work" / "ad.mkv"
+    ad.write_bytes(b"x")
+    lib = await repo.create_library(
+        name="t",
+        path=str(lib_root),
+        write_nfo=False,
+        blacklist_patterns=["ad"],
+        keep_source_dirs=True,
+    )
+    assert lib.id is not None
+    store = InventoryStore()
+
+    inventory_id = await _inventory_id(repo, store, lib.id)
+    result = await DeleteHandler(repo, store).handle(
+        DeletePayload(library_id=lib.id, inventory_id=inventory_id, prune_empty_dirs=True)
+    )
+
+    assert result.success is True
+    assert result.result is not None
+    assert result.result.pruned_dirs == 0
+    assert not ad.exists()
+    assert (lib_root / "work").is_dir()

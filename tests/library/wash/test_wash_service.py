@@ -102,8 +102,8 @@ async def test_summary_counts_groups_and_trash(wash_lib: WashLibrary, locks: Lib
 
     summary = await service.summary()
 
-    # 索引里落选的行还在, 所以估算的组数不变 —— 这正是「估算」与扫描结果的差别.
-    assert summary == WashSummary(groups=3, trashed=3, restorable_bytes=3000)
+    # 洗完之后索引里只剩保留的那一份, 每组不再有第二个候选, 因此估算组数归零.
+    assert summary == WashSummary(groups=0, trashed=3, restorable_bytes=3000)
 
 
 @pytest.mark.asyncio(loop_scope="function")

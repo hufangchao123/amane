@@ -5,12 +5,17 @@
 
 from typing import TYPE_CHECKING
 
+from ..db import TaskType
 from ..db.models import MediaFileStatus
 from ..subtitles.audit import SubtitleFinding, scan_library
-from .models import SubtitleAuditPayload, SubtitleAuditResult
-from .protocol import TaskHandler, TaskResult
+from .models import SubtitleAuditPayload, SubtitleAuditResult, SubtitleFetchPayload
+from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..config import HotSettings
+    from ..db.models import Library
     from ..db.repository import Repository
 
 
@@ -21,9 +26,10 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
     ``missing`` 取自库里已有的标记, ``orphans`` 取自磁盘, 两者不互相校正.
     """
 
-    def __init__(self, repo: Repository) -> None:
+    def __init__(self, repo: Repository, hot: HotSettings) -> None:
         super().__init__(payload_t=SubtitleAuditPayload, result_t=SubtitleAuditResult)
         self._repo = repo
+        self._hot = hot
 
     async def handle(self, payload: SubtitleAuditPayload) -> TaskResult[SubtitleAuditResult]:
         if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
@@ -60,4 +66,23 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
                 orphans=len(findings),
                 samples=[finding.path for finding in findings[:20]],
             ),
+            followups=self._fetch_followups(libraries, missing),
         )
+
+    def _fetch_followups(self, libraries: Sequence[Library], missing: int) -> list[FollowupTask]:
+        """巡检算出缺口就顺手排补全: 否则缺口数字永远要人手点一次才会动.
+
+        只在字幕补全启用、且巡检范围是单库时排队 —— 多库巡检不知道哪一库缺得多, 逐库排一轮
+        会把额度一次花光.
+        """
+        if missing == 0 or not self._hot.subtitles.enabled or len(libraries) != 1:
+            return []
+        library = libraries[0]
+        return [
+            FollowupTask(
+                key=f"subtitle-fetch:{library.id}",
+                task_type=TaskType.SUBTITLE_FETCH,
+                payload=SubtitleFetchPayload(library_id=library.id).model_dump(mode="json"),
+                priority=-1,
+            )
+        ]

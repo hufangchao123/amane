@@ -6,19 +6,21 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
 from amane.config.manager import HotSettings, WashConfig
-from amane.db.models import WashRecordKind, WashRecordState
+from amane.db.models import MediaFileStatus, WashRecordKind, WashRecordState
+from amane.handlers._common import LibraryTaskLocks
 from amane.handlers.models import WashApplyPayload, WashScanPayload
 from amane.handlers.wash import WashApplyHandler, WashScanHandler
+from amane.library.wash import apply as wash_apply
 
 if TYPE_CHECKING:
     from amane.db.models import WashRecord
-    from amane.handlers._common import LibraryTaskLocks
 
     from .conftest import WashLibrary
 
@@ -228,3 +230,58 @@ async def test_apply_purge_prefix_respects_expiry(
     assert target.exists() is not expected_purged
     (stored,) = await wash_lib.repo.get_wash_records([record_id])
     assert stored.state is (WashRecordState.PURGED if expected_purged else WashRecordState.TRASHED)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_trash_drops_the_index_row(
+    wash_lib: WashLibrary,
+    locks: LibraryTaskLocks,
+) -> None:
+    """洗掉的文件离开了库, 索引行必须一起走: 留着会让播放按旧路径 stat 失败."""
+    await seed_library(wash_lib)
+    dropped = wash_lib.root / "2024/ABC-123/ABC-123-720p.mp4"
+    assert await wash_lib.repo.get_media_file_by_path(str(dropped)) is not None
+
+    await apply_handler(wash_lib, locks).handle(WashApplyPayload())
+
+    assert not dropped.exists()
+    assert await wash_lib.repo.get_media_file_by_path(str(dropped)) is None
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_restore_rebuilds_the_index_row(
+    wash_lib: WashLibrary,
+    locks: LibraryTaskLocks,
+) -> None:
+    """还原把文件搬回来后要重新登记并挂回元数据, 否则面板里是 PENDING 空行."""
+    await wash_lib.repo.upsert_metadata("ABC-123", title="示例")
+    records = await washed(wash_lib, locks)
+    target = next(record for record in records if record.kind is LOCAL)
+    assert target.id is not None
+    restored = wash_lib.root / "2024/ABC-123/ABC-123-720p.mp4"
+    assert await wash_lib.repo.get_media_file_by_path(str(restored)) is None
+
+    result = await apply_handler(wash_lib, locks).handle(WashApplyPayload(restore_ids=[target.id]))
+
+    assert result.success is True
+    media = await wash_lib.repo.get_media_file_by_path(str(restored))
+    assert media is not None
+    assert media.metadata_id is not None
+    assert media.status is MediaFileStatus.SCRAPED
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_takes_the_library_lock(wash_lib: WashLibrary) -> None:
+    """到期清理与还原共用一把锁: 同一条记录不能被真删和还原同时处理."""
+    records = await washed(wash_lib, LibraryTaskLocks())
+    taken: list[int] = []
+
+    async def lock_for(library_id: int) -> asyncio.Lock:
+        taken.append(library_id)
+        return asyncio.Lock()
+
+    await wash_apply.purge_records(
+        wash_lib.repo, records, lock_for=lock_for, now=datetime.now(UTC) + timedelta(days=30)
+    )
+
+    assert taken == [wash_lib.library.id]

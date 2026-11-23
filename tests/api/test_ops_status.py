@@ -45,16 +45,16 @@ class TestOpsConfig:
         for section in ("transfer", "subtitles", "wash"):
             assert section in schema
 
-        patched = await client.patch("config", json={"transfer": {"enabled": True, "interval_minutes": 30}})
+        patched = await client.patch("config", json={"transfer": {"enabled": True, "max_moves_per_run": 3}})
         assert patched.status_code == 200
         body = (await client.get("config")).json()
         assert body["transfer"]["enabled"] is True
-        assert body["transfer"]["interval_minutes"] == 30
+        assert body["transfer"]["max_moves_per_run"] == 3
 
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_invalid_interval_rejected(self, client: AsyncClient) -> None:
-        """越界值必须被拒; 静默接受会让轮询间隔变成 0."""
-        resp = await client.patch("config", json={"transfer": {"interval_minutes": 0}})
+    async def test_invalid_move_limit_rejected(self, client: AsyncClient) -> None:
+        """越界值必须被拒: 单轮上限为 0 等于永远不搬."""
+        resp = await client.patch("config", json={"transfer": {"max_moves_per_run": 0}})
         assert resp.status_code == 422
 
 

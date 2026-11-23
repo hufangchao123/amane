@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from amane.config import HotSettings
 from amane.db.repo_types import WriteMode
 from amane.handlers import NfoPatchHandler, NfoPatchPayload
 from amane.handlers._common import LibraryTaskLocks
@@ -40,7 +41,7 @@ async def _prepare(repo: Repository, root: Path, *, image: str | None = "https:/
 @pytest.mark.asyncio(loop_scope="function")
 async def test_unknown_library_fails(repo: Repository) -> None:
     """未知库直接失败, 不扫盘."""
-    result = await NfoPatchHandler(repo, LibraryTaskLocks()).handle(NfoPatchPayload(library_id=404))
+    result = await NfoPatchHandler(repo, HotSettings(), LibraryTaskLocks()).handle(NfoPatchPayload(library_id=404))
     assert not result.success
     assert result.error == "媒体库 404 不存在"
 
@@ -50,7 +51,7 @@ async def test_thumbs_dry_run_then_apply(repo: Repository, tmp_path: Path) -> No
     """预演报数不写盘; 关掉 ``dry_run`` 后缩略图进文件."""
     root = tmp_path / "media"
     library_id = await _prepare(repo, root)
-    handler = NfoPatchHandler(repo, LibraryTaskLocks())
+    handler = NfoPatchHandler(repo, HotSettings(), LibraryTaskLocks())
 
     preview = await handler.handle(NfoPatchPayload(library_id=library_id, dry_run=True))
     assert preview.success and preview.result is not None
@@ -68,7 +69,7 @@ async def test_actor_without_image_is_reported(repo: Repository, tmp_path: Path)
     """库内演员没头像时计入 ``missing_image``, 文件不变."""
     root = tmp_path / "media"
     library_id = await _prepare(repo, root, image=None)
-    result = await NfoPatchHandler(repo, LibraryTaskLocks()).handle(
+    result = await NfoPatchHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         NfoPatchPayload(library_id=library_id, dry_run=False)
     )
     assert result.success and result.result is not None
@@ -80,7 +81,7 @@ async def test_directors_are_removed(repo: Repository, tmp_path: Path) -> None:
     """``kind=directors`` 只碰导演行, 不补缩略图."""
     root = tmp_path / "media"
     library_id = await _prepare(repo, root)
-    result = await NfoPatchHandler(repo, LibraryTaskLocks()).handle(
+    result = await NfoPatchHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         NfoPatchPayload(kind="directors", library_id=library_id, dry_run=False)
     )
     assert result.success and result.result is not None
@@ -97,7 +98,7 @@ async def test_missing_library_path_counts_as_failure(repo: Repository, tmp_path
     for child in root.iterdir():
         child.unlink()
     root.rmdir()
-    result = await NfoPatchHandler(repo, LibraryTaskLocks()).handle(
+    result = await NfoPatchHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
         NfoPatchPayload(library_id=library_id, dry_run=False)
     )
     assert not result.success

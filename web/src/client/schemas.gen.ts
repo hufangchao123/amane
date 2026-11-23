@@ -3823,7 +3823,6 @@ export const HotSettingsSchema = {
                 target_cid: '',
                 ad_keywords: [],
                 ad_action: 'skip',
-                interval_minutes: 10,
                 max_moves_per_run: 5
             }
         },
@@ -11937,13 +11936,6 @@ export const TransferConfigSchema = {
             title: 'Ad Action',
             description: '广告文件处理方式',
             default: 'skip'
-        },
-        interval_minutes: {
-            type: 'integer',
-            maximum: 1440,
-            minimum: 1,
-            title: 'Interval Minutes',
-            default: 10
         },
         max_moves_per_run: {
             type: 'integer',

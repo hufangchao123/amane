@@ -28,7 +28,7 @@ from ..library import (
 from ..library.cleanup.orphan import JunkKind, classify_junk
 from ..utils.path import is_name_surrogate, path_key
 from ..utils.threads import in_thread, path_is_dir
-from ._common import LibraryTaskLocks
+from ._common import LibraryTaskLocks, media_refresh_followups
 from .models import DeletePayload, DeleteResult
 from .protocol import TaskHandler, TaskResult
 
@@ -146,7 +146,8 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
 
         indexed = await self._delete_index_rows(inventory.library_id, removed_paths)
         pruned = 0
-        if payload.prune_empty_dirs and removed_paths:
+        # 库上要求保留来源目录时, 整理与刮削后转移都不删空目录, 删除任务也要一致.
+        if payload.prune_empty_dirs and removed_paths and not library.keep_source_dirs:
             candidates: set[Path] = set()
             for path in removed_paths:
                 candidates.update(ancestor_dirs(path, library_root=library_root))
@@ -180,6 +181,12 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
                 excluded=excluded,
                 indexed=indexed,
                 reverify_rejected=reverify_rejected,
+            ),
+            # 删掉的文件不该继续出现在媒体服务器里.
+            followups=(
+                media_refresh_followups(self._config, library, changed=tally.deleted, reason="delete")
+                if self._config is not None
+                else []
             ),
         )
 
