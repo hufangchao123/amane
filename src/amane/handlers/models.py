@@ -450,6 +450,8 @@ class Transfer115Result(BaseModel):
     moved: int = 0
     skipped: int = 0
     failed: int = 0
+    waiting: int = 0
+    """体积还在变, 这一轮只记账没搬; 下一轮体积相同才搬."""
 
 
 class SubtitleFetchPayload(BaseModel):

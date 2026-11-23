@@ -6363,6 +6363,10 @@ export type Transfer115Result = {
      * Failed
      */
     failed?: number;
+    /**
+     * Waiting
+     */
+    waiting?: number;
 };
 
 /**

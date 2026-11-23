@@ -833,6 +833,12 @@ class TransferItem(SQLModel, table=True):
     fid: str = Field(unique=True, nullable=False, index=True)
     """115 文件 ID, 按字符串比对, 避免 JS 侧大整数精度丢失."""
     file_name: str = Field(nullable=False)
+    size: int = Field(default=0)
+    """最近一次见到的体积; 文件夹取夹内媒体文件之和.
+
+    115 的离线下载先建项再灌数据, 只有隔一轮再看到的体积与上次相同才算写完了 ——
+    半截搬走会让下游的 STRM 指向残缺文件.
+    """
     state: TransferItemState = Field(default=TransferItemState.PENDING, index=True)
     attempts: int = Field(default=0)
     error: str | None = Field(default=None, sa_column=Column(Text))

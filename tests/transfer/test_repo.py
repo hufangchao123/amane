@@ -24,8 +24,8 @@ async def _rows(repo: Repository, *, state: TransferItemState | None = None) -> 
 
 
 async def test_track_is_idempotent_on_fid(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "首见.mp4"), ("f1", "首见.mp4")])
-    await transfer_repo.track_transfer_items([("f1", "改名.mp4")])
+    await transfer_repo.track_transfer_items([("f1", "首见.mp4", 1024), ("f1", "首见.mp4", 1024)])
+    await transfer_repo.track_transfer_items([("f1", "改名.mp4", 1024)])
 
     rows, total = await transfer_repo.list_transfer_items(state=None, offset=0, limit=10)
     assert total == 1
@@ -35,7 +35,7 @@ async def test_track_is_idempotent_on_fid(transfer_repo: Repository) -> None:
 
 
 async def test_mark_moved_records_time_and_attempt(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "a.mp4")])
+    await transfer_repo.track_transfer_items([("f1", "a.mp4", 1024)])
     await transfer_repo.mark_transfer_moved("f1", "a.mp4")
 
     rows, _ = await transfer_repo.list_transfer_items(state=None, offset=0, limit=10)
@@ -47,7 +47,7 @@ async def test_mark_moved_records_time_and_attempt(transfer_repo: Repository) ->
 
 
 async def test_mark_skipped_keeps_reason_and_attempts(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "广告.mp4")])
+    await transfer_repo.track_transfer_items([("f1", "广告.mp4", 1024)])
     await transfer_repo.mark_transfer_skipped("f1", "广告.mp4", "广告文件")
 
     rows, _ = await transfer_repo.list_transfer_items(state=None, offset=0, limit=10)
@@ -58,7 +58,7 @@ async def test_mark_skipped_keeps_reason_and_attempts(transfer_repo: Repository)
 
 
 async def test_mark_failed_accumulates_attempts(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "a.mp4")])
+    await transfer_repo.track_transfer_items([("f1", "a.mp4", 1024)])
     await transfer_repo.mark_transfer_failed("f1", "a.mp4", "第一次")
     await transfer_repo.mark_transfer_failed("f1", "a.mp4", "第二次")
 
@@ -69,7 +69,9 @@ async def test_mark_failed_accumulates_attempts(transfer_repo: Repository) -> No
 
 
 async def test_state_counts_and_summary(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "a.mp4"), ("f2", "b.mp4"), ("f3", "c.mp4"), ("f4", "d.mp4")])
+    await transfer_repo.track_transfer_items(
+        [("f1", "a.mp4", 1024), ("f2", "b.mp4", 1024), ("f3", "c.mp4", 1024), ("f4", "d.mp4", 1024)]
+    )
     await transfer_repo.mark_transfer_moved("f1", "a.mp4")
     await transfer_repo.mark_transfer_skipped("f2", "b.mp4", "广告文件")
     await transfer_repo.mark_transfer_failed("f3", "c.mp4", "搬不动")
@@ -80,7 +82,7 @@ async def test_state_counts_and_summary(transfer_repo: Repository) -> None:
 
 
 async def test_list_filters_by_state_and_pages(transfer_repo: Repository) -> None:
-    await transfer_repo.track_transfer_items([("f1", "a.mp4"), ("f2", "b.mp4"), ("f3", "c.mp4")])
+    await transfer_repo.track_transfer_items([("f1", "a.mp4", 1024), ("f2", "b.mp4", 1024), ("f3", "c.mp4", 1024)])
     await transfer_repo.mark_transfer_moved("f1", "a.mp4")
 
     moved, moved_total = await transfer_repo.list_transfer_items(state=TransferItemState.MOVED, offset=0, limit=10)
@@ -96,16 +98,28 @@ async def test_list_filters_by_state_and_pages(transfer_repo: Repository) -> Non
 
 async def test_snapshots_return_every_requested_fid(transfer_repo: Repository) -> None:
     """登记与查询都要跨分片: 源目录一次可能上百条, 超过单个 SQL 参数上限."""
-    entries = [(f"f{index}", f"{index}.mp4") for index in range(520)]
+    entries = [(f"f{index}", f"{index}.mp4", 1024) for index in range(520)]
     await transfer_repo.track_transfer_items(entries)
 
-    snapshots = await transfer_repo.transfer_snapshots([fid for fid, _ in entries])
+    snapshots = await transfer_repo.transfer_snapshots([fid for fid, _, _ in entries])
     assert len(snapshots) == 520
     assert snapshots["f519"].state is TransferItemState.PENDING
 
 
 async def test_snapshots_of_nothing_skip_the_query(transfer_repo: Repository) -> None:
     assert await transfer_repo.transfer_snapshots([]) == {}
+
+
+async def test_observe_size_restarts_the_maturity_clock(transfer_repo: Repository) -> None:
+    """体积变了就是还在写: 记下新体积并重新计时, 别按上一次的时间搬."""
+    await transfer_repo.track_transfer_items([("f1", "a.mp4", 1024)])
+    before = (await transfer_repo.transfer_snapshots(["f1"]))["f1"]
+
+    await transfer_repo.observe_transfer_size("f1", 4096)
+
+    after = (await transfer_repo.transfer_snapshots(["f1"]))["f1"]
+    assert (after.size, after.state) == (4096, TransferItemState.PENDING)
+    assert after.updated_at >= before.updated_at
 
 
 async def test_unknown_fid_is_ignored(transfer_repo: Repository) -> None:

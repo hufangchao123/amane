@@ -90,6 +90,7 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           entries={[
             { label: t("result.counts.scanned"), value: result.scanned ?? 0, tone: "gray" },
             { label: t("result.counts.moved"), value: result.moved ?? 0, tone: "teal" },
+            { label: t("result.counts.waiting"), value: result.waiting ?? 0, tone: "yellow" },
             { label: t("result.counts.skipped"), value: result.skipped ?? 0, tone: "gray" },
             { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
           ]}

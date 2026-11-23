@@ -190,6 +190,7 @@
     "counts": {
       "scanned": "Scanned",
       "moved": "Moved",
+      "waiting": "Writing",
       "skipped": "Skipped",
       "failed": "Failed",
       "fetched": "Fetched",

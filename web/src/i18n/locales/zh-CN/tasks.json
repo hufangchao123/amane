@@ -159,6 +159,7 @@
     "counts": {
       "scanned": "扫描",
       "moved": "搬移",
+      "waiting": "等写入完成",
       "skipped": "跳过",
       "failed": "失败",
       "fetched": "已下载",

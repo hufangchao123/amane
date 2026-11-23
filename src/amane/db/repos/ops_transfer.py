@@ -58,11 +58,12 @@ class TransferRepoMixin(RepositoryMixinBase):
                     result[row.fid] = row
         return result
 
-    async def track_transfer_items(self, entries: Sequence[tuple[str, str]]) -> None:
+    async def track_transfer_items(self, entries: Sequence[tuple[str, str, int]]) -> None:
         """把首次见到的项落成 ``pending``.
 
         已存在的行原样保留: 重复扫到同一个 fid 既不能把 ``moved`` 打回 ``pending``, 也不能
-        重置首见时间 —— 成熟等待由 ``updated_at`` 起算, 重置等于永远搬不走.
+        重置首见时间 —— 成熟等待由 ``updated_at`` 起算, 重置等于永远搬不走. 体积同理, 由
+        ``observe_transfer_size`` 单独更新.
         """
         if not entries:
             return
@@ -71,17 +72,25 @@ class TransferRepoMixin(RepositoryMixinBase):
             {
                 "fid": fid,
                 "file_name": name,
+                "size": size,
                 "state": TransferItemState.PENDING,
                 "attempts": 0,
                 "updated_at": now,
             }
-            for fid, name in entries
+            for fid, name, size in entries
         ]
         stmt = sqlite_insert(TransferItem).on_conflict_do_nothing(index_elements=["fid"])
         async with self._session() as session:
             for chunk in chunks(params):
                 await session.exec(stmt, params=chunk)
             await session.commit()
+
+    async def observe_transfer_size(self, fid: str, size: int) -> None:
+        """记下这一轮看到的体积, 并把成熟等待重新计时.
+
+        体积变了说明还在写入, 从这一刻起再等 ``MIN_AGE_SECONDS`` 才有意义.
+        """
+        await self._apply_transfer(fid, {"size": size, "updated_at": datetime.now(UTC)})
 
     async def mark_transfer_moved(self, fid: str, file_name: str) -> None:
         now = datetime.now(UTC)

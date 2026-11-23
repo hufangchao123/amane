@@ -15,7 +15,7 @@ pytestmark = pytest.mark.asyncio(loop_scope="function")
 
 
 async def _seed(repo: Repository) -> None:
-    await repo.track_transfer_items([("f1", "a.mp4"), ("f2", "b.mp4"), ("f3", "c.mp4")])
+    await repo.track_transfer_items([("f1", "a.mp4", 1024), ("f2", "b.mp4", 1024), ("f3", "c.mp4", 1024)])
     await repo.mark_transfer_moved("f1", "a.mp4")
     await repo.mark_transfer_skipped("f2", "b.mp4", "广告文件")
 

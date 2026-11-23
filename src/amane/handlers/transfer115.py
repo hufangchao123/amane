@@ -57,11 +57,13 @@ FOLDER_BLOCKED = "文件夹含广告文件, 按 ad_action=skip 整项不搬"
 
 
 class _Outcome(StrEnum):
-    """一条候选在本轮的处理结果; 三者之和恒等于扫描数."""
+    """一条候选在本轮的处理结果; 四者之和恒等于扫描数."""
 
     MOVED = "moved"
     SKIPPED = "skipped"
     FAILED = "failed"
+    WAITING = "waiting"
+    """体积还在变: 记下这一轮的体积, 下一轮再比, 直到两轮相同才算写完."""
 
 
 @dataclass(slots=True)
@@ -129,11 +131,11 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
         snapshots = await self._repo.transfer_snapshots([entry.key for entry in candidates])
         # 首次见到的项只登记不搬: 成熟等待从落库这一刻起算, 下一轮才可能被搬走.
         await self._repo.track_transfer_items(
-            [(entry.key, entry.name) for entry in candidates if entry.key not in snapshots]
+            [(entry.key, entry.name, entry.size) for entry in candidates if entry.key not in snapshots]
         )
 
         run = _Run(config=config, client=client, keywords=tuple(config.ad_keywords), budget=self._max_moves)
-        moved = skipped = failed = 0
+        moved = skipped = failed = waiting = 0
         total = len(candidates)
         for scanned, entry in enumerate(candidates, start=1):
             prior = snapshots.get(entry.key)
@@ -146,12 +148,18 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
                     run.budget -= 1
                 elif outcome is _Outcome.SKIPPED:
                     skipped += 1
+                elif outcome is _Outcome.WAITING:
+                    waiting += 1
                 else:
                     failed += 1
             await self.report_progress(scanned, total, entry.name)
 
-        logger.info("115 transfer finished", scanned=total, moved=moved, skipped=skipped, failed=failed)
-        return TaskResult(True, result=Transfer115Result(scanned=total, moved=moved, skipped=skipped, failed=failed))
+        logger.info(
+            "115 transfer finished", scanned=total, moved=moved, skipped=skipped, failed=failed, waiting=waiting
+        )
+        return TaskResult(
+            True, result=Transfer115Result(scanned=total, moved=moved, skipped=skipped, failed=failed, waiting=waiting)
+        )
 
     @staticmethod
     def _settled(prior: TransferItem | None, *, full: bool) -> bool:
@@ -171,15 +179,22 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
         if datetime.now(UTC) - prior.updated_at < timedelta(seconds=MIN_AGE_SECONDS):
             return _Outcome.SKIPPED
         if entry.is_dir:
-            return await self._process_folder(run, entry)
+            return await self._process_folder(run, entry, prior)
+        if entry.size != prior.size:
+            await self._repo.observe_transfer_size(entry.key, entry.size)
+            return _Outcome.WAITING
         if is_ad_file(entry.name, run.keywords):
             return await self._discard_ad(run, entry)
         if run.budget <= 0:
             return _Outcome.SKIPPED
         return await self._move(run, entry.key, entry.name)
 
-    async def _process_folder(self, run: _Run, entry: CloudEntry) -> _Outcome:
-        """文件夹整项搬: 先看夹内心, 广告在夹内就地处理, 否则搬过去会把广告带进库."""
+    async def _process_folder(self, run: _Run, entry: CloudEntry, prior: TransferItem) -> _Outcome:
+        """文件夹整项搬: 先看夹内心, 广告在夹内就地处理, 否则搬过去会把广告带进库.
+
+        文件夹自身的体积恒为 0, 能不能搬要看夹内媒体文件的总体积有没有停: 与上一轮记下的
+        不同就重新计时, 相同才继续.
+        """
         try:
             inner = await asyncio.to_thread(run.client.list_dir, entry.key)
         except TransferError as exc:
@@ -193,6 +208,10 @@ class Transfer115Handler(TaskHandler[Transfer115Payload, Transfer115Result]):
         if not media:
             # 空夹或只有非视频: 不动它, 也不占本轮的搬移额度.
             return _Outcome.SKIPPED
+        size = sum(item.size for item in inner if item.fid in media)
+        if size != prior.size:
+            await self._repo.observe_transfer_size(entry.key, size)
+            return _Outcome.WAITING
         ads = pick_folder_ads(entry.name, list(media.items()), run.keywords)
         if ads and run.config.ad_action == "skip":
             await self._repo.mark_transfer_skipped(entry.key, entry.name, FOLDER_BLOCKED)

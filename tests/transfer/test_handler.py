@@ -74,8 +74,8 @@ class _FakeCloud:
         self.closed = True
 
 
-def _file(fid: str, name: str) -> CloudEntry:
-    return CloudEntry(name=name, fid=fid, cid=None, size=2048, is_dir=False)
+def _file(fid: str, name: str, size: int = 2048) -> CloudEntry:
+    return CloudEntry(name=name, fid=fid, cid=None, size=size, is_dir=False)
 
 
 def _folder(cid: str, name: str) -> CloudEntry:
@@ -229,8 +229,9 @@ async def test_folder_with_ads_is_blocked(transfer_repo: Repository, monkeypatch
     )
     handler = _handler(transfer_repo, fake)
 
-    await handler.handle(Transfer115Payload())
-    await handler.handle(Transfer115Payload())
+    # 首轮登记, 次轮记体积, 第三轮体积没变才判广告
+    for _ in range(3):
+        await handler.handle(Transfer115Payload())
 
     assert fake.moves == []
     assert await _row(transfer_repo, "c1") == (TransferItemState.SKIPPED, 0, FOLDER_BLOCKED)
@@ -246,8 +247,8 @@ async def test_folder_ads_trashed_then_folder_moves(transfer_repo: Repository, m
     )
     handler = _handler(transfer_repo, fake, ad_action="trash")
 
-    await handler.handle(Transfer115Payload())
-    await handler.handle(Transfer115Payload())
+    for _ in range(3):
+        await handler.handle(Transfer115Payload())
 
     assert fake.trashed == ["a1"]
     assert fake.moves == [("c1", TARGET)]
@@ -261,8 +262,8 @@ async def test_empty_folder_is_left_alone(transfer_repo: Repository, monkeypatch
     fake = _FakeCloud({SOURCE: [_folder("c1", "IPX-123")]})
     handler = _handler(transfer_repo, fake)
 
-    await handler.handle(Transfer115Payload())
-    await handler.handle(Transfer115Payload())
+    for _ in range(3):
+        await handler.handle(Transfer115Payload())
 
     assert fake.moves == []
     assert await _states(transfer_repo) == {"c1": TransferItemState.PENDING}, "空夹可能还在下载, 不落跳过"
@@ -364,3 +365,45 @@ async def test_zero_single_run_cap_is_rejected(transfer_repo: Repository) -> Non
 
     with pytest.raises(ValueError, match="max_moves"):
         Transfer115Handler(transfer_repo, hot, client_factory=_no_client, max_moves=0)
+
+
+async def test_growing_file_waits_for_the_size_to_settle(
+    transfer_repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """成熟等待只看时间挡不住边下边搬: 体积还在长就重新计时."""
+    monkeypatch.setattr(transfer115, "MIN_AGE_SECONDS", 0)
+    fake = _FakeCloud({SOURCE: [_file("f1", "IPX-123.mp4", 1024)]})
+    handler = _handler(transfer_repo, fake)
+
+    await handler.handle(Transfer115Payload())
+    fake.listing[SOURCE] = [_file("f1", "IPX-123.mp4", 4096)]
+    grown = await handler.handle(Transfer115Payload())
+    assert grown.result is not None
+    assert (grown.result.moved, grown.result.waiting) == (0, 1)
+    assert fake.moves == []
+
+    settled = await handler.handle(Transfer115Payload())
+    assert settled.result is not None
+    assert (settled.result.moved, settled.result.waiting) == (1, 0)
+    assert fake.moves == [("f1", TARGET)]
+
+
+async def test_folder_waits_for_the_inner_size_to_settle(
+    transfer_repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """文件夹自身的体积恒为 0, 要看夹内媒体文件的总体积有没有停."""
+    monkeypatch.setattr(transfer115, "MIN_AGE_SECONDS", 0)
+    fake = _FakeCloud({SOURCE: [_folder("c1", "IPX-123")], "c1": [_file("a1", "IPX-123.mp4", 1024)]})
+    handler = _handler(transfer_repo, fake)
+
+    await handler.handle(Transfer115Payload())
+    first = await handler.handle(Transfer115Payload())
+    assert first.result is not None and (first.result.moved, first.result.waiting) == (0, 1)
+
+    fake.listing["c1"] = [_file("a1", "IPX-123.mp4", 1024), _file("a2", "IPX-124.mp4", 1024)]
+    second = await handler.handle(Transfer115Payload())
+    assert second.result is not None and (second.result.moved, second.result.waiting) == (0, 1)
+
+    third = await handler.handle(Transfer115Payload())
+    assert third.result is not None and (third.result.moved, third.result.waiting) == (1, 0)
+    assert fake.moves == [("c1", TARGET)]

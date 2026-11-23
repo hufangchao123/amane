@@ -11856,6 +11856,11 @@ export const Transfer115ResultSchema = {
             type: 'integer',
             title: 'Failed',
             default: 0
+        },
+        waiting: {
+            type: 'integer',
+            title: 'Waiting',
+            default: 0
         }
     },
     type: 'object',
