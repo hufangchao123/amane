@@ -178,3 +178,47 @@ async def test_transfer_replaces_organize(repo: Repository, tmp_path: Path) -> N
     types = [f.task_type for f in result.followups]
     assert types.count(TaskType.SCRAPE_TRANSFER) == 1
     assert TaskType.ORGANIZE not in types
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_rescrape_of_a_library_file_chains_no_transfer(repo: Repository, tmp_path: Path) -> None:
+    """成品区里的文件再刮削时不搬: 落点等于库根时搬过去等于把整理好的目录拆成平铺."""
+    lib_root, pending = tmp_path / "done", tmp_path / "in"
+    lib_root.mkdir()
+    pending.mkdir()
+    lib = await repo.create_library(
+        name="t",
+        path=str(lib_root),
+        scrape_transfer=True,
+        scrape_input_dir=str(pending),
+    )
+    assert lib.id is not None
+    media = await register_media_file(repo, lib.id, lib_root / "演员" / "MIDV-123" / "MIDV-123.mp4")
+    assert media.id is not None
+
+    result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media.id))
+
+    assert result.success is True
+    assert _transfers(result) == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_rescrape_inside_ok_dir_chains_no_transfer(repo: Repository, tmp_path: Path) -> None:
+    """显式成功目录里也一样: 那是使用者排好的树."""
+    lib_root, pending, ok_dir = tmp_path / "done", tmp_path / "in", tmp_path / "out"
+    for directory in (lib_root, pending, ok_dir):
+        directory.mkdir()
+    lib = await repo.create_library(
+        name="t",
+        path=str(lib_root),
+        scrape_transfer=True,
+        scrape_input_dir=str(pending),
+        scrape_ok_dir=str(ok_dir),
+    )
+    assert lib.id is not None
+    media = await register_media_file(repo, lib.id, ok_dir / "MIDV-123.mp4")
+    assert media.id is not None
+
+    result = await _handler(repo).handle(ScrapePayload(number="MIDV-123", media_file_id=media.id))
+
+    assert _transfers(result) == []

@@ -9,6 +9,7 @@ from ..crawlers.models import SearchQuery
 from ..crawlers.site_roles import builtin_descriptors
 from ..db.models import TaskType
 from ..enums import ActorGender, MetadataField
+from ..library.rules import is_under_any, publish_roots
 from ..library.transfer import scrape_transfer_destination
 from ..media import materialize_images
 from ..observability import current
@@ -347,6 +348,10 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             if library is None or not library.scrape_transfer:
                 return []
             if not scrape_transfer_destination(library, outcome):
+                return []
+            # 已经在成品区的文件不动: 刷新或重新刮削会让库里的文件再走一遍刮削,
+            # 没有这道判断时它们会被搬去库根 (落点等于库根时即「平铺回去」), 整理成果当场被拆开.
+            if is_under_any(file.path, publish_roots(path=library.path, ok_dir=library.scrape_ok_dir)):
                 return []
             transfer = ScrapeTransferPayload(
                 media_file_id=file.id, outcome=outcome, source_dir=str(Path(file.path).parent)
