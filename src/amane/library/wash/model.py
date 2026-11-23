@@ -24,12 +24,14 @@
 
 1. **分辨率档位**: ``DEFINITION_VALUES`` 下标小者优先 (8K → 4K → 1440p → 1080p → 720p → 480p),
    未知档位排在最后. 分辨率是观感的第一决定因素, 与编码效率无关, 因此排在码率之前.
-2. **码率 = 体积 / 时长**: 同档位下码率越高, 单位时间装进去的信息越多. 时长未知 (缺失或 0) 时
-   这一档取中性值 0, 排在有时长的候选之后 —— 拿不出时长就没法证明自己码率更高, 不拿体积冒充.
-3. **体积**: 前面都相同时留大的, 主要用来兜住「时长未知但大即完整」的常见情形.
-4. **容器优先级**: mkv > mp4 > m4v > mov > wmv > ts > avi > flv > iso > 其它. 容器不影响画质,
+2. **配置里排定的其它维度** (来自 ``wash.prefer``): 字幕、体积、时间等, 按顺序比. 它们在档位
+   相同之后、码率与体积之前生效 —— 「同档位时带中文字幕的那份更值得留」是常见取舍.
+3. **码率 = 体积 / 时长**: 前面都不分高下时才比码率, 单位时间装进去的信息越多越好. 时长未知
+   (缺失或 0) 时这一档取中性值 0, 排在有时长的候选之后 —— 拿不出时长就没法证明自己码率更高.
+4. **体积**: 还相同就留大的, 兜住「时长未知但大即完整」的常见情形.
+5. **容器优先级**: mkv > mp4 > m4v > mov > wmv > ts > avi > flv > iso > 其它. 容器不影响画质,
    但 mkv 能装多音轨 / 多字幕轨, 且不需要 faststart; 整理的模板也以它最完整.
-5. **路径字典序**: 纯粹为了决定性 —— 同样的输入每次必须选出同一份, 否则重复执行会来回搬文件.
+6. **路径字典序**: 纯粹为了决定性 —— 同样的输入每次必须选出同一份, 否则重复执行会来回搬文件.
 
 ## 保留谁 (STRM)
 
@@ -239,7 +241,9 @@ def container_rank(path: str | Path) -> int:
 def _prefer_key(entry: WashEntry, prefer: WashPrefer) -> tuple[float, ...]:
     """一个比较维度的键: 元组内部仍是「先比第一项」.
 
-    ``quality`` 保持模块文档里的三档; 其余维度各出一项. 返回值统一成浮点元组, 方便按顺序拼起来.
+    ``quality`` 在这里只出**分辨率档位**一项: 档位不同是观感上的硬差距, 先分出来; 同档位之后
+    码率与体积反而是次要的 —— 它们让位给使用者排在其后的维度 (比如字幕), 由
+    :func:`_quality_tail` 在末尾兜底. 其余维度各出一项.
     """
     if prefer is WashPrefer.SUBTITLE:
         return (float(entry.subtitle_rank),)
@@ -251,8 +255,18 @@ def _prefer_key(entry: WashEntry, prefer: WashPrefer) -> tuple[float, ...]:
         # 缺少修改时间的排在最后: 拿不出时间就不该被当成「更旧」.
         age = entry.mtime if entry.mtime is not None else float("inf")
         return (age,)
+    return (float(definition_rank(entry.definition)),)
+
+
+def _quality_tail(entry: WashEntry) -> tuple[float, ...]:
+    """画质的后两档 (码率、体积), 在其它维度都比完之后才轮到它们.
+
+    这样「720p 带中文字幕」不会因为体积大就压过「1080p 没字幕」的档位差距, 而同档位时字幕
+    仍能优先于码率与体积. 时长未知时码率取中性值 0, 落在有时长的候选之后 —— 拿不出时长就没
+    法证明自己码率更高, 不拿体积冒充.
+    """
     bitrate = entry.size / entry.duration if entry.duration is not None and entry.duration > 0 else 0.0
-    return (float(definition_rank(entry.definition)), -bitrate, -float(entry.size))
+    return (-bitrate, -float(entry.size))
 
 
 def _prefer_levels(prefer: Sequence[WashPrefer] | WashPrefer) -> tuple[WashPrefer, ...]:
@@ -272,14 +286,16 @@ def _prefer_levels(prefer: Sequence[WashPrefer] | WashPrefer) -> tuple[WashPrefe
 def local_sort_key(entry: WashEntry, prefer: Sequence[WashPrefer] | WashPrefer = WashPrefer.QUALITY) -> tuple:
     """本地组的排序键 (升序即优先级从高到低).
 
-    按配置里排定的维度顺序拼接, 每个维度可以贡献多于一项 (画质是三档); 最后两档固定是容器与
-    路径, 只用来保证同样的输入每次选出同一份 —— 用户只选了「按体积」时, 体积相同才轮到它们.
+    按配置里排定的维度顺序拼接; 画质的码率与体积两档固定排在所有维度之后 (见 ``_quality_tail``),
+    因为它们只在档位相同时才有区分力. 最后两档固定是容器与路径, 只用来保证同样的输入每次选出
+    同一份 —— 用户只选了「按体积」时, 体积相同才轮到它们.
     """
     levels = _prefer_levels(prefer)
     head: list[float] = []
     for level in levels:
         head.extend(_prefer_key(entry, level))
-    return (*head, container_rank(entry.path), entry.path)
+    tail = _quality_tail(entry) if WashPrefer.QUALITY in levels else ()
+    return (*head, *tail, container_rank(entry.path), entry.path)
 
 
 def strm_sort_key(entry: WashEntry, prefer: StrmPrefer = StrmPrefer.PATH) -> tuple:

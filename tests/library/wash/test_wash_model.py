@@ -465,6 +465,26 @@ def test_prefer_order_decides_which_dimension_wins_first() -> None:
     assert by_subtitle[0].keep is subtitled
 
 
+def test_subtitle_outranks_bitrate_within_the_same_definition() -> None:
+    """同档位时先看字幕, 再看码率与体积: 1080p 带中字的小文件胜过 1080p 无字幕的大文件."""
+    subtitled = entry("ABC-123-1080p-C.mkv", definition="1080p", subtitle_rank=0, size=800, duration=100.0)
+    bigger = entry("ABC-123-1080p.mkv", definition="1080p", subtitle_rank=2, size=1600, duration=100.0)
+
+    group = build_groups([subtitled, bigger], min_size_bytes=0, prefer=[WashPrefer.QUALITY, WashPrefer.SUBTITLE])[0]
+
+    assert group.keep is subtitled
+    assert group.drops == (bigger,)
+
+
+def test_definition_still_outranks_subtitle() -> None:
+    """档位差距是硬差距: 配置了字幕维度也不会为了字幕把 4K 换成 720p."""
+    sharper = entry("ABC-123-4k.mkv", definition="4k", subtitle_rank=2, size=1000)
+    subtitled = entry("ABC-123-720p-C.mkv", definition="720p", subtitle_rank=0, size=2000)
+    group = build_groups([sharper, subtitled], min_size_bytes=0, prefer=[WashPrefer.QUALITY, WashPrefer.SUBTITLE])[0]
+
+    assert group.keep is sharper
+
+
 def test_is_unambiguous_refuses_to_drop_a_better_subtitle() -> None:
     """落选者带着更好的字幕时不算「没有争议」, 即使分辨率档位不同."""
     kept = entry("ABC-123-1080p.mkv", definition="1080p", subtitle_rank=2, size=1000)
