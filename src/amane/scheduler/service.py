@@ -64,6 +64,7 @@ class WatcherService:
         use_polling: bool = False,
         media_extensions: list[str] | None = None,
         debounce_seconds: float = 3.0,
+        settle_seconds: float = 0.0,
         check_interval: float = _CHECK_INTERVAL,
         observer_timeout: float = 1.0,
     ):
@@ -72,6 +73,7 @@ class WatcherService:
         self._use_polling = use_polling
         self._media_extensions = media_extensions
         self._debounce_seconds = debounce_seconds
+        self._settle_seconds = settle_seconds
         self._check_interval = check_interval
         self._observer_timeout = observer_timeout
         self._watcher: FileWatcher | None = None
@@ -92,6 +94,7 @@ class WatcherService:
             use_polling=self._use_polling,
             media_extensions=self._media_extensions,
             debounce_seconds=self._debounce_seconds,
+            settle_seconds=self._settle_seconds,
             observer_timeout=self._observer_timeout,
         )
 

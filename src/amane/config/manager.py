@@ -650,6 +650,14 @@ class WatcherConfig(BaseModel):
     debounce_seconds: float = Field(default=3.0, ge=0.5, le=30.0)
     """文件变动后等待此时间再处理, 避免重复触发."""
 
+    settle_seconds: float = Field(default=5.0, ge=0, le=600)
+    """体积连续不变多久才算写完. 0 表示不检查.
+
+    下载器直写库目录时, 文件刚出现就刮削会把半截文件搬进库. qBittorrent 默认给未完成
+    文件加 ``.!qB`` 后缀 (扩展名不匹配, 本应用本来就忽略), 但开启预分配磁盘空间后没有再
+    写标记, 只能靠体积停稳判断.
+    """
+
     media_extensions: list[str] = Field(
         default_factory=lambda: [".mp4", ".mkv", ".avi", ".wmv", ".flv", ".mov", ".ts", ".iso", ".strm"]
     )

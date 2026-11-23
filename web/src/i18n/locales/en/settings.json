@@ -998,6 +998,10 @@
       "media_extensions": {
         "label": "Media Extensions",
         "description": "Media file extensions to watch and scan, comma-separated"
+      },
+      "settle_seconds": {
+        "label": "Settle window",
+        "description": "How long the file size must stay unchanged before it is treated as finished (seconds); 0 disables the check"
       }
     },
     "watermark": {

@@ -58,16 +58,20 @@ class _Handler(FileSystemEventHandler):
         root: str,
         scan: LibraryScan | None = None,
         debounce_seconds: float = _DEFAULT_DEBOUNCE_SECONDS,
+        settle_seconds: float = 0.0,
     ):
         super().__init__()
         self.library_id = library_id
         self._root_key = path_key(root)
         self._scan = scan if scan is not None else LibraryScan()
         self._debounce_seconds = debounce_seconds
+        self._settle_seconds = max(0.0, settle_seconds)
         self._pending: dict[str, float] = {}
         self._pending_deletes: dict[str, float] = {}
         self._pending_dir_deletes: dict[str, float] = {}
         self._pending_moves: dict[str, tuple[str, float]] = {}  # dest -> (src, timestamp)
+        # path -> (最后看到的体积, 该体积首次出现的时刻); 体积变了就重新计时.
+        self._observed_sizes: dict[str, tuple[int, float]] = {}
 
     def on_created(self, event):
         if not event.is_directory:
@@ -91,6 +95,7 @@ class _Handler(FileSystemEventHandler):
             # 源路径上的创建/删除待处理一律丢弃
             self._pending.pop(src_str, None)
             self._pending_deletes.pop(src_str, None)
+            self._observed_sizes.pop(src_str, None)
 
             if self._matches(dest):
                 # 目标匹配: 记录为移动
@@ -117,6 +122,9 @@ class _Handler(FileSystemEventHandler):
 
     def _drop_pending_under(self, root: str) -> None:
         self._pending = {path: ts for path, ts in self._pending.items() if not path_is_under(path, root)}
+        self._observed_sizes = {
+            path: seen for path, seen in self._observed_sizes.items() if not path_is_under(path, root)
+        }
         self._pending_deletes = {
             path: ts for path, ts in self._pending_deletes.items() if not path_is_under(path, root)
         }
@@ -133,6 +141,40 @@ class _Handler(FileSystemEventHandler):
         path = Path(path_str)
         if self._matches(path):
             self._pending[path_str] = time.time()
+            self._remember_size(path_str)
+
+    def _remember_size(self, path_str: str) -> None:
+        """记下当前体积; 体积与上次不同就重新计时."""
+        if self._settle_seconds <= 0:
+            return
+        try:
+            size = Path(path_str).stat().st_size
+        except OSError:
+            self._observed_sizes.pop(path_str, None)
+            return
+        previous = self._observed_sizes.get(path_str)
+        if previous is None or previous[0] != size:
+            self._observed_sizes[path_str] = (size, time.time())
+
+    def _is_settled(self, path_str: str) -> bool:
+        """体积是否已经稳定够久; 稳定判据不存在时不拦."""
+        if self._settle_seconds <= 0:
+            return True
+        try:
+            size = Path(path_str).stat().st_size
+        except OSError:
+            # 文件没了: 不在这一步判死, 交给后续注册流程报错.
+            self._observed_sizes.pop(path_str, None)
+            return True
+        now = time.time()
+        previous = self._observed_sizes.get(path_str)
+        if previous is None:
+            self._observed_sizes[path_str] = (size, now)
+            return False
+        if previous[0] != size:
+            self._observed_sizes[path_str] = (size, now)
+            return False
+        return now - previous[1] >= self._settle_seconds
 
     def _matches(self, path: Path) -> bool:
         return self._scan.classify(path) is LibraryFileKind.MEDIA
@@ -142,10 +184,15 @@ class _Handler(FileSystemEventHandler):
         ready = []
         remaining = {}
         for path_str, timestamp in self._pending.items():
-            if now - timestamp >= self._debounce_seconds:
-                ready.append(Path(path_str))
-            else:
+            if now - timestamp < self._debounce_seconds:
                 remaining[path_str] = timestamp
+                continue
+            if not self._is_settled(path_str):
+                # 还在写: 留在待处理里, 下一轮再判, 时间戳不动.
+                remaining[path_str] = timestamp
+                continue
+            ready.append(Path(path_str))
+            self._observed_sizes.pop(path_str, None)
         self._pending = remaining
         return ready
 
@@ -203,6 +250,7 @@ class FileWatcher:
         use_polling: bool = False,
         media_extensions: list[str] | None = None,
         debounce_seconds: float = _DEFAULT_DEBOUNCE_SECONDS,
+        settle_seconds: float = 0.0,
         observer_timeout: float = _DEFAULT_OBSERVER_TIMEOUT,
     ):
         self._on_file_found = on_file_found
@@ -212,6 +260,7 @@ class FileWatcher:
         self._use_polling = use_polling
         self._media_extensions = frozenset(media_extensions) if media_extensions else MEDIA_EXTENSIONS
         self._debounce_seconds = debounce_seconds
+        self._settle_seconds = max(0.0, settle_seconds)
         self._observer_timeout = observer_timeout
         self._observer: BaseObserver | None = None
         self._handlers: list[_Handler] = []
@@ -246,6 +295,7 @@ class FileWatcher:
                 media_extensions=self._media_extensions,
             ),
             debounce_seconds=self._debounce_seconds,
+            settle_seconds=self._settle_seconds,
         )
         self._handlers.append(handler)
         self._watching.append((path, recursive, patterns))

@@ -47,6 +47,18 @@ _IGNORED_DIRNAMES = frozenset({TRASH_DIRNAME, WASH_TRASH_DIRNAME})
 # .strm 在扫描扩展名里 (当正片入口), 但是路径指针不是视频字节; 大小过滤不把它当视频字节.
 _POINTER_EXTENSIONS = frozenset({".strm"})
 
+PARTIAL_SUFFIXES = frozenset({".!qb", ".part", ".crdownload", ".download", ".aria2"})
+"""下载器写到一半的文件用这些后缀收尾 (qBittorrent 默认 ``.!qB``).
+
+按整条扩展名比: ``ABC-123.mkv.!qB`` 的 ``suffix`` 是 ``.!qB``, 与视频扩展名不同, 因此既不
+会入库也不会触发监控事件; 下载完成后该后缀被去掉, 那一刻才会被当成正片处理.
+"""
+
+
+def is_partial_download(path: Path) -> bool:
+    """下载器临时文件: 扩展名是 ``.!qB`` / ``.part`` 之类."""
+    return path.suffix.casefold() in PARTIAL_SUFFIXES
+
 
 def scope_roots(
     *,

@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from amane.db.models import Library
 from amane.library.rules import (
     compile_skip_patterns,
+    is_partial_download,
     has_companion_subtitle,
     is_in_trash,
     is_skipped_media,
@@ -210,3 +211,19 @@ def test_has_companion_subtitle_ignores_directories(tmp_path: Path):
 
 def test_has_companion_subtitle_missing_directory_is_false(tmp_path: Path):
     assert has_companion_subtitle.sync(tmp_path / "gone" / "video.mp4", [".srt"]) is False
+
+
+class TestPartialDownload:
+    """下载器临时文件: 不入库、不触发监控、也不当清理目标."""
+
+    def test_qbittorrent_suffix(self):
+        assert is_partial_download(Path("/lib/ABC-123.mkv.!qB")) is True
+        assert is_partial_download(Path("/lib/ABC-123.mkv.!QB")) is True
+
+    def test_other_downloaders(self):
+        for name in ("a.mp4.part", "a.mp4.crdownload", "a.mp4.download", "a.mp4.aria2"):
+            assert is_partial_download(Path("/lib") / name) is True
+
+    def test_finished_file_is_not_partial(self):
+        assert is_partial_download(Path("/lib/ABC-123.mkv")) is False
+        assert is_partial_download(Path("/lib/ABC-123-1080p.mp4")) is False

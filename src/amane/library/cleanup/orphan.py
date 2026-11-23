@@ -21,7 +21,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..rules import DEFAULT_SUBTITLE_EXTENSIONS, MEDIA_EXTENSIONS, compile_skip_patterns, is_in_trash
+from ..rules import (
+    DEFAULT_SUBTITLE_EXTENSIONS,
+    MEDIA_EXTENSIONS,
+    PARTIAL_SUFFIXES,
+    compile_skip_patterns,
+    is_in_trash,
+)
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -64,7 +70,8 @@ _VETO_DIRNAMES = frozenset(
     {".amane_trash", ".amane_wash", "#recycle", ".stversions", ".stfolder", "@eadir", ".appledouble"}
 )
 # 暂停或排队中的下载进度: 冷却期只保护正在写入的那一个, 删掉不可恢复.
-_VETO_EXTENSIONS = frozenset({".part", ".crdownload"})
+# 与扫描侧的「下载器临时文件」共用一份后缀表, 免得两边各写一套而漏掉 .!qB.
+_VETO_EXTENSIONS = PARTIAL_SUFFIXES
 
 
 class JunkKind(StrEnum):

@@ -185,6 +185,22 @@
 
 计数与落盘一致: 只有写成功才累加 `changed` / `filled` / `removed`, 写失败只计 `failed`, 否则结果会报出没写进去的改动。临时文件带随机段并在失败时删除, 并发任务互不覆盖、也不留 `*.patch-tmp` 残骸。
 
+## 下载中的文件
+
+监控只看得到「文件出现了」, 看不到「写完了没有」, 因此两道闸门都在 `library/rules.py`:
+
+| 闸门 | 挡住的形态 | 代价 |
+|---|---|---|
+| `PARTIAL_SUFFIXES` (`.!qB` / `.part` / `.crdownload` / `.download` / `.aria2`) | 下载器写在同名相邻文件里的半成品 | 无: 这些后缀本来就不是媒体扩展名, 顺带把清理清单的否决项也统一了 |
+| `WatcherConfig.settle_seconds` (默认 5 秒, 0 关闭) | 文件已经叫 `.mkv` 但仍在增长 (qBittorrent 开启预分配磁盘空间时如此) | 完整文件晚 5 秒入库 |
+
+体积判据在 `scheduler/watcher.py::_Handler`: 事件到达时记下体积与时刻, 防抖窗口过后每次检查都
+重新 `stat`, 体积与上次不同就重置计时, 连续 `settle_seconds` 秒不变才放行。判据只覆盖监控
+(事件驱动) 路径; 手动刷新是明确的一次性动作, 不额外等待。
+
+清理清单把 `PARTIAL_SUFFIXES` 当否决项 (`library/cleanup/orphan.py::_VETO_EXTENSIONS`), 含这些
+文件的目录不会进清理清单 —— 冷却期只保护正在写入的那一个, 暂停中的下载进度删掉不可恢复。
+
 ## 刮削后转移
 
 

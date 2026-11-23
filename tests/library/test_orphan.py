@@ -25,6 +25,7 @@ from amane.library import (
     scan_inventory,
 )
 from amane.library.cleanup import inventory as inventory_module
+from amane.library.cleanup.orphan import JunkKind, classify_junk
 from tests.helpers import make_junction
 
 # 判定用的固定时刻; 夹具文件的 mtime 统一设成它, 冷却期因此不影响默认用例.
@@ -742,3 +743,13 @@ class TestSurrogateDirectory:
         inventory = _scan(lib, blacklist=["ad"])
 
         assert _reasons(inventory, lib) == {}
+
+
+class TestPartialDownloadIsVetoed:
+    """下载中的临时文件不可清理: 冷却期只保护正在写的那一个, 这里一律否决."""
+
+    @pytest.mark.parametrize(
+        "name", ["ABC-123.mkv.!qB", "ABC-123.mp4.part", "ABC-123.mp4.crdownload", "ABC-123.mp4.aria2"]
+    )
+    def test_partial_download_is_not_cleanable(self, name: str) -> None:
+        assert classify_junk(Path("/lib") / name, is_dir=False) is JunkKind.VETO

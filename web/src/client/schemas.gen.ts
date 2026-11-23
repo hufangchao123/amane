@@ -3919,6 +3919,7 @@ export const HotSettingsSchema = {
             default: {
                 use_polling: false,
                 debounce_seconds: 3,
+                settle_seconds: 5,
                 media_extensions: [
                     '.mp4',
                     '.mkv',
@@ -12879,6 +12880,13 @@ export const WatcherConfigSchema = {
             minimum: 0.5,
             title: 'Debounce Seconds',
             default: 3
+        },
+        settle_seconds: {
+            type: 'number',
+            maximum: 600,
+            minimum: 0,
+            title: 'Settle Seconds',
+            default: 5
         },
         media_extensions: {
             items: {

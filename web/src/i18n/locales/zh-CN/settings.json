@@ -998,6 +998,10 @@
       "media_extensions": {
         "label": "媒体扩展名",
         "description": "监控和扫描的媒体文件扩展名列表, 逗号分隔"
+      },
+      "settle_seconds": {
+        "label": "写完判定",
+        "description": "文件体积连续不变多久才当成写完 (秒); 0 表示不检查。下载器直写库目录时用它挡住半截文件"
       }
     },
     "watermark": {

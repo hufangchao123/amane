@@ -13,6 +13,12 @@ class TestClassify:
         assert scan.classify(Path("/tmp/video.mp4")) is LibraryFileKind.MEDIA
         assert scan.classify(Path("/tmp/note.txt")) is None
 
+    def test_download_in_progress_is_ignored(self):
+        """qBittorrent 下载中的 `.!qB` 文件不是正片, 也不是无效文件."""
+        scan = LibraryScan()
+        assert scan.classify(Path("/tmp/ABC-123.mkv.!qB")) is None
+        assert scan.classify(Path("/tmp/ABC-123.mkv")) is LibraryFileKind.MEDIA
+
     def test_trailer_is_skip(self):
         scan = LibraryScan(trailer_pattern="(?i)trailer")
         assert scan.classify(Path("/tmp/trailer.mp4")) is LibraryFileKind.SKIP

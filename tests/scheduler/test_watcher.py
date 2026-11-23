@@ -38,6 +38,11 @@ class TestHandler:
         assert handler._matches(Path("/tmp/video.txt")) is False
         assert handler._matches(Path("/tmp/video.py")) is False
 
+    def test_ignores_download_in_progress(self):
+        handler = _Handler(library_id=1, root="/lib")
+        assert handler._matches(Path("/tmp/video.mp4.!qB")) is False
+        assert handler._matches(Path("/tmp/video.mp4.part")) is False
+
     def test_skips_trailer_pattern(self):
         handler = _Handler(library_id=1, root="/lib", scan=LibraryScan(trailer_pattern="(?i)trailer"))
         assert handler._matches(Path("/tmp/trailer.mp4")) is False
@@ -113,6 +118,49 @@ class TestHandler:
         assert ready[0] == Path("/tmp/video.mp4")
         # 获取后应被清除
         assert handler.get_ready_files() == []
+
+    def test_settle_waits_for_size_to_stop_changing(self, tmp_path: Path):
+        """体积稳定够久才放行: 下载器直写库目录时, 半截文件不能被当成成品."""
+        media = tmp_path / "growing.mp4"
+        media.write_bytes(b"x" * 10)
+        handler = _Handler(
+            library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=0.2
+        )
+
+        handler.on_created(FileCreatedEvent(str(media)))
+        time.sleep(0.05)
+        assert handler.get_ready_files() == []  # 首次见到只记体积, 不放行
+
+        media.write_bytes(b"x" * 2000)  # 还在写: 体积变了, 重新计时
+        time.sleep(0.05)
+        assert handler.get_ready_files() == []
+
+        time.sleep(0.25)  # 体积一直没变
+        assert handler.get_ready_files() == [media]
+
+    def test_settle_disabled_releases_after_debounce(self, tmp_path: Path):
+        media = tmp_path / "done.mp4"
+        media.write_bytes(b"x" * 100)
+        handler = _Handler(library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=0)
+
+        handler.on_created(FileCreatedEvent(str(media)))
+        time.sleep(0.05)
+        assert handler.get_ready_files() == [media]
+
+    def test_settle_releases_when_file_disappears(self, tmp_path: Path):
+        """文件在等待期间被删掉: 不在这一步拦, 交给后续注册流程报错."""
+        media = tmp_path / "vanishing.mp4"
+        media.write_bytes(b"x" * 100)
+        handler = _Handler(
+            library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=30
+        )
+
+        handler.on_created(FileCreatedEvent(str(media)))
+        time.sleep(0.05)
+        assert handler.get_ready_files() == []
+        media.unlink()
+        time.sleep(0.05)
+        assert handler.get_ready_files() == [media]
 
     def test_ignores_non_media_files(self):
         handler = _Handler(library_id=1, root="/lib")

@@ -6960,6 +6960,10 @@ export type WatcherConfig = {
      */
     debounce_seconds?: number;
     /**
+     * Settle Seconds
+     */
+    settle_seconds?: number;
+    /**
      * Media Extensions
      */
     media_extensions?: Array<string>;

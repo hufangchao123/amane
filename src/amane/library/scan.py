@@ -6,7 +6,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .rules import MEDIA_EXTENSIONS, compile_skip_patterns, is_in_trash, is_undersized_video
+from .rules import (
+    MEDIA_EXTENSIONS,
+    compile_skip_patterns,
+    is_in_trash,
+    is_partial_download,
+    is_undersized_video,
+)
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -81,6 +87,8 @@ class LibraryScan:
     def classify(self, path: Path) -> LibraryFileKind | None:
         """回收目录与无规则命中的其它文件返回 None."""
         if is_in_trash(path):
+            return None
+        if is_partial_download(path):
             return None
         if self.unwanted_kind(path) is not None:
             return LibraryFileKind.UNWANTED
