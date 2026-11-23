@@ -71,6 +71,7 @@ class LibrariesRepoMixin(RepositoryMixinBase):
         scrape_input_dir: str | None = None,
         scrape_ok_dir: str | None = None,
         scrape_fail_dir: str | None = None,
+        keep_source_dirs: bool = False,
         ingest: LibraryIngest = LibraryIngest.NATIVE,
         cloud_path: str | None = None,
         recursive: bool = True,
@@ -120,6 +121,7 @@ class LibrariesRepoMixin(RepositoryMixinBase):
                 scrape_input_dir=scrape_input_dir,
                 scrape_ok_dir=scrape_ok_dir,
                 scrape_fail_dir=scrape_fail_dir,
+                keep_source_dirs=keep_source_dirs,
                 ingest=ingest,
                 cloud_path=cloud_path,
                 recursive=recursive,
@@ -223,6 +225,8 @@ class LibrariesRepoMixin(RepositoryMixinBase):
                 lib.scrape_ok_dir = updates["scrape_ok_dir"]
             if "scrape_fail_dir" in updates:
                 lib.scrape_fail_dir = updates["scrape_fail_dir"]
+            if "keep_source_dirs" in updates:
+                lib.keep_source_dirs = updates["keep_source_dirs"]
             if "ingest" in updates:
                 lib.ingest = updates["ingest"]
             if "cloud_path" in updates:

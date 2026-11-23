@@ -116,6 +116,7 @@ export interface LibraryFormState {
   scrape_input_dir: string;
   scrape_ok_dir: string;
   scrape_fail_dir: string;
+  keep_source_dirs: boolean;
   ingest: LibraryIngest;
   cloud_path: string;
   scan: boolean;
@@ -155,6 +156,7 @@ export function emptyLibraryForm(schema?: PathTemplateSchemaResponse | null): Li
     scrape_input_dir: "",
     scrape_ok_dir: "",
     scrape_fail_dir: "",
+    keep_source_dirs: false,
     ingest: "native",
     cloud_path: "",
     scan: true,
@@ -192,6 +194,7 @@ export function libraryFormFromResponse(lib: LibraryResponse): LibraryFormState 
     scrape_input_dir: lib.scrape_input_dir ?? "",
     scrape_ok_dir: lib.scrape_ok_dir ?? "",
     scrape_fail_dir: lib.scrape_fail_dir ?? "",
+    keep_source_dirs: lib.keep_source_dirs ?? false,
     ingest: lib.ingest,
     cloud_path: lib.cloud_path ?? "",
     scan: false,
@@ -244,6 +247,7 @@ function libraryFormValues(form: LibraryFormState): Record<string, unknown> {
     scrape_input_dir: form.scrape_input_dir.trim(),
     scrape_ok_dir: form.scrape_ok_dir.trim(),
     scrape_fail_dir: form.scrape_fail_dir.trim(),
+    keep_source_dirs: form.keep_source_dirs,
     ingest: form.ingest,
     cloud_path: form.ingest === "clouddrive" ? form.cloud_path.trim() : "",
   };
@@ -641,6 +645,13 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             </FieldChrome>
           </>
         )}
+        <FieldChrome label={t("keepSourceDirs.label")} description={t("keepSourceDirs.hint")}>
+          <Switch
+            checked={value.keep_source_dirs}
+            onChange={(e) => onChange({ ...value, keep_source_dirs: e.currentTarget.checked })}
+            aria-label={t("keepSourceDirs.label")}
+          />
+        </FieldChrome>
         {showCreateOnly && (
           <FieldChrome label={t("fieldInitialRefresh")}>
             <Switch

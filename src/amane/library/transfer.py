@@ -111,13 +111,18 @@ def _remove_empty_dir(directory: Path) -> bool:
 
 @in_thread
 def transfer_scrape_result(
-    video: Path, destination: Path, subtitle_suffixes: Sequence[str], *, keep_dir: Path | None = None
+    video: Path,
+    destination: Path,
+    subtitle_suffixes: Sequence[str],
+    *,
+    keep_dir: Path | None = None,
+    keep_source_dirs: bool = False,
 ) -> TransferOutcome:
     """把视频与附属文件搬到 ``destination``, 返回新路径与统计.
 
     单个文件搬不动只记进 ``failed``, 其余继续; 视频本身失败时 ``video_path`` 仍是原位,
-    调用方据此判断要不要改库里的路径. 搬完若原目录空了则删掉这一层; ``keep_dir``
-    (库根) 即使空了也保留, 删掉库根会让后续扫描失去目标.
+    调用方据此判断要不要改库里的路径. 搬完若原目录空了则删掉这一层, 除非 ``keep_source_dirs``
+    要求保留; ``keep_dir`` (库根) 即使空了也保留, 删掉库根会让后续扫描失去目标.
     """
     destination.mkdir(parents=True, exist_ok=True)
     moved = 0
@@ -136,7 +141,7 @@ def transfer_scrape_result(
         written += size
         if source == video:
             new_video = target
-    removable = new_video != video and (keep_dir is None or video.parent != keep_dir)
+    removable = not keep_source_dirs and new_video != video and (keep_dir is None or video.parent != keep_dir)
     removed = _remove_empty_dir(video.parent) if removable else False
     return TransferOutcome(
         destination=destination,

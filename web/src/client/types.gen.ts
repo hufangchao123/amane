@@ -2258,6 +2258,10 @@ export type LibraryCreateRequest = {
      * Scrape Fail Dir
      */
     scrape_fail_dir?: string | null;
+    /**
+     * Keep Source Dirs
+     */
+    keep_source_dirs?: boolean;
     ingest?: LibraryIngest;
     /**
      * Cloud Path
@@ -2401,6 +2405,10 @@ export type LibraryResponse = {
      * Scrape Fail Dir
      */
     scrape_fail_dir?: string | null;
+    /**
+     * Keep Source Dirs
+     */
+    keep_source_dirs?: boolean;
     ingest: LibraryIngest;
     /**
      * Cloud Path
@@ -2519,6 +2527,10 @@ export type LibraryUpdateRequest = {
      * Scrape Fail Dir
      */
     scrape_fail_dir?: string | null;
+    /**
+     * Keep Source Dirs
+     */
+    keep_source_dirs?: boolean | null;
     ingest?: LibraryIngest | null;
     /**
      * Cloud Path

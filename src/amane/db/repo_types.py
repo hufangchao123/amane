@@ -321,6 +321,7 @@ class LibraryUpdates(TypedDict, total=False):
     scrape_input_dir: str | None
     scrape_ok_dir: str | None
     scrape_fail_dir: str | None
+    keep_source_dirs: bool
     ingest: LibraryIngest
     cloud_path: str | None
     recursive: bool

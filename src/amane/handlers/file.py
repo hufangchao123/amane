@@ -560,7 +560,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
         total = len(live)
         # 只有移动方式会移走源文件, 复制 / 硬链接 / 符号链接不腾空目录.
         prune_candidates: set[Path] = set()
-        collect_prune = payload.prune_empty_dirs and library.move_mode is MoveMode.MOVE
+        collect_prune = payload.prune_empty_dirs and library.move_mode is MoveMode.MOVE and not library.keep_source_dirs
         if total == 0:
             await self.report_progress(1, 1, "done")
         else:

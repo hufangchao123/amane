@@ -4404,6 +4404,11 @@ export const LibraryCreateRequestSchema = {
             ],
             title: 'Scrape Fail Dir'
         },
+        keep_source_dirs: {
+            type: 'boolean',
+            title: 'Keep Source Dirs',
+            default: false
+        },
         ingest: {
             $ref: '#/components/schemas/LibraryIngest',
             default: 'native'
@@ -4689,6 +4694,11 @@ export const LibraryResponseSchema = {
                 }
             ],
             title: 'Scrape Fail Dir'
+        },
+        keep_source_dirs: {
+            type: 'boolean',
+            title: 'Keep Source Dirs',
+            default: false
         },
         ingest: {
             $ref: '#/components/schemas/LibraryIngest'
@@ -4982,6 +4992,17 @@ export const LibraryUpdateRequestSchema = {
                 }
             ],
             title: 'Scrape Fail Dir'
+        },
+        keep_source_dirs: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Keep Source Dirs'
         },
         ingest: {
             anyOf: [

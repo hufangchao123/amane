@@ -63,6 +63,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
                 Path(destination),
                 library.subtitle_extensions,
                 keep_dir=Path(library.path),
+                keep_source_dirs=library.keep_source_dirs,
             )
             if outcome.video_path != video:
                 await self._repo.update_media_file(file.id, path=str(outcome.video_path))

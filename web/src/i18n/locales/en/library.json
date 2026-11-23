@@ -280,5 +280,9 @@
     "noiseHint": "Created by the OS or a sync tool; deleted along with the folder",
     "blocked": "{{count}} more folders were left out: unrecognized files",
     "showNoise": "Show system files"
+  },
+  "keepSourceDirs": {
+    "label": "Keep emptied source dirs",
+    "hint": "By default emptied directories are removed level by level (the library root always stays). With this on, organize and scrape transfer leave empty directories in place, which suits downloaders that reuse a fixed folder."
   }
 }

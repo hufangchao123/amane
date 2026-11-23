@@ -179,3 +179,21 @@ async def test_success_without_ok_dir_leaves_file_in_place(repo: Repository, tmp
     assert result.result.note == "文件已在原处, 无需转移"
     assert video.exists()
     assert not (video.parent / "ABC-123-1080p (2).mp4").exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_keep_source_dirs_leaves_empty_folder(repo: Repository, tmp_path: Path) -> None:
+    """库上打开保留来源目录时, 搬空的输入目录那一层仍在."""
+    root, pending, done = tmp_path / "done", tmp_path / "in", tmp_path / "ok"
+    library_id = await _library(repo, root, pending=pending, ok_dir=done)
+    await repo.update_library(library_id, keep_source_dirs=True)
+    video = pending / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success, result.error
+    assert (done / video.name).exists()
+    assert video.parent.is_dir()

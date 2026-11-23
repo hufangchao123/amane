@@ -1425,6 +1425,27 @@ async def test_organize_prunes_emptied_source_dir(
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_organize_keeps_source_dir_when_library_asks(
+    repo: Repository, resource_store: ResourceStore, tmp_path: Path
+) -> None:
+    """库上打开保留来源目录时, 自动整理同样不删空目录."""
+    lib_root = tmp_path / "lib"
+    library_id, src = await _seed_movable_video(repo, lib_root)
+    await repo.update_library(library_id, keep_source_dirs=True)
+
+    org = OrganizeHandler(repo, HotSettings(), resource_store)
+    payload = OrganizePayload(library_id=library_id)
+    await payload.resolve(repo)
+    result = await org.handle(payload)
+
+    assert result.success is True
+    assert result.result is not None
+    assert result.result.pruned_dirs == 0
+    assert src.parent.is_dir()
+    assert not src.exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_organize_keeps_source_dir_when_prune_disabled(
     repo: Repository, resource_store: ResourceStore, tmp_path: Path
 ) -> None:

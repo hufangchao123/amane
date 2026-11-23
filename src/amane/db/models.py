@@ -417,6 +417,12 @@ class Library(SQLModel, table=True):
     """刮削通过后的目的目录; 空则通过后留在原地. 与失败目录互不重叠, 不能落在库根之下."""
     scrape_fail_dir: str | None = Field(default=None)
     """刮削失败后的目的目录; 空则失败后留在原处, 便于直接重试."""
+    keep_source_dirs: bool = Field(default=False)
+    """文件搬走后保留空的来源目录.
+
+    默认跟随上游行为, 把搬空的目录逐层删掉 (库根始终保留). 打开后整理与刮削后转移都不删空目录,
+    适用于下载器要复用固定目录、或来源目录本身就是某个挂载点的场景.
+    """
 
     ingest: LibraryIngest = Field(default=LibraryIngest.NATIVE)
     """文件发现通道. clouddrive 不 schedule Observer, 由 webhook 按 cloud_path 分流."""

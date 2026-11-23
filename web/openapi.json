@@ -11904,6 +11904,11 @@
             ],
             "title": "Scrape Fail Dir"
           },
+          "keep_source_dirs": {
+            "type": "boolean",
+            "title": "Keep Source Dirs",
+            "default": false
+          },
           "ingest": {
             "$ref": "#/components/schemas/LibraryIngest",
             "default": "native"
@@ -12186,6 +12191,11 @@
               }
             ],
             "title": "Scrape Fail Dir"
+          },
+          "keep_source_dirs": {
+            "type": "boolean",
+            "title": "Keep Source Dirs",
+            "default": false
           },
           "ingest": {
             "$ref": "#/components/schemas/LibraryIngest"
@@ -12478,6 +12488,17 @@
               }
             ],
             "title": "Scrape Fail Dir"
+          },
+          "keep_source_dirs": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Source Dirs"
           },
           "ingest": {
             "anyOf": [

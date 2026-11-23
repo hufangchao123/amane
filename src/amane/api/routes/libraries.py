@@ -111,6 +111,7 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
             scrape_input_dir=req.scrape_input_dir,
             scrape_ok_dir=req.scrape_ok_dir,
             scrape_fail_dir=req.scrape_fail_dir,
+            keep_source_dirs=req.keep_source_dirs,
             ingest=req.ingest,
             cloud_path=req.cloud_path,
             recursive=req.recursive,
