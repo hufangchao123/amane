@@ -48,6 +48,25 @@ def test_transfer_moves_video_and_sidecars(tmp_path: Path) -> None:
     assert outcome.source_dir_removed
 
 
+def test_transfer_keeps_configured_dir_itself(tmp_path: Path) -> None:
+    """输入/成品/失败目录本身不删: 下载器还要往里写, 目录消失会让它报错.
+
+    子目录仍按 `keep_source_dirs` 关闭时的口径删掉.
+    """
+    input_dir = tmp_path / "downloads" / "PT"
+    source = input_dir / "ABC-123"
+    video = _touch(source / "ABC-123-1080p.mp4")
+
+    outcome = transfer_scrape_result.sync(
+        video, tmp_path / "done", [".srt"], keep_dir=tmp_path / "media", stop_dirs=(input_dir,)
+    )
+
+    assert outcome.video_path == tmp_path / "done" / video.name
+    assert input_dir.is_dir()
+    assert not source.exists()
+    assert outcome.source_dir_removed
+
+
 def test_transfer_keeps_library_root(tmp_path: Path) -> None:
     """``keep_dir`` 是库根: 即使搬空也保留, 否则后续扫描失去目标."""
     library_root = tmp_path / "media"

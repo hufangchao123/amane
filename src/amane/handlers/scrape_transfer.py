@@ -25,6 +25,12 @@ if TYPE_CHECKING:
     from ._common import LibraryTaskLocks
 
 
+def configured_roots(library: Library) -> tuple[Path, ...]:
+    """库里配置的目录 (输入 / 成功 / 失败): 搬空后也不删它们本身."""
+    roots = (library.scrape_input_dir, library.scrape_ok_dir, library.scrape_fail_dir)
+    return tuple(Path(root) for root in roots if root)
+
+
 class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferResult]):
     """单文件转移; 一个任务只处理一次刮削的那一个文件."""
 
@@ -87,6 +93,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
             library.subtitle_extensions,
             keep_dir=Path(library.path),
             keep_source_dirs=library.keep_source_dirs,
+            stop_dirs=configured_roots(library),
             sidecars_only=already_there,
             sidecar_dir=Path(payload.source_dir) if payload.source_dir else None,
         )

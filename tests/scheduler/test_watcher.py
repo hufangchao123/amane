@@ -123,9 +123,7 @@ class TestHandler:
         """体积稳定够久才放行: 下载器直写库目录时, 半截文件不能被当成成品."""
         media = tmp_path / "growing.mp4"
         media.write_bytes(b"x" * 10)
-        handler = _Handler(
-            library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=0.2
-        )
+        handler = _Handler(library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=0.2)
 
         handler.on_created(FileCreatedEvent(str(media)))
         time.sleep(0.05)
@@ -151,9 +149,7 @@ class TestHandler:
         """文件在等待期间被删掉: 不在这一步拦, 交给后续注册流程报错."""
         media = tmp_path / "vanishing.mp4"
         media.write_bytes(b"x" * 100)
-        handler = _Handler(
-            library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=30
-        )
+        handler = _Handler(library_id=1, root=str(tmp_path), debounce_seconds=0.01, settle_seconds=30)
 
         handler.on_created(FileCreatedEvent(str(media)))
         time.sleep(0.05)

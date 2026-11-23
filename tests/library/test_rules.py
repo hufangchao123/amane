@@ -8,9 +8,9 @@ from pydantic import ValidationError
 from amane.db.models import Library
 from amane.library.rules import (
     compile_skip_patterns,
-    is_partial_download,
     has_companion_subtitle,
     is_in_trash,
+    is_partial_download,
     is_skipped_media,
     is_undersized_video,
     is_video_media,

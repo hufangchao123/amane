@@ -119,15 +119,18 @@ def collect_sidecars(
     return sorted(siblings, key=lambda path: path.name)
 
 
-def _prune_source_dir(directory: Path, keep_dir: Path | None) -> bool:
-    """自下而上删空目录, 停在 ``keep_dir`` (库根) 之前; 返回是否删掉了至少一层.
+def _prune_source_dir(directory: Path, keep_dir: Path | None, stop_dirs: Sequence[Path] = ()) -> bool:
+    """自下而上删空目录, 停在 ``keep_dir`` (库根) 与 ``stop_dirs`` (配置的目录) 之前; 返回是否删掉了至少一层.
 
     只删一层是不够的: 输入目录常按 `/in/2026/11/ABC-123/` 分层, 删掉最末一层后上面两层永远留着.
+    配置的输入/成品/失败目录本身不删: 它们由使用者维护 (下载器要往里写), 消失后下载器可能报错.
     """
     removed = False
     current = directory
     while True:
         if keep_dir is not None and _same_path(current, keep_dir):
+            break
+        if any(_same_path(current, stop) for stop in stop_dirs):
             break
         try:
             current.rmdir()
@@ -156,6 +159,7 @@ def transfer_scrape_result(
     keep_source_dirs: bool = False,
     sidecars_only: bool = False,
     sidecar_dir: Path | None = None,
+    stop_dirs: Sequence[Path] = (),
 ) -> TransferOutcome:
     """把视频与附属文件搬到 ``destination``, 返回新路径与统计.
 
@@ -192,7 +196,7 @@ def transfer_scrape_result(
     source_dir = sidecar_dir or video.parent
     vacuumed = sidecars_only or new_video != video
     removable = not keep_source_dirs and vacuumed and (keep_dir is None or not _same_path(source_dir, keep_dir))
-    removed = _prune_source_dir(source_dir, keep_dir) if removable else False
+    removed = _prune_source_dir(source_dir, keep_dir, stop_dirs) if removable else False
     return TransferOutcome(
         destination=destination,
         video_path=new_video,
