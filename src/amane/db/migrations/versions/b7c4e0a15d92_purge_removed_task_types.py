@@ -18,8 +18,10 @@ down_revision: str | Sequence[str] | None = "5c2d81f0a9b3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-REMOVED_TASK_TYPES = ("backup", "trash_purge", "diagnose")
-REMOVED_ROUTINE_TYPES = ("backup", "trash_purge", "transfer_115")
+# SQLAlchemy 的 Enum 列按成员**名字**落库 (``BACKUP``), 但不同版本与手写 SQL 可能写进小写值,
+# 因此两边都比: 大写与原名都删, 免得留一行读不出来的历史把列表接口拖成 500.
+REMOVED_TASK_TYPES = ("BACKUP", "TRASH_PURGE", "DIAGNOSE", "backup", "trash_purge", "diagnose")
+REMOVED_ROUTINE_TYPES = ("BACKUP", "TRASH_PURGE", "TRANSFER_115", "backup", "trash_purge", "transfer_115")
 
 
 def upgrade() -> None:
