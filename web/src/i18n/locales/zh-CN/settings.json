@@ -950,6 +950,18 @@
           "newest": "修改时间最新",
           "oldest": "修改时间最旧"
         }
+      },
+      "auto_on_ingest": {
+        "label": "入库后自动扫描",
+        "description": "文件整理进库后扫描一次候选; 关则只按间隔扫描"
+      },
+      "auto_execute": {
+        "label": "自动执行没有争议的候选",
+        "description": "档位不同或体积明显更大的本地组直接进回收站; 其余留在清单里"
+      },
+      "auto_execute_min_gain_percent": {
+        "label": "自动执行的最小体积差",
+        "description": "同档位时保留者要比落选者大出这个百分比才自动执行"
       }
     },
     "watcher": {

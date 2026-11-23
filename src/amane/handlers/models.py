@@ -495,6 +495,8 @@ class WashScanResult(BaseModel):
     type: Literal[TaskType.WASH_SCAN] = TaskType.WASH_SCAN
     groups: int = 0
     """同番号存在多份文件的分组数."""
+    auto_groups: int = 0
+    """其中判据没有争议、已自动交给 ``WASH_APPLY`` 的分组数 (自动执行关闭时恒为 0)."""
     droppable: int = 0
     """可移走的文件数; 每个分组至少留一份."""
     bytes_freed: int = 0

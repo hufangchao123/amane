@@ -950,6 +950,18 @@
           "newest": "Newest modified",
           "oldest": "Oldest modified"
         }
+      },
+      "auto_on_ingest": {
+        "label": "Scan after ingest",
+        "description": "Scan once after files are organized into the library"
+      },
+      "auto_execute": {
+        "label": "Execute unambiguous candidates",
+        "description": "Move clearly worse local copies to the recycle bin; keep the rest for review"
+      },
+      "auto_execute_min_gain_percent": {
+        "label": "Min size gain for auto",
+        "description": "Same-resolution keeper must be this much larger to execute automatically"
       }
     },
     "watcher": {

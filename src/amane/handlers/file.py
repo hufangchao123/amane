@@ -47,7 +47,12 @@ from ..parsing import ContentType, FileInfo, parse_file_info
 from ..utils.path import existing_disk_path as existing_disk_path_sync
 from ..utils.path import is_descendant, nfc_path, path_is_under
 from ..utils.threads import existing_disk_path, in_thread, path_is_dir
-from ._common import LibraryTaskLocks, media_refresh_followups, refresh_external_subtitle
+from ._common import (
+    LibraryTaskLocks,
+    media_refresh_followups,
+    refresh_external_subtitle,
+    wash_scan_followups,
+)
 from .models import (
     ORGANIZE_CONFLICT_LIMIT,
     CleanupPayload,
@@ -679,8 +684,11 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
         )
 
     def _media_server_followups(self, library: Library, organized: int) -> list[FollowupTask]:
-        """有文件落盘时让媒体服务器重扫; 未配置或开关关闭时不入队."""
-        return media_refresh_followups(self._config, library, changed=organized, reason="organize")
+        """有文件落盘时让媒体服务器重扫, 并按需扫一次洗版候选; 开关关闭时都不入队."""
+        return [
+            *media_refresh_followups(self._config, library, changed=organized, reason="organize"),
+            *wash_scan_followups(self._config, library, changed=organized),
+        ]
 
 
 def _record_conflicts(conflicts: list[OrganizeConflict], entries: Sequence[OrganizeConflict]) -> int:

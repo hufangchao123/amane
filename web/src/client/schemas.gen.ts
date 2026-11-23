@@ -3851,6 +3851,9 @@ export const HotSettingsSchema = {
                 prefer: 'quality',
                 strm: true,
                 strm_prefer: 'path',
+                auto_on_ingest: false,
+                auto_execute: false,
+                auto_execute_min_gain_percent: 30,
                 keep_days: 30
             }
         },
@@ -12858,6 +12861,23 @@ export const WashConfigSchema = {
             $ref: '#/components/schemas/StrmPrefer',
             default: 'path'
         },
+        auto_on_ingest: {
+            type: 'boolean',
+            title: 'Auto On Ingest',
+            default: false
+        },
+        auto_execute: {
+            type: 'boolean',
+            title: 'Auto Execute',
+            default: false
+        },
+        auto_execute_min_gain_percent: {
+            type: 'integer',
+            maximum: 90,
+            minimum: 10,
+            title: 'Auto Execute Min Gain Percent',
+            default: 30
+        },
         keep_days: {
             type: 'integer',
             maximum: 365,
@@ -13044,6 +13064,11 @@ export const WashScanResultSchema = {
         groups: {
             type: 'integer',
             title: 'Groups',
+            default: 0
+        },
+        auto_groups: {
+            type: 'integer',
+            title: 'Auto Groups',
             default: 0
         },
         droppable: {

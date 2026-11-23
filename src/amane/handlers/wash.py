@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-from ..db.models import WashRecord
+from ..db.models import TaskType, WashRecord
 from ..library.wash import apply as wash_apply
-from ..library.wash.model import WashGroup
+from ..library.wash.model import WashGroup, is_unambiguous
 from ..library.wash.service import WashKindFilter, WashService, parse_kind
 from .models import WashApplyPayload, WashApplyResult, WashScanPayload, WashScanResult
 from .protocol import FollowupTask, TaskHandler, TaskResult
@@ -34,13 +34,38 @@ class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
         await self.report_progress(0, 1, "scan")
         groups = await service.groups(kind=parse_kind(payload.kind), library_id=payload.library_id)
         await self.report_progress(1, 1, "done")
+
+        # 只把「档位不同」或「同档位体积明显更大」的组交给自动执行; 其余仍在清单里等人挑.
+        auto_keys = (
+            [
+                group.group_key
+                for group in groups
+                if is_unambiguous(group, min_gain_percent=self._hot.wash.auto_execute_min_gain_percent)
+            ]
+            if self._hot.wash.auto_execute
+            else []
+        )
+        followups: list[FollowupTask] = []
+        if auto_keys:
+            followups.append(
+                FollowupTask(
+                    key="wash-apply:" + ",".join(sorted(auto_keys)),
+                    task_type=TaskType.WASH_APPLY,
+                    payload=WashApplyPayload(
+                        group_keys=auto_keys, kind="local", library_id=payload.library_id
+                    ).model_dump(mode="json"),
+                    priority=-1,
+                )
+            )
         return TaskResult(
             success=True,
             result=WashScanResult(
                 groups=len(groups),
                 droppable=sum(len(group.drops) for group in groups),
                 bytes_freed=sum(group.bytes_freed for group in groups),
+                auto_groups=len(auto_keys),
             ),
+            followups=followups,
         )
 
 

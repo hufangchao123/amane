@@ -124,6 +124,7 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           failed={failed}
           entries={[
             { label: t("result.counts.groups"), value: result.groups ?? 0, tone: "blue" },
+            { label: t("result.counts.autoGroups"), value: result.auto_groups ?? 0, tone: "teal" },
             { label: t("result.counts.droppable"), value: result.droppable ?? 0, tone: "yellow" },
             {
               label: t("result.counts.freed"),

@@ -1547,3 +1547,54 @@ async def test_media_refresh_followup_follows_config(
 
     assert result.result is not None and result.result.organized == organized
     assert [followup.task_type.value for followup in result.followups] == expected
+
+
+@pytest.mark.asyncio(loop_scope="function")
+@pytest.mark.parametrize(
+    ("wash_enabled", "auto_on_ingest", "organized", "expected"),
+    [
+        (True, True, 1, ["wash_scan"]),
+        (True, False, 1, []),
+        (False, True, 1, []),
+        (True, True, 0, []),
+    ],
+)
+async def test_wash_scan_followup_follows_config(
+    repo: Repository,
+    resource_store: ResourceStore,
+    tmp_path: Path,
+    *,
+    wash_enabled: bool,
+    auto_on_ingest: bool,
+    organized: int,
+    expected: list[str],
+) -> None:
+    """``wash.auto_on_ingest`` 打开且有文件落进库根时, 整理链式入队一次只读扫描."""
+    lib_root = tmp_path / "lib"
+    src_dir = lib_root / "incoming"
+    src_dir.mkdir(parents=True)
+    src = src_dir / "NSFS-046.mp4"
+    src.write_bytes(b"video")
+
+    lib = await repo.create_library(
+        name="t", path=str(lib_root), write_nfo=False, video_template="{studio}/{number}/{number}.mp4"
+    )
+    assert lib.id is not None
+    if organized:
+        meta = await repo.upsert_metadata(number="NSFS-046", studio="Studio")
+        assert meta.id is not None
+        await repo.create_media_file(
+            lib.id, path=str(src), number="NSFS-046", status=MediaFileStatus.SCRAPED, metadata_id=meta.id
+        )
+
+    hot = HotSettings()
+    hot.wash.enabled = wash_enabled
+    hot.wash.auto_on_ingest = auto_on_ingest
+    hot.wash.min_size_mb = 0
+
+    result = await OrganizeHandler(repo, hot, resource_store).handle(
+        OrganizePayload(library_id=lib.id, path=str(src_dir))
+    )
+
+    assert result.result is not None and result.result.organized == organized
+    assert [followup.task_type.value for followup in result.followups] == expected

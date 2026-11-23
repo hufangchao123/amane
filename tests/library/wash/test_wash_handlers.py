@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.config.manager import HotSettings, WashConfig
-from amane.db.models import MediaFileStatus, WashRecordKind, WashRecordState
+from amane.db.models import MediaFileStatus, TaskType, WashRecordKind, WashRecordState
 from amane.handlers._common import LibraryTaskLocks
 from amane.handlers.models import WashApplyPayload, WashScanPayload
 from amane.handlers.wash import WashApplyHandler, WashScanHandler
@@ -285,3 +285,57 @@ async def test_purge_takes_the_library_lock(wash_lib: WashLibrary) -> None:
     )
 
     assert taken == [wash_lib.library.id]
+
+
+def _auto_hot(*, auto_execute: bool = True, gain: int = 30) -> HotSettings:
+    return HotSettings(
+        wash=WashConfig(
+            enabled=True,
+            min_size_mb=0,
+            keep_days=7,
+            auto_execute=auto_execute,
+            auto_execute_min_gain_percent=gain,
+        )
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scan_auto_executes_only_unambiguous_local_groups(wash_lib: WashLibrary) -> None:
+    """档位不同的本地组自动交给 WASH_APPLY; STRM 组留在清单里等人挑."""
+    await seed_library(wash_lib)
+
+    result = await WashScanHandler(wash_lib.repo, _auto_hot()).handle(WashScanPayload())
+
+    assert result.result is not None
+    assert result.result.groups == 2
+    assert result.result.auto_groups == 1
+    assert len(result.followups) == 1
+    followup = result.followups[0]
+    assert followup.task_type is TaskType.WASH_APPLY
+    payload = WashApplyPayload.model_validate(followup.payload)
+    assert payload.kind == "local"
+    assert payload.group_keys and payload.group_keys[0].startswith("lib")
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scan_keeps_candidates_when_auto_execute_is_off(wash_lib: WashLibrary) -> None:
+    await seed_library(wash_lib)
+
+    result = await WashScanHandler(wash_lib.repo, _auto_hot(auto_execute=False)).handle(WashScanPayload())
+
+    assert result.result is not None
+    assert (result.result.groups, result.result.auto_groups) == (2, 0)
+    assert result.followups == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scan_leaves_close_sizes_to_the_operator(wash_lib: WashLibrary) -> None:
+    """同档位体积只差 10% (门槛 30%) 时不出自动后继."""
+    await wash_lib.add("2024/ABC-777/ABC-777-1080p-x264.mkv", size=1000, duration=100.0)
+    await wash_lib.add("2024/ABC-777/ABC-777-1080p-h265.mkv", size=910, duration=100.0)
+
+    result = await WashScanHandler(wash_lib.repo, _auto_hot()).handle(WashScanPayload())
+
+    assert result.result is not None
+    assert (result.result.groups, result.result.auto_groups) == (1, 0)
+    assert result.followups == []

@@ -11,10 +11,12 @@ from amane.db.models import WashRecordKind
 from amane.enums import StrmPrefer, WashPrefer
 from amane.library.wash.model import (
     WashEntry,
+    WashGroup,
     build_groups,
     container_rank,
     definition_rank,
     group_key_of,
+    is_unambiguous,
     library_id_of,
 )
 from amane.parsing import Mosaic
@@ -389,3 +391,42 @@ def test_part_tokens_keep_segments_out_of_the_main_feature() -> None:
     kept = {group.keep.path for group in groups}
     assert "/lib/ABC-123 前編.mkv" in kept
     assert all(group.group_key.endswith("part前編") for group in groups)
+
+
+def group_of(keep: WashEntry, *drops: WashEntry, kind: WashRecordKind = LOCAL) -> WashGroup:
+    """把手写的两份文件包成一个分组, 只用于判定用例."""
+    return WashGroup(group_key=group_key_of(keep), kind=kind, library_id=keep.library_id, keep=keep, drops=tuple(drops))
+
+
+UNAMBIGUOUS_CASES = [
+    pytest.param(
+        {"definition": "1080p", "size": 2000},
+        {"definition": "720p", "size": 2000},
+        True,
+        id="higher-definition-wins",
+    ),
+    pytest.param(
+        {"definition": "720p", "size": 2000},
+        {"definition": "1080p", "size": 2000},
+        False,
+        id="lower-definition-is-not-automatic",
+    ),
+    pytest.param({"size": 1400, "duration": 100.0}, {"size": 1000, "duration": 100.0}, True, id="forty-percent-bigger"),
+    pytest.param({"size": 1100, "duration": 100.0}, {"size": 1000, "duration": 100.0}, False, id="ten-percent-bigger"),
+    pytest.param({"size": 5000, "duration": None}, {"size": 1000, "duration": None}, False, id="duration-unknown"),
+    pytest.param({"size": 5000, "duration": 100.0}, {"size": 1000, "duration": None}, False, id="one-side-duration"),
+]
+
+
+@pytest.mark.parametrize(("keep", "drop", "expected"), UNAMBIGUOUS_CASES)
+def test_is_unambiguous(keep: dict[str, object], drop: dict[str, object], expected: bool) -> None:
+    """只有「档位更高」或「同档位体积明显更大且时长可比」才允许自动执行."""
+    group = group_of(entry("keep.mkv", **keep), entry("drop.mkv", **drop))  # type: ignore[arg-type]
+    assert is_unambiguous(group, min_gain_percent=30) is expected
+
+
+def test_is_unambiguous_never_passes_strm() -> None:
+    """STRM 组不自动执行: 指针没有画质, 留哪份牵扯播放器兼容."""
+    keep = entry("keep.strm", size=0, definition="1080p")
+    drop = entry("drop.strm", size=0, definition="720p")
+    assert is_unambiguous(group_of(keep, drop, kind=STRM), min_gain_percent=30) is False

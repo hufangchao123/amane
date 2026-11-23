@@ -187,7 +187,8 @@
       "refreshed": "已通知 {{kind}} 刷新媒体库",
       "channel": "渠道",
       "status": "状态码",
-      "size": "占用"
+      "size": "占用",
+      "autoGroups": "自动执行"
     }
   },
   "status": {

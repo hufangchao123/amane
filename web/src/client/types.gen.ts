@@ -7043,6 +7043,18 @@ export type WashConfig = {
     strm?: boolean;
     strm_prefer?: StrmPrefer;
     /**
+     * Auto On Ingest
+     */
+    auto_on_ingest?: boolean;
+    /**
+     * Auto Execute
+     */
+    auto_execute?: boolean;
+    /**
+     * Auto Execute Min Gain Percent
+     */
+    auto_execute_min_gain_percent?: number;
+    /**
      * Keep Days
      */
     keep_days?: number;
@@ -7162,6 +7174,10 @@ export type WashScanResult = {
      * Groups
      */
     groups?: number;
+    /**
+     * Auto Groups
+     */
+    auto_groups?: number;
     /**
      * Droppable
      */

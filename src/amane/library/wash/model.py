@@ -160,6 +160,31 @@ def library_id_of(group_key: str) -> int | None:
         return None
 
 
+def is_unambiguous(group: WashGroup, *, min_gain_percent: int) -> bool:
+    """判断这一组的取舍是否「没有争议」, 供自动执行筛选用.
+
+    两条自动准入, 都要求保留者在某个维度上**严格更好**, 否则一律留给人看:
+
+    * 分辨率档位不同: 保留者的档位更优即通过 —— 4K 与 1080p 之间不存在「看走眼」;
+    * 档位相同: 两边时长都可读 (否则码率无从判断, 也不该拿体积冒充), 且保留者比每一份落选者
+      大出 ``min_gain_percent`` 个百分点 —— 体积接近时差异可能来自压制风格、音轨或字幕,
+      那不是自动该决定的事.
+
+    STRM 组恒为 False: 指针没有画质, 「留哪一份定义」牵扯播放器兼容与云端来源, 由人挑.
+    """
+    if group.kind is not WashRecordKind.LOCAL or not group.drops:
+        return False
+    keep = group.keep
+    keep_rank = definition_rank(keep.definition)
+    if any(definition_rank(drop.definition) != keep_rank for drop in group.drops):
+        return all(keep_rank < definition_rank(drop.definition) for drop in group.drops)
+    if keep.duration is None or keep.duration <= 0:
+        return False
+    if any(drop.duration is None or drop.duration <= 0 for drop in group.drops):
+        return False
+    return all(drop.size > 0 and (keep.size - drop.size) * 100 >= drop.size * min_gain_percent for drop in group.drops)
+
+
 def definition_rank(definition: str | None) -> int:
     """分辨率档位序号, 越小越好; 未知值排在已知档位之后."""
     if definition is None:

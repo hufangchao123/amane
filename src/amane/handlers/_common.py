@@ -117,3 +117,25 @@ def media_refresh_followups(hot: HotSettings, library: Library, *, changed: int,
             priority=-1,
         )
     ]
+
+
+def wash_scan_followups(hot: HotSettings, library: Library, *, changed: int) -> list[FollowupTask]:
+    """新文件进库后按需扫一次洗版候选.
+
+    ``wash.auto_on_ingest`` 打开时, 整理与刮削后转移把文件送进库根之后各排一次只读扫描:
+    分组要等同番号的第二份进来才成形, 定时扫描的间隔里这些重复会白占一份空间. 只读,
+    因此不需要库锁; 扫描自己会在 ``wash.auto_execute`` 打开时把没有争议的组交给执行.
+    """
+    from .models import WashScanPayload  # 局部导入: models 依赖 db, 与本模块无循环
+    from .protocol import FollowupTask
+
+    if changed <= 0 or not hot.wash.enabled or not hot.wash.auto_on_ingest:
+        return []
+    return [
+        FollowupTask(
+            key=f"wash-scan:{library.id}",
+            task_type=TaskType.WASH_SCAN,
+            payload=WashScanPayload(library_id=library.id).model_dump(mode="json"),
+            priority=-1,
+        )
+    ]

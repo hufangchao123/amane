@@ -231,3 +231,35 @@ async def test_success_refreshes_media_server(repo: Repository, tmp_path: Path) 
         assert len(result.followups) == expected
         if expected:
             assert result.followups[0].task_type.value == "media_refresh"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_success_scans_for_wash_when_auto_on_ingest_is_on(repo: Repository, tmp_path: Path) -> None:
+    """``wash.auto_on_ingest`` 打开时, 成品进库根后顺带排一次只读洗版扫描."""
+    root, pending, ok_dir = (tmp_path / name for name in ("lib", "pending", "done"))
+    for path in (root, pending, ok_dir):
+        path.mkdir(exist_ok=True)
+    (pending / "TRN-901-1080p.mp4").write_bytes(b"x" * 16)
+
+    lib = await repo.create_library(
+        name="t",
+        path=str(root),
+        scrape_transfer=True,
+        scrape_input_dir=str(pending),
+        scrape_ok_dir=str(ok_dir),
+        auto_organize=False,
+    )
+    assert lib.id is not None
+    media = await repo.create_media_file(lib.id, path=str(pending / "TRN-901-1080p.mp4"))
+    assert media.id is not None
+
+    hot = HotSettings()
+    hot.wash.enabled = True
+    hot.wash.auto_on_ingest = True
+
+    result = await ScrapeTransferHandler(repo, hot, LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media.id, outcome="ok")
+    )
+
+    assert result.success is True
+    assert [followup.task_type.value for followup in result.followups] == ["wash_scan"]

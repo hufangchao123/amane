@@ -218,7 +218,8 @@
       "refreshed": "Asked {{kind}} to refresh the library",
       "channel": "Channel",
       "status": "Status",
-      "size": "Size"
+      "size": "Size",
+      "autoGroups": "Auto"
     }
   },
   "status": {

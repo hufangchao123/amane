@@ -894,6 +894,12 @@ class WashConfig(BaseModel):
     """参与洗版的 STRM 文件."""
     strm_prefer: StrmPrefer = StrmPrefer.PATH
     """STRM 组留哪一份: 默认按容器与路径; 可选按文件名档位或修改时间."""
+    auto_on_ingest: bool = False
+    """整理或刮削后转移把新文件送进库根成功后, 自动扫描一次候选."""
+    auto_execute: bool = False
+    """按下面的判据自动执行没有争议的本地组候选; 关闭时只出清单, 由人挑."""
+    auto_execute_min_gain_percent: int = Field(default=30, ge=10, le=90)
+    """同档位时保留者要比落选者大出这个百分比才算没有争议; 低于它只出清单."""
     keep_days: int = Field(default=30, ge=1, le=365, json_schema_extra={"x-group": "shared"})
     """回收站保留天数, 到期由清理任务删除. 两种文件共用这一个保留期, 表单里因此单独成框."""
 

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from ..library.transfer import scrape_transfer_destination, transfer_scrape_result
 from ..utils.threads import path_exists
-from ._common import media_refresh_followups, refresh_external_subtitle
+from ._common import media_refresh_followups, refresh_external_subtitle, wash_scan_followups
 from .models import ScrapeTransferPayload, ScrapeTransferResult
 from .protocol import TaskHandler, TaskResult
 
@@ -89,7 +89,10 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         result.bytes = outcome.bytes
         result.failed = len(outcome.failed)
         # 成品刚搬进库根: 与整理同口径, 让媒体服务器重扫一次.
-        refresh = media_refresh_followups(self._hot, library, changed=outcome.files, reason="transfer")
+        refresh = [
+            *media_refresh_followups(self._hot, library, changed=outcome.files, reason="transfer"),
+            *wash_scan_followups(self._hot, library, changed=outcome.files),
+        ]
         if outcome.failed:
             return TaskResult(
                 success=False,
