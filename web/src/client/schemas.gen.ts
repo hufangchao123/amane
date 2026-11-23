@@ -4382,6 +4382,17 @@ export const LibraryCreateRequestSchema = {
             ],
             title: 'Scrape Input Dir'
         },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
+        },
         scrape_fail_dir: {
             anyOf: [
                 {
@@ -4656,6 +4667,17 @@ export const LibraryResponseSchema = {
                 }
             ],
             title: 'Scrape Input Dir'
+        },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
         },
         scrape_fail_dir: {
             anyOf: [
@@ -4938,6 +4960,17 @@ export const LibraryUpdateRequestSchema = {
                 }
             ],
             title: 'Scrape Input Dir'
+        },
+        scrape_ok_dir: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Scrape Ok Dir'
         },
         scrape_fail_dir: {
             anyOf: [

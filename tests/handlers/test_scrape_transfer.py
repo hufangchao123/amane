@@ -12,13 +12,22 @@ if TYPE_CHECKING:
     from amane.db.repository import Repository
 
 
-async def _library(repo: Repository, root: Path, *, pending: Path | None, fail_dir: Path | None) -> int:
+async def _library(
+    repo: Repository,
+    root: Path,
+    *,
+    pending: Path | None = None,
+    ok_dir: Path | None = None,
+    fail_dir: Path | None = None,
+    transfer: bool = True,
+) -> int:
     root.mkdir(parents=True, exist_ok=True)
     library = await repo.create_library(
         name="日韩",
         path=str(root),
-        scrape_transfer=pending is not None,
+        scrape_transfer=transfer,
         scrape_input_dir=str(pending) if pending is not None else None,
+        scrape_ok_dir=str(ok_dir) if ok_dir is not None else None,
         scrape_fail_dir=str(fail_dir) if fail_dir is not None else None,
     )
     assert library.id is not None
@@ -81,7 +90,7 @@ async def test_failure_moves_into_fail_dir(repo: Repository, tmp_path: Path) -> 
 async def test_switch_off_reports_note_without_moving(repo: Repository, tmp_path: Path) -> None:
     """未开启时成功返回并说明原因, 文件留在原处."""
     root = tmp_path / "done"
-    library_id = await _library(repo, root, pending=None, fail_dir=None)
+    library_id = await _library(repo, root, transfer=False)
     video = root / "ABC-123.mp4"
     media_id = await _media(repo, library_id, video)
 
@@ -109,7 +118,7 @@ async def test_failure_without_fail_dir_stays_in_input(repo: Repository, tmp_pat
 
     assert result.success
     assert result.result is not None
-    assert result.result.note == "未配置对应的目的目录"
+    assert result.result.note == "文件已在原处, 无需转移"
     assert video.exists()
 
 
@@ -129,3 +138,44 @@ async def test_missing_source_fails(repo: Repository, tmp_path: Path) -> None:
     assert not result.success
     assert result.error is not None
     assert "源文件已不在" in result.error
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_success_moves_from_library_root_into_ok_dir(repo: Repository, tmp_path: Path) -> None:
+    """库根就是待整理目录: 只配成功与失败目录, 通过后离开库根."""
+    root, done, failed = tmp_path / "pending", tmp_path / "done", tmp_path / "failed"
+    library_id = await _library(repo, root, ok_dir=done, fail_dir=failed)
+    video = root / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success, result.error
+    assert result.result is not None
+    assert result.result.destination == str(done)
+    assert (done / video.name).exists()
+    media = await repo.get_media_file(media_id)
+    assert media is not None
+    assert media.path == str(done / video.name)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_success_without_ok_dir_leaves_file_in_place(repo: Repository, tmp_path: Path) -> None:
+    """没有输入目录也没有成功目录: 文件本来就在库根, 只记一句说明, 不搬也不生成副本."""
+    root, failed = tmp_path / "media", tmp_path / "failed"
+    library_id = await _library(repo, root, fail_dir=failed)
+    video = root / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success
+    assert result.result is not None
+    assert result.result.files == 0
+    assert result.result.note == "文件已在原处, 无需转移"
+    assert video.exists()
+    assert not (video.parent / "ABC-123-1080p (2).mp4").exists()

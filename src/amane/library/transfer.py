@@ -12,13 +12,30 @@ import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..parsing import parse_file_info
 from ..utils.threads import in_thread
 from .rules import MEDIA_EXTENSIONS
 
+if TYPE_CHECKING:
+    from ..db.models import Library
+
 # 不带字幕配置也会被搬走的附属文件: 元数据与图片.
 EXTRA_SIDECAR_SUFFIXES: frozenset[str] = frozenset({".nfo", ".jpg", ".jpeg", ".png", ".webp"})
+
+
+def scrape_transfer_destination(library: Library, outcome: str) -> str | None:
+    """刮削后转移的目的目录; 返回 None 表示这个结果不搬.
+
+    成功侧: 配了成功目录就搬过去, 没配但有输入目录则搬进库根, 两者皆无说明文件已经在库根.
+    失败侧: 只认失败目录, 没配就留在原处便于重试.
+    """
+    if outcome == "ok":
+        if library.scrape_ok_dir:
+            return library.scrape_ok_dir
+        return library.path if library.scrape_input_dir else None
+    return library.scrape_fail_dir or None
 
 
 @dataclass(frozen=True)

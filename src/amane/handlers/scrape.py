@@ -8,6 +8,7 @@ from ..crawlers.models import SearchQuery
 from ..crawlers.site_roles import builtin_descriptors
 from ..db.models import TaskType
 from ..enums import ActorGender, MetadataField
+from ..library.transfer import scrape_transfer_destination
 from ..media import materialize_images
 from ..observability import current
 from ..observability.models import SiteOutcomeKind
@@ -315,8 +316,7 @@ class ScrapeHandler(TaskHandler[ScrapePayload, ScrapeResult]):
             library = await self._repo.get_library(file.library_id)
             if library is None or not library.scrape_transfer:
                 return []
-            destination = library.path if outcome == "ok" else library.scrape_fail_dir
-            if not destination:
+            if not scrape_transfer_destination(library, outcome):
                 return []
             transfer = ScrapeTransferPayload(media_file_id=file.id, outcome=outcome)
             return [

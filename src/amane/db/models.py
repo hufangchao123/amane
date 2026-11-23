@@ -404,15 +404,19 @@ class Library(SQLModel, table=True):
     与 `automation` 正交: none / watch 下手动刮削同样触发. 只影响新后继, 不撤销已入队的整理.
     """
     scrape_transfer: bool = Field(default=False)
-    """刮削结束后把该文件的视频与同前缀附属文件搬一次: 成功进库根, 失败进 `scrape_fail_dir`.
+    """刮削结束后把该文件的视频与同前缀附属文件搬一次, 三个目录因此都可空.
 
-    开启后 `path` 是成品目录, 待整理文件先落在 `scrape_input_dir`. 输入目录须在库外, 否则搬运
-    会与扫描互相触发. 与 `auto_organize` 正交: 两者同时开启时先搬进库根, 整理按新路径落盘.
+    三种用法: 只填 `scrape_ok_dir` 与 `scrape_fail_dir` 时 `path` 就是待整理目录, 刮削通过或失败
+    各自搬走; 填了 `scrape_input_dir` 时文件从那里进来、库根变成成品目录; 成功目录留空则通过后
+    留在原地 (有输入目录时即搬进库根), 失败目录留空则失败后留在原处便于重试.
+    与 `auto_organize` 正交: 两者同时开启时先搬, 整理按新路径落盘.
     """
     scrape_input_dir: str | None = Field(default=None)
-    """待整理文件的来源目录; `scrape_transfer` 为真时必填, 与库根及失败目录都不重叠."""
+    """待整理文件的来源目录; 空则库根本身就是待整理目录. 与库根及成功/失败目录都不重叠."""
+    scrape_ok_dir: str | None = Field(default=None)
+    """刮削通过后的目的目录; 空则通过后留在原地. 与失败目录互不重叠, 不能落在库根之下."""
     scrape_fail_dir: str | None = Field(default=None)
-    """刮削失败后的目的目录; 空则失败时留在输入目录, 便于直接重试."""
+    """刮削失败后的目的目录; 空则失败后留在原处, 便于直接重试."""
 
     ingest: LibraryIngest = Field(default=LibraryIngest.NATIVE)
     """文件发现通道. clouddrive 不 schedule Observer, 由 webhook 按 cloud_path 分流."""

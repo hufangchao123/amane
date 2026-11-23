@@ -44,23 +44,47 @@ def _reject_overlap(path: Path, other: Path, *, field: str, other_name: str) -> 
         raise HTTPException(status_code=422, detail=f"{field}不能与{other_name}重叠: {path}")
 
 
-def _check_scrape_dirs(*, transfer: bool, input_dir: str | None, fail_dir: str | None, library_path: str) -> None:
-    """刮削后转移的目录校验: 开启时输入目录必填, 三个目录互不重叠.
+def _outside_only(path: Path, root: Path, *, field: str, other_name: str) -> None:
+    """目的目录可以等于上位目录 (等于就是留在原地), 但不能落在它下面: 搬进库内的子目录会被当成新文件重新入库."""
+    if path != root and root in path.parents:
+        raise HTTPException(status_code=422, detail=f"{field}不能位于{other_name}之下: {path}")
 
-    开启后库根是成品目录: 待整理文件先落在输入目录, 刮削结束再搬进库根或失败目录. 目录之间
-    一旦重叠, 搬运结果会被扫描重新登记, 或刚搬出的文件被扫回, 因此直接拒绝.
+
+def _check_scrape_dirs(
+    *,
+    transfer: bool,
+    input_dir: str | None,
+    ok_dir: str | None,
+    fail_dir: str | None,
+    library_path: str,
+) -> None:
+    """刮削后转移的目录校验: 三个目录都可空, 但要留一个.
+
+    输入目录给定时它必须在库外, 否则与扫描互相触发; 成功与失败目录可以等于库根 (等于就是留在
+    原地), 但不能落在库根之下, 否则搬过去的文件会被重新登记成新文件. 三者之间不得互相包含.
     """
     if not transfer:
         return
-    if not input_dir:
-        raise HTTPException(status_code=422, detail="开启刮削后转移时必须填输入目录")
+    if not input_dir and not ok_dir and not fail_dir:
+        raise HTTPException(status_code=422, detail="开启刮削后转移时至少填一个目录")
+
     root = Path(library_path).resolve()
-    source = Path(input_dir).resolve()
-    _reject_overlap(source, root, field="输入目录", other_name="库根")
-    if fail_dir:
-        target = Path(fail_dir).resolve()
-        _reject_overlap(target, root, field="失败目录", other_name="库根")
-        _reject_overlap(target, source, field="失败目录", other_name="输入目录")
+    source = Path(input_dir).resolve() if input_dir else None
+    if source is not None:
+        _reject_overlap(source, root, field="输入目录", other_name="库根")
+
+    targets: list[tuple[str, Path]] = []
+    for field, raw in (("成功目录", ok_dir), ("失败目录", fail_dir)):
+        if not raw:
+            continue
+        target = Path(raw).resolve()
+        _outside_only(target, root, field=field, other_name="库根")
+        if source is not None:
+            _reject_overlap(target, source, field=field, other_name="输入目录")
+        targets.append((field, target))
+
+    if len(targets) == 2 and targets[0][1] == targets[1][1]:
+        raise HTTPException(status_code=422, detail="成功目录与失败目录不能相同")
 
 
 @router.post("", status_code=201)
@@ -70,6 +94,7 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
     _check_scrape_dirs(
         transfer=req.scrape_transfer,
         input_dir=req.scrape_input_dir,
+        ok_dir=req.scrape_ok_dir,
         fail_dir=req.scrape_fail_dir,
         library_path=req.path,
     )
@@ -84,6 +109,7 @@ async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: Runt
             auto_organize=req.auto_organize,
             scrape_transfer=req.scrape_transfer,
             scrape_input_dir=req.scrape_input_dir,
+            scrape_ok_dir=req.scrape_ok_dir,
             scrape_fail_dir=req.scrape_fail_dir,
             ingest=req.ingest,
             cloud_path=req.cloud_path,
@@ -172,6 +198,7 @@ async def update_library(
     _check_scrape_dirs(
         transfer=updates.get("scrape_transfer", current.scrape_transfer),
         input_dir=updates.get("scrape_input_dir", current.scrape_input_dir),
+        ok_dir=updates.get("scrape_ok_dir", current.scrape_ok_dir),
         fail_dir=updates.get("scrape_fail_dir", current.scrape_fail_dir),
         library_path=updates.get("path", current.path),
     )

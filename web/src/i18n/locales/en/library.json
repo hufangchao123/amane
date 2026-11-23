@@ -93,16 +93,21 @@
   "organizeLocked": "Auto organize is off: move mode, NFO and resource copying below only apply when you organize manually",
   "scrapeTransfer": {
     "label": "Transfer after scrape",
-    "hint": "With this on the library root holds finished files: pending files land in the input dir, scraped ones move into the root, failed ones into the failure dir.",
-    "failDir": {
-      "label": "Failure directory",
-      "hint": "Scraped failures move here; leave empty to keep them in the input directory for a retry",
-      "placeholder": "/media/scrape-failed"
-    },
+    "hint": "All three directories are optional: with only success and failure dirs the library root is the inbox; add an input dir and the root becomes the finished library.",
     "inputDir": {
-      "label": "Input directory",
-      "hint": "Where pending files arrive; must sit outside the library root, and is scanned and watched",
-      "placeholder": "/media/pending"
+      "label": "Input directory (optional)",
+      "hint": "Files to be processed land here; must be outside the library root, since scanning and watching cover it. Empty means the library root is the inbox.",
+      "placeholder": "/media/inbox"
+    },
+    "okDir": {
+      "label": "Success directory (optional)",
+      "hint": "Files that scrape successfully move here; empty means they stay in place (which is the library root when an input directory is set).",
+      "placeholder": "/media/scraped"
+    },
+    "failDir": {
+      "label": "Failure directory (optional)",
+      "hint": "Files that fail to scrape move here; empty means they stay where they are, ready for a retry.",
+      "placeholder": "/media/scrape-failed"
     }
   },
   "ingest": {

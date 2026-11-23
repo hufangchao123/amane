@@ -383,15 +383,81 @@ async def test_scrape_transfer_dirs_round_trip(client: AsyncClient, safe_path: P
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_scrape_transfer_requires_input_dir(client: AsyncClient, safe_path: Path) -> None:
-    """开关打开却没有输入目录: 待整理文件无处可放, 因此直接拒绝."""
+async def test_scrape_transfer_requires_at_least_one_dir(client: AsyncClient, safe_path: Path) -> None:
+    """开关打开却三个目录全空: 没有任何搬运方向, 因此直接拒绝."""
     library_root = safe_path / "media"
     library_root.mkdir()
 
     created = await client.post("libraries", json={"path": str(library_root), "scrape_transfer": True})
 
     assert created.status_code == 422
-    assert created.json()["detail"] == "开启刮削后转移时必须填输入目录"
+    assert created.json()["detail"] == "开启刮削后转移时至少填一个目录"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_accepts_ok_and_fail_dirs_without_input(client: AsyncClient, safe_path: Path) -> None:
+    """库根本身就是待整理目录: 只给成功与失败目录即可, 通过后搬走, 不留输入目录."""
+    library_root, done, failed = safe_path / "media", safe_path / "done", safe_path / "failed"
+    library_root.mkdir()
+
+    created = await client.post(
+        "libraries",
+        json={
+            "path": str(library_root),
+            "scrape_transfer": True,
+            "scrape_ok_dir": str(done),
+            "scrape_fail_dir": str(failed),
+        },
+    )
+
+    assert created.status_code == 201
+    body = created.json()
+    assert (body["scrape_input_dir"], body["scrape_ok_dir"], body["scrape_fail_dir"]) == (
+        None,
+        str(done),
+        str(failed),
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_rejects_ok_dir_inside_library(client: AsyncClient, safe_path: Path) -> None:
+    """库内的成功目录会被搬过去的结果重新登记成新文件, 因此拒绝; 等于库根允许 (留在原地)."""
+    library_root, inside = safe_path / "media", safe_path / "media" / "done"
+    inside.mkdir(parents=True)
+
+    rejected = await client.post(
+        "libraries",
+        json={"path": str(library_root), "scrape_transfer": True, "scrape_ok_dir": str(inside)},
+    )
+
+    assert rejected.status_code == 422
+    assert "成功目录不能位于库根之下" in rejected.json()["detail"]
+
+    same = await client.post(
+        "libraries",
+        json={"path": str(library_root), "scrape_transfer": True, "scrape_ok_dir": str(library_root)},
+    )
+    assert same.status_code == 201
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_scrape_transfer_rejects_same_ok_and_fail_dir(client: AsyncClient, safe_path: Path) -> None:
+    """成功与失败目录相同时搬运无从区分, 因此拒绝."""
+    library_root, both = safe_path / "media", safe_path / "both"
+    library_root.mkdir()
+
+    rejected = await client.post(
+        "libraries",
+        json={
+            "path": str(library_root),
+            "scrape_transfer": True,
+            "scrape_ok_dir": str(both),
+            "scrape_fail_dir": str(both),
+        },
+    )
+
+    assert rejected.status_code == 422
+    assert rejected.json()["detail"] == "成功目录与失败目录不能相同"
 
 
 @pytest.mark.asyncio(loop_scope="function")

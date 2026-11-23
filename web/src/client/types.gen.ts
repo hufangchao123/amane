@@ -2251,6 +2251,10 @@ export type LibraryCreateRequest = {
      */
     scrape_input_dir?: string | null;
     /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
+    /**
      * Scrape Fail Dir
      */
     scrape_fail_dir?: string | null;
@@ -2390,6 +2394,10 @@ export type LibraryResponse = {
      */
     scrape_input_dir: string | null;
     /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
+    /**
      * Scrape Fail Dir
      */
     scrape_fail_dir?: string | null;
@@ -2503,6 +2511,10 @@ export type LibraryUpdateRequest = {
      * Scrape Input Dir
      */
     scrape_input_dir?: string | null;
+    /**
+     * Scrape Ok Dir
+     */
+    scrape_ok_dir?: string | null;
     /**
      * Scrape Fail Dir
      */
