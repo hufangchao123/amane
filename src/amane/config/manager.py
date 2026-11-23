@@ -901,8 +901,12 @@ class WashConfig(BaseModel):
     """参与洗版的本地文件."""
     min_size_mb: int = Field(default=300, ge=0)
     """本地文件小于此体积不参与洗版, 避免误删样片; STRM 指针不受此限 (指针本身只有几百字节)."""
-    prefer: WashPrefer = WashPrefer.QUALITY
-    """本地文件留哪一份: 默认按画质 (分辨率 → 码率 → 体积); 其余三种只比一个维度."""
+    prefer: list[WashPrefer] = Field(default_factory=lambda: [WashPrefer.QUALITY], json_schema_extra={"x-ordered": True})
+    """本地文件留哪一份: 按顺序比较, 排前面的维度先分出高下.
+
+    画质这一维内部仍是「分辨率 → 码率 → 体积」; 字幕维度按「文件名带中文字幕标记 → 有外挂字幕 →
+    没有」比较. 只填一项等于旧的单选行为, 老配置的字符串也照旧接受.
+    """
     strm: bool = True
     """参与洗版的 STRM 文件."""
     strm_prefer: StrmPrefer = StrmPrefer.PATH
@@ -915,6 +919,16 @@ class WashConfig(BaseModel):
     """同档位时保留者要比落选者大出这个百分比才算没有争议; 低于它只出清单."""
     keep_days: int = Field(default=30, ge=1, le=365, json_schema_extra={"x-group": "shared"})
     """回收站保留天数, 到期由清理任务删除. 两种文件共用这一个保留期, 表单里因此单独成框."""
+
+    @field_validator("prefer", mode="before")
+    @classmethod
+    def _prefer_as_list(cls, value: object) -> object:
+        """把旧的单选写法 (一个字符串) 当成只填了一项, 空列表回到默认."""
+        if value is None or value == [] or value == ():
+            return [WashPrefer.QUALITY]
+        if isinstance(value, str):
+            return [value]
+        return value
 
 
 NotifyKind = Literal["webhook", "bark", "serverchan", "telegram"]

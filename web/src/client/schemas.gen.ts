@@ -3954,7 +3954,9 @@ export const HotSettingsSchema = {
                 enabled: false,
                 local: true,
                 min_size_mb: 300,
-                prefer: 'quality',
+                prefer: [
+                    'quality'
+                ],
                 strm: true,
                 strm_prefer: 'path',
                 auto_on_ingest: false,
@@ -12497,6 +12499,16 @@ export const WashCandidateSchema = {
             type: 'integer',
             title: 'Bytes Freed',
             default: 0
+        },
+        ignored: {
+            type: 'boolean',
+            title: 'Ignored',
+            default: false
+        },
+        pinned: {
+            type: 'boolean',
+            title: 'Pinned',
+            default: false
         }
     },
     type: 'object',
@@ -12544,6 +12556,107 @@ export const WashCandidateSortFieldSchema = {
     description: '候选列表的排序字段.'
 } as const;
 
+export const WashChoiceActionSchema = {
+    type: 'string',
+    enum: [
+        'keep',
+        'ignore'
+    ],
+    title: 'WashChoiceAction',
+    description: '使用者对一组洗版候选的决定.'
+} as const;
+
+export const WashChoiceClearResponseSchema = {
+    properties: {
+        cleared: {
+            type: 'boolean',
+            title: 'Cleared'
+        }
+    },
+    type: 'object',
+    required: [
+        'cleared'
+    ],
+    title: 'WashChoiceClearResponse'
+} as const;
+
+export const WashChoiceItemSchema = {
+    properties: {
+        group_key: {
+            type: 'string',
+            title: 'Group Key'
+        },
+        action: {
+            $ref: '#/components/schemas/WashChoiceAction'
+        },
+        keep_path: {
+            type: 'string',
+            title: 'Keep Path'
+        },
+        updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updated At'
+        }
+    },
+    type: 'object',
+    required: [
+        'group_key',
+        'action',
+        'keep_path',
+        'updated_at'
+    ],
+    title: 'WashChoiceItem',
+    description: '一条决定; 列表页据此显示「已钉住 / 已忽略」.'
+} as const;
+
+export const WashChoiceListResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/WashChoiceItem'
+            },
+            type: 'array',
+            title: 'Items'
+        }
+    },
+    type: 'object',
+    required: [
+        'items'
+    ],
+    title: 'WashChoiceListResponse'
+} as const;
+
+export const WashChoiceRequestSchema = {
+    properties: {
+        group_key: {
+            type: 'string',
+            maxLength: 200,
+            minLength: 1,
+            title: 'Group Key',
+            description: '候选分组键'
+        },
+        action: {
+            $ref: '#/components/schemas/WashChoiceAction',
+            description: 'keep 钉住一份; ignore 整组都留着'
+        },
+        keep_path: {
+            type: 'string',
+            maxLength: 1000,
+            title: 'Keep Path',
+            description: 'action=keep 时钉住的那一份',
+            default: ''
+        }
+    },
+    type: 'object',
+    required: [
+        'group_key',
+        'action'
+    ],
+    title: 'WashChoiceRequest',
+    description: '对某一组候选的显式决定: 钉住一份, 或者整组留着不再提示.'
+} as const;
+
 export const WashConfigSchema = {
     properties: {
         enabled: {
@@ -12563,8 +12676,12 @@ export const WashConfigSchema = {
             default: 300
         },
         prefer: {
-            $ref: '#/components/schemas/WashPrefer',
-            default: 'quality'
+            items: {
+                $ref: '#/components/schemas/WashPrefer'
+            },
+            type: 'array',
+            title: 'Prefer',
+            'x-ordered': true
         },
         strm: {
             type: 'boolean',
@@ -12610,12 +12727,13 @@ export const WashPreferSchema = {
     type: 'string',
     enum: [
         'quality',
+        'subtitle',
         'largest',
         'newest',
         'oldest'
     ],
     title: 'WashPrefer',
-    description: '洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度.'
+    description: '洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.\n\n只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:\n让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.'
 } as const;
 
 export const WashPurgeRoutineSchema = {

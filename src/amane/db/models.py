@@ -827,6 +827,32 @@ class WashRecordState(StrEnum):
     PURGED = "purged"
 
 
+class WashChoiceAction(StrEnum):
+    """使用者对一组洗版候选的决定."""
+
+    KEEP = "keep"
+    """钉住其中一份: 它就是保留者, 其余照常进回收站."""
+    IGNORE = "ignore"
+    """整组不再参与: 两份都留着, 也不计入可回收的体积."""
+
+
+class WashChoice(SQLModel, table=True):
+    """`wash_choices`: 人对某一组的显式决定, 扫描与执行都先读它.
+
+    分组键随文件增删而变, 因此记录可能变成孤儿; 扫描时对不上的键会被清掉, 不会越积越多.
+    """
+
+    __tablename__ = "wash_choices"  # type: ignore[assignment]
+
+    id: int | None = Field(default=None, primary_key=True)
+    group_key: str = Field(index=True, unique=True)
+    action: WashChoiceAction
+    keep_path: str = Field(default="")
+    """``action=keep`` 时钉住的那一份的库内路径; ``ignore`` 时为空."""
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow, index=True)
+
+
 class NotifyRecord(SQLModel, table=True):
     """一次推送的留痕; 只记结果与摘要, 不记渠道地址 (那可能含密钥)."""
 

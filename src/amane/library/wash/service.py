@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Literal
 
@@ -19,10 +20,10 @@ from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 
 from ...config.manager import WashConfig
-from ...db.models import MediaFile, SortOrder, WashRecordKind, WashRecordState
+from ...db.models import MediaFile, SortOrder, WashChoiceAction, WashRecordKind, WashRecordState
 from ...db.repos.ops_wash import WashRecordSortField
 from .collect import collect_entries
-from .model import WashGroup, build_groups
+from .model import WashGroup, build_groups, sort_key
 
 logger = structlog.get_logger()
 
@@ -68,6 +69,10 @@ class WashCandidate(BaseModel):
     keep_size: int = 0
     drop_paths: list[str] = []
     bytes_freed: int = 0
+    ignored: bool = False
+    """使用者选了「都留着」, 这一组不计入可回收体积."""
+    pinned: bool = False
+    """保留者是使用者钉住的, 不是算法选的."""
 
 
 class WashSummary(BaseModel):
@@ -132,15 +137,53 @@ class WashService:
         page = ordered[offset : offset + limit]
         return [self._candidate(group) for group in page], len(ordered)
 
-    async def groups(self, *, kind: WashKindFilter = None, library_id: int | None = None) -> list[WashGroup]:
-        """当前的候选分组 (未排序)."""
+    async def groups(
+        self, *, kind: WashKindFilter = None, library_id: int | None = None, include_ignored: bool = True
+    ) -> list[WashGroup]:
+        """当前的候选分组 (未排序), 已套上使用者的显式决定.
+
+        ``include_ignored`` 为假时把「都留着」的组摘掉 —— 执行路径用它, 免得搬走使用者要留的东西;
+        列表页用真值, 好让那几组还能被撤销.
+        """
         entries = await collect_entries(self._repo, kinds=self.kinds(kind), library_id=library_id)
-        return build_groups(
+        groups = build_groups(
             entries,
             min_size_bytes=self._min_size_bytes(),
             prefer=self._config.prefer,
             strm_prefer=self._config.strm_prefer,
         )
+        chosen = await self._apply_choices(groups)
+        if include_ignored:
+            return chosen
+        return [group for group in chosen if not group.ignored]
+
+    async def _apply_choices(self, groups: list[WashGroup]) -> list[WashGroup]:
+        """把 ``wash_choices`` 套到分组上.
+
+        ``ignore`` 清掉落选者 (组里两份都留着); ``keep`` 把使用者钉的那一份提到保留位. 钉住的那份
+        已经不在组里 (被删或被洗掉) 时按算法结果处理, 不因为一条过期决定卡住整组.
+        """
+        choices = await self._repo.list_wash_choices()
+        if not choices:
+            return groups
+        applied: list[WashGroup] = []
+        for group in groups:
+            choice = choices.get(group.group_key)
+            if choice is None:
+                applied.append(group)
+                continue
+            if choice.action is WashChoiceAction.IGNORE:
+                applied.append(replace(group, drops=(), ignored=True))
+                continue
+            members = (group.keep, *group.drops)
+            pinned = next((entry for entry in members if entry.path == choice.keep_path), None)
+            if pinned is None:
+                applied.append(group)
+                continue
+            applied.append(
+                replace(group, keep=pinned, drops=tuple(entry for entry in members if entry.path != pinned.path))
+            )
+        return applied
 
     async def records(
         self,
@@ -169,7 +212,18 @@ class WashService:
             keep_size=group.keep.size,
             drop_paths=[entry.path for entry in group.drops],
             bytes_freed=group.bytes_freed,
+            ignored=group.ignored,
+            pinned=not group.ignored and group.keep.path != self._algorithm_keep_path(group),
         )
+
+    def _algorithm_keep_path(self, group: WashGroup) -> str:
+        """不算使用者决定时算法会选的那一份; 用来区分「钉住的保留者」与「算法选的」."""
+        if group.ignored or not group.drops:
+            return group.keep.path
+        members = sorted(
+            (group.keep, *group.drops), key=lambda entry: sort_key(entry, self._config.prefer, self._config.strm_prefer)
+        )
+        return members[0].path
 
     def _sorted_groups(
         self, groups: list[WashGroup], *, sort_by: WashCandidateSortField, order: SortOrder

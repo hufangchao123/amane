@@ -18,6 +18,7 @@ from amane.library.wash.model import (
     group_key_of,
     is_unambiguous,
     library_id_of,
+    subtitle_rank_of,
 )
 from amane.parsing import Mosaic
 
@@ -37,6 +38,7 @@ def entry(
     mosaic: Mosaic | None = None,
     cd: int | None = None,
     mtime: float | None = None,
+    subtitle_rank: int = 2,
 ) -> WashEntry:
     return WashEntry(
         path=f"/lib/{name}",
@@ -49,6 +51,7 @@ def entry(
         mosaic=mosaic,
         cd=cd,
         mtime=mtime,
+        subtitle_rank=subtitle_rank,
     )
 
 
@@ -430,3 +433,43 @@ def test_is_unambiguous_never_passes_strm() -> None:
     keep = entry("keep.strm", size=0, definition="1080p")
     drop = entry("drop.strm", size=0, definition="720p")
     assert is_unambiguous(group_of(keep, drop, kind=STRM), min_gain_percent=30) is False
+
+
+SUBTITLE_RANK_CASES = [
+    pytest.param("ABC-123-C.mkv", {}, 0, id="hyphen-c"),
+    pytest.param("ABC-123 中文字幕.mkv", {}, 0, id="chinese-token"),
+    pytest.param("ABC-123.chs.mkv", {}, 0, id="chs"),
+    pytest.param("ABC-123-cd2.mkv", {}, 2, id="cd-is-not-subtitle"),
+    pytest.param("ABC-123-ch.mkv", {}, 2, id="ch-is-not-c"),
+    pytest.param("ABC-123.mkv", {"has_external": True}, 1, id="external"),
+    pytest.param("ABC-123.mkv", {"has_subtitle_in_name": True}, 1, id="any-subtitle-in-name"),
+    pytest.param("ABC-123.mkv", {}, 2, id="none"),
+]
+
+
+@pytest.mark.parametrize(("name", "flags", "expected"), SUBTITLE_RANK_CASES)
+def test_subtitle_rank_reads_the_file_name_first(name: str, flags: dict[str, bool], expected: int) -> None:
+    """字幕维度: 文件名里的中文标记最强, 其次外挂, 最后都没有."""
+    assert subtitle_rank_of(name, **flags) == expected
+
+
+def test_prefer_order_decides_which_dimension_wins_first() -> None:
+    """维度顺序可配: 先字幕时 720p 中字版胜过 1080p 无字幕版, 先画质时反过来."""
+    subtitled = entry("ABC-123-720p-C.mkv", definition="720p", subtitle_rank=0, size=800)
+    sharper = entry("ABC-123-1080p.mkv", definition="1080p", subtitle_rank=2, size=1000)
+
+    by_quality = build_groups([subtitled, sharper], min_size_bytes=0, prefer=[WashPrefer.QUALITY])
+    by_subtitle = build_groups([subtitled, sharper], min_size_bytes=0, prefer=[WashPrefer.SUBTITLE])
+
+    assert by_quality[0].keep is sharper
+    assert by_subtitle[0].keep is subtitled
+
+
+def test_is_unambiguous_refuses_to_drop_a_better_subtitle() -> None:
+    """落选者带着更好的字幕时不算「没有争议」, 即使分辨率档位不同."""
+    kept = entry("ABC-123-1080p.mkv", definition="1080p", subtitle_rank=2, size=1000)
+    dropped = entry("ABC-123-720p-C.mkv", definition="720p", subtitle_rank=0, size=500)
+    group = build_groups([kept, dropped], min_size_bytes=0, prefer=[WashPrefer.QUALITY])[0]
+
+    assert group.keep is kept
+    assert is_unambiguous(group, min_gain_percent=30) is False

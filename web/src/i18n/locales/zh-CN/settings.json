@@ -954,13 +954,16 @@
         "description": "被移走的文件保留多久后清理"
       },
       "prefer": {
-        "label": "保留哪一份",
-        "description": "按画质比较分辨率与码率。其余三种只比一个维度。",
-        "options": {
-          "quality": "画质优先（推荐）",
-          "largest": "体积最大",
-          "newest": "修改时间最新",
-          "oldest": "修改时间最旧"
+        "label": "比较顺序",
+        "description": "按顺序比较，排在前面的先分出高下；拖动可调整顺序。画质内部仍按分辨率 → 码率 → 体积。",
+        "$": {
+          "options": {
+            "quality": "画质（分辨率 → 码率 → 体积）",
+            "subtitle": "字幕（中文字幕 > 外挂字幕 > 无）",
+            "largest": "体积最大",
+            "newest": "修改时间最新",
+            "oldest": "修改时间最旧"
+          }
         }
       },
       "strm_prefer": {

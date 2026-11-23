@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
-from ...db.models import SortOrder, TaskType, WashRecordKind, WashRecordState
+from ...db.models import SortOrder, TaskType, WashChoiceAction, WashRecordKind, WashRecordState
 from ...db.repos.ops_wash import WashRecordSortField
 from ...handlers.models import WashApplyPayload
 from ...library.wash import WashCandidateSortField, WashService
@@ -22,6 +22,10 @@ from ..deps import ConfigDep, RepoDep
 from ..models import TaskResponse
 from ..models.wash import (
     WashCandidateListResponse,
+    WashChoiceClearResponse,
+    WashChoiceItem,
+    WashChoiceListResponse,
+    WashChoiceRequest,
     WashRecordActionRequest,
     WashRecordItem,
     WashRecordListResponse,
@@ -109,3 +113,39 @@ async def _require_records(repo: Repository, ids: list[int], state: WashRecordSt
 async def _enqueue(repo: Repository, payload: WashApplyPayload) -> TaskResponse:
     task = await repo.create_task(task_type=TaskType.WASH_APPLY, payload=payload)
     return to_resp(TaskResponse, task)
+
+
+@router.get("/choices", response_model=WashChoiceListResponse)
+async def wash_choices(repo: RepoDep) -> WashChoiceListResponse:
+    """当前所有显式决定: 钉住哪一份、哪些组选择了都留着."""
+    choices = await repo.list_wash_choices()
+    items = [
+        WashChoiceItem(
+            group_key=choice.group_key, action=choice.action, keep_path=choice.keep_path, updated_at=choice.updated_at
+        )
+        for choice in sorted(choices.values(), key=lambda choice: choice.updated_at, reverse=True)
+    ]
+    return WashChoiceListResponse(items=items)
+
+
+@router.put("/choices", response_model=WashChoiceItem)
+async def wash_choice_set(req: WashChoiceRequest, repo: RepoDep) -> WashChoiceItem:
+    """写入一组的决定 (覆盖旧值).
+
+    ``keep`` 要给出组里存在的那一份的库内路径: 路径对不上时扫描会退回算法排序, 这里不拦 ——
+    路径会随整理与转移变化, 用严格校验换来的只是又一次失败.
+    """
+    if req.action is WashChoiceAction.KEEP and not req.keep_path.strip():
+        raise HTTPException(status_code=422, detail="钉住一份时要给出要保留的文件路径")
+    await repo.set_wash_choice(req.group_key, req.action, req.keep_path.strip())
+    choices = await repo.list_wash_choices()
+    choice = choices[req.group_key]
+    return WashChoiceItem(
+        group_key=choice.group_key, action=choice.action, keep_path=choice.keep_path, updated_at=choice.updated_at
+    )
+
+
+@router.delete("/choices/{group_key}", response_model=WashChoiceClearResponse)
+async def wash_choice_clear(group_key: str, repo: RepoDep) -> WashChoiceClearResponse:
+    """撤销一组的决定, 回到算法选择."""
+    return WashChoiceClearResponse(cleared=await repo.clear_wash_choice(group_key))

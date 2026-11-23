@@ -954,13 +954,16 @@
         "description": "How long moved files stay before being purged"
       },
       "prefer": {
-        "label": "Which copy to keep",
-        "description": "Quality compares resolution then bitrate. The other three compare a single dimension.",
-        "options": {
-          "quality": "Best quality (recommended)",
-          "largest": "Largest file",
-          "newest": "Newest modified",
-          "oldest": "Oldest modified"
+        "label": "Comparison order",
+        "description": "Compared in order; earlier dimensions decide first. Drag to reorder. Quality still means resolution → bitrate → size.",
+        "$": {
+          "options": {
+            "quality": "Quality (resolution → bitrate → size)",
+            "subtitle": "Subtitles (Chinese > external > none)",
+            "largest": "Largest file",
+            "newest": "Newest modified",
+            "oldest": "Oldest modified"
+          }
         }
       },
       "strm_prefer": {

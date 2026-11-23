@@ -269,3 +269,71 @@ async def test_action_rejects_wrong_state(
 
     assert resp.status_code == 422
     assert str(record_id) in resp.json()["detail"]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_choice_round_trip(
+    wash_client: AsyncClient,
+    wash_open_db: Path,
+    wash_repo: Repository,
+    tmp_path: Path,
+) -> None:
+    """钉住一份 → 候选里保留者换成它 → 撤销后回到算法选择."""
+    root = tmp_path / "media"
+    root.mkdir()
+    (root / "ABC-123-1080p.mkv").write_bytes(b"x" * 3000)
+    (root / "ABC-123-720p.mp4").write_bytes(b"x" * 1000)
+    library = await wash_repo.create_library(name="media", path=str(root), write_nfo=False)
+    assert library.id is not None
+    for name in ("ABC-123-1080p.mkv", "ABC-123-720p.mp4"):
+        await wash_repo.create_media_file(library.id, path=str(root / name), number="ABC-123")
+    group_key = f"lib{library.id}:ABC-123"
+
+    pinned = await wash_client.put(
+        "wash/choices", json={"group_key": group_key, "action": "keep", "keep_path": str(root / "ABC-123-720p.mp4")}
+    )
+    listed = (await wash_client.get("wash/choices")).json()
+    candidates = (await wash_client.get("wash/candidates", params={"kind": "local"})).json()
+
+    assert pinned.status_code == 200
+    assert pinned.json()["action"] == "keep"
+    assert [item["group_key"] for item in listed["items"]] == [group_key]
+    item = candidates["items"][0]
+    assert item["keep_path"] == str(root / "ABC-123-720p.mp4")
+    assert item["pinned"] is True
+
+    cleared = await wash_client.delete(f"wash/choices/{group_key}")
+    after = (await wash_client.get("wash/candidates", params={"kind": "local"})).json()
+
+    assert cleared.json() == {"cleared": True}
+    assert after["items"][0]["keep_path"] == str(root / "ABC-123-1080p.mkv")
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_ignore_group_hides_its_drops(wash_client: AsyncClient, wash_repo: Repository, tmp_path: Path) -> None:
+    """忽略的组仍列在候选里, 但没有落选者、不释放体积."""
+    root = tmp_path / "media"
+    root.mkdir()
+    (root / "ABC-200-1080p.mkv").write_bytes(b"x" * 3000)
+    (root / "ABC-200-720p.mp4").write_bytes(b"x" * 1000)
+    library = await wash_repo.create_library(name="media", path=str(root), write_nfo=False)
+    assert library.id is not None
+    for name in ("ABC-200-1080p.mkv", "ABC-200-720p.mp4"):
+        await wash_repo.create_media_file(library.id, path=str(root / name), number="ABC-200")
+
+    await wash_client.put(
+        "wash/choices", json={"group_key": f"lib{library.id}:ABC-200", "action": "ignore"}
+    )
+    item = (await wash_client.get("wash/candidates", params={"kind": "local"})).json()["items"][0]
+
+    assert item["ignored"] is True
+    assert item["drop_paths"] == []
+    assert item["bytes_freed"] == 0
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_keep_requires_a_path(wash_client: AsyncClient) -> None:
+    """钉住一份却不给路径: 422, 不猜."""
+    resp = await wash_client.put("wash/choices", json={"group_key": "lib1:ABC-123", "action": "keep"})
+
+    assert resp.status_code == 422

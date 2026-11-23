@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func
 from sqlmodel import col, select
 
-from ..models import SortOrder, WashRecord, WashRecordKind, WashRecordState
-from ..repo_types import _order_clause
+from ..models import SortOrder, WashChoice, WashChoiceAction, WashRecord, WashRecordKind, WashRecordState
+from ..repo_types import _order_clause, _utcnow
 from .base import RepositoryMixinBase, chunks
 
 if TYPE_CHECKING:
@@ -157,3 +157,43 @@ class WashRepoMixin(RepositoryMixinBase):
                 )
             ).one()
         return int(count), int(total_bytes)
+
+    async def list_wash_choices(self) -> dict[str, WashChoice]:
+        """全部显式决定, 以分组键为索引; 扫描与执行每轮都读一次, 量级是「人挑过的组数」."""
+        async with self._session() as session:
+            rows = (await session.exec(select(WashChoice))).all()
+            return {choice.group_key: choice for choice in rows}
+
+    async def set_wash_choice(self, group_key: str, action: WashChoiceAction, keep_path: str = "") -> None:
+        """写入或覆盖一组的决定; 同一组只保留一条, 改主意就是覆盖."""
+        async with self._session() as session:
+            existing = await session.scalar(select(WashChoice).where(col(WashChoice.group_key) == group_key))
+            if existing is None:
+                session.add(WashChoice(group_key=group_key, action=action, keep_path=keep_path))
+            else:
+                existing.action = action
+                existing.keep_path = keep_path
+                existing.updated_at = _utcnow()
+                session.add(existing)
+            await session.commit()
+
+    async def clear_wash_choice(self, group_key: str) -> bool:
+        """撤销一组的决定; 返回是否真删掉了一条."""
+        async with self._session() as session:
+            existing = await session.scalar(select(WashChoice).where(col(WashChoice.group_key) == group_key))
+            if existing is None:
+                return False
+            await session.delete(existing)
+            await session.commit()
+            return True
+
+    async def drop_stale_wash_choices(self, valid_keys: set[str]) -> int:
+        """清掉分组已经不存在的决定; 文件被洗掉或删掉后这些键不会再出现."""
+        async with self._session() as session:
+            rows = (await session.exec(select(WashChoice))).all()
+            stale = [choice for choice in rows if choice.group_key not in valid_keys]
+            for choice in stale:
+                await session.delete(choice)
+            if stale:
+                await session.commit()
+            return len(stale)

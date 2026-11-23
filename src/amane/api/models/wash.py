@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Self
 
 from pydantic import BaseModel, Field
 
-from ...db.models import WashRecordKind, WashRecordState
+from ...db.models import WashChoiceAction, WashRecordKind, WashRecordState
 from ...library.wash import WashCandidate
 
 if TYPE_CHECKING:
@@ -66,6 +66,31 @@ class WashRecordItem(BaseModel):
 class WashRecordListResponse(BaseModel):
     items: list[WashRecordItem]
     total: int
+
+
+class WashChoiceRequest(BaseModel):
+    """对某一组候选的显式决定: 钉住一份, 或者整组留着不再提示."""
+
+    group_key: Annotated[str, Field(min_length=1, max_length=200, description="候选分组键")]
+    action: Annotated[WashChoiceAction, Field(description="keep 钉住一份; ignore 整组都留着")]
+    keep_path: Annotated[str, Field(default="", max_length=1000, description="action=keep 时钉住的那一份")]
+
+
+class WashChoiceItem(BaseModel):
+    """一条决定; 列表页据此显示「已钉住 / 已忽略」."""
+
+    group_key: str
+    action: WashChoiceAction
+    keep_path: str
+    updated_at: datetime
+
+
+class WashChoiceListResponse(BaseModel):
+    items: list[WashChoiceItem]
+
+
+class WashChoiceClearResponse(BaseModel):
+    cleared: bool
 
 
 class WashRecordActionRequest(BaseModel):

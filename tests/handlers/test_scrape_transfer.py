@@ -7,6 +7,7 @@ import pytest
 
 from amane.config import HotSettings
 from amane.config.manager import MediaServerConfig
+from amane.db.models import TaskType
 from amane.handlers import ScrapeTransferHandler, ScrapeTransferPayload
 from amane.handlers._common import LibraryTaskLocks
 
@@ -22,6 +23,7 @@ async def _library(
     ok_dir: Path | None = None,
     fail_dir: Path | None = None,
     transfer: bool = True,
+    auto_organize: bool = False,
 ) -> int:
     root.mkdir(parents=True, exist_ok=True)
     library = await repo.create_library(
@@ -31,6 +33,7 @@ async def _library(
         scrape_input_dir=str(pending) if pending is not None else None,
         scrape_ok_dir=str(ok_dir) if ok_dir is not None else None,
         scrape_fail_dir=str(fail_dir) if fail_dir is not None else None,
+        auto_organize=auto_organize,
     )
     assert library.id is not None
     return library.id
@@ -263,3 +266,53 @@ async def test_success_scans_for_wash_when_auto_on_ingest_is_on(repo: Repository
 
     assert result.success is True
     assert [followup.task_type.value for followup in result.followups] == ["wash_scan"]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_landing_in_library_root_also_organizes(repo: Repository, tmp_path: Path) -> None:
+    """落点就是库根时补一次整理: 否则文件以原名平铺在库根, 永远不会按模板归位."""
+    root, pending = tmp_path / "done", tmp_path / "in"
+    library_id = await _library(repo, root, pending=pending, auto_organize=True)
+    video = pending / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success, result.error
+    organize = [f for f in result.followups if f.task_type == TaskType.ORGANIZE]
+    assert len(organize) == 1
+    assert organize[0].payload["media_file_ids"] == [media_id]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_explicit_ok_dir_skips_organize(repo: Repository, tmp_path: Path) -> None:
+    """落点是单独的成品目录时不整理: 那是使用者已经排好的树."""
+    root, pending, ok_dir = tmp_path / "done", tmp_path / "in", tmp_path / "out"
+    library_id = await _library(repo, root, pending=pending, ok_dir=ok_dir, auto_organize=True)
+    video = pending / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success, result.error
+    assert not [f for f in result.followups if f.task_type == TaskType.ORGANIZE]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_organize_followup_needs_the_library_switch(repo: Repository, tmp_path: Path) -> None:
+    """库没开自动整理时不排整理."""
+    root, pending = tmp_path / "done", tmp_path / "in"
+    library_id = await _library(repo, root, pending=pending, auto_organize=False)
+    video = pending / "ABC-123" / "ABC-123-1080p.mp4"
+    media_id = await _media(repo, library_id, video)
+
+    result = await ScrapeTransferHandler(repo, HotSettings(), LibraryTaskLocks()).handle(
+        ScrapeTransferPayload(media_file_id=media_id, outcome="ok")
+    )
+
+    assert result.success, result.error
+    assert not [f for f in result.followups if f.task_type == TaskType.ORGANIZE]

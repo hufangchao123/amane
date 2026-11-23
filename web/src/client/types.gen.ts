@@ -6705,6 +6705,14 @@ export type WashCandidate = {
      * Bytes Freed
      */
     bytes_freed?: number;
+    /**
+     * Ignored
+     */
+    ignored?: boolean;
+    /**
+     * Pinned
+     */
+    pinned?: boolean;
 };
 
 /**
@@ -6731,6 +6739,78 @@ export type WashCandidateListResponse = {
 export type WashCandidateSortField = 'bytes_freed' | 'group_key' | 'keep_path';
 
 /**
+ * WashChoiceAction
+ *
+ * 使用者对一组洗版候选的决定.
+ */
+export type WashChoiceAction = 'keep' | 'ignore';
+
+/**
+ * WashChoiceClearResponse
+ */
+export type WashChoiceClearResponse = {
+    /**
+     * Cleared
+     */
+    cleared: boolean;
+};
+
+/**
+ * WashChoiceItem
+ *
+ * 一条决定; 列表页据此显示「已钉住 / 已忽略」.
+ */
+export type WashChoiceItem = {
+    /**
+     * Group Key
+     */
+    group_key: string;
+    action: WashChoiceAction;
+    /**
+     * Keep Path
+     */
+    keep_path: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * WashChoiceListResponse
+ */
+export type WashChoiceListResponse = {
+    /**
+     * Items
+     */
+    items: Array<WashChoiceItem>;
+};
+
+/**
+ * WashChoiceRequest
+ *
+ * 对某一组候选的显式决定: 钉住一份, 或者整组留着不再提示.
+ */
+export type WashChoiceRequest = {
+    /**
+     * Group Key
+     *
+     * 候选分组键
+     */
+    group_key: string;
+    /**
+     * keep 钉住一份; ignore 整组都留着
+     */
+    action: WashChoiceAction;
+    /**
+     * Keep Path
+     *
+     * action=keep 时钉住的那一份
+     */
+    keep_path?: string;
+};
+
+/**
  * WashConfig
  *
  * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
@@ -6751,7 +6831,10 @@ export type WashConfig = {
      * Min Size Mb
      */
     min_size_mb?: number;
-    prefer?: WashPrefer;
+    /**
+     * Prefer
+     */
+    prefer?: Array<WashPrefer>;
     /**
      * Strm
      */
@@ -6778,9 +6861,12 @@ export type WashConfig = {
 /**
  * WashPrefer
  *
- * 洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度.
+ * 洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.
+ *
+ * 只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:
+ * 让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.
  */
-export type WashPrefer = 'quality' | 'largest' | 'newest' | 'oldest';
+export type WashPrefer = 'quality' | 'subtitle' | 'largest' | 'newest' | 'oldest';
 
 /**
  * WashPurgeRoutine
@@ -11195,6 +11281,77 @@ export type PurgeWashRecordsResponses = {
 };
 
 export type PurgeWashRecordsResponse = PurgeWashRecordsResponses[keyof PurgeWashRecordsResponses];
+
+export type WashChoicesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/wash/choices';
+};
+
+export type WashChoicesResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashChoiceListResponse;
+};
+
+export type WashChoicesResponse = WashChoicesResponses[keyof WashChoicesResponses];
+
+export type WashChoiceSetData = {
+    body: WashChoiceRequest;
+    path?: never;
+    query?: never;
+    url: '/api/wash/choices';
+};
+
+export type WashChoiceSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WashChoiceSetError = WashChoiceSetErrors[keyof WashChoiceSetErrors];
+
+export type WashChoiceSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashChoiceItem;
+};
+
+export type WashChoiceSetResponse = WashChoiceSetResponses[keyof WashChoiceSetResponses];
+
+export type WashChoiceClearData = {
+    body?: never;
+    path: {
+        /**
+         * Group Key
+         */
+        group_key: string;
+    };
+    query?: never;
+    url: '/api/wash/choices/{group_key}';
+};
+
+export type WashChoiceClearErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WashChoiceClearError = WashChoiceClearErrors[keyof WashChoiceClearErrors];
+
+export type WashChoiceClearResponses = {
+    /**
+     * Successful Response
+     */
+    200: WashChoiceClearResponse;
+};
+
+export type WashChoiceClearResponse2 = WashChoiceClearResponses[keyof WashChoiceClearResponses];
 
 export type GetNfoStatusData = {
     body?: never;

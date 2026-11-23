@@ -54,7 +54,8 @@
       "size": "体积",
       "state": "状态",
       "created": "入站",
-      "expires": "到期"
+      "expires": "到期",
+      "actions": "操作"
     },
     "kind": {
       "local": "本地",
@@ -77,7 +78,14 @@
     "confirmRestoreMessage": "选中的文件会从回收站移回原位, 目标位置已有文件时按冲突规则处理. 继续?",
     "confirmPurgeTitle": "清理回收站",
     "confirmPurgeMessage": "只有已到期的记录会被真正删除, 未到期的继续留着. 继续?",
-    "selected": "已选 {{count}} 条"
+    "selected": "已选 {{count}} 条",
+    "pinned": "已钉住",
+    "ignored": "已忽略",
+    "ignoredDrops": "整组都留着",
+    "keepThis": "留这份",
+    "keepAll": "都留着",
+    "choiceRestore": "恢复",
+    "choiceFailed": "保存决定失败"
   },
   "maintenance": {
     "title": "库维护",

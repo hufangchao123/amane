@@ -98,9 +98,14 @@ class LinkMode(StrEnum):
 
 
 class WashPrefer(StrEnum):
-    """洗版择一时留哪一份. 默认按画质, 其余三种按用户指定的单一维度."""
+    """洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.
+
+    只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:
+    让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.
+    """
 
     QUALITY = "quality"
+    SUBTITLE = "subtitle"
     LARGEST = "largest"
     NEWEST = "newest"
     OLDEST = "oldest"

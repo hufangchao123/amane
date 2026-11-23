@@ -4,6 +4,7 @@ from ..db.models import TaskType, WashRecord
 from ..library.wash import apply as wash_apply
 from ..library.wash.model import WashGroup, is_unambiguous
 from ..library.wash.service import WashKindFilter, WashService, parse_kind
+from ..observability import current
 from ._common import media_refresh_followups
 from .models import WashApplyPayload, WashApplyResult, WashScanPayload, WashScanResult
 from .protocol import FollowupTask, TaskHandler, TaskResult
@@ -33,7 +34,13 @@ class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
             return TaskResult(success=False, error=f"媒体库 {payload.library_id} 不存在")
 
         await self.report_progress(0, 1, "scan")
-        groups = await service.groups(kind=parse_kind(payload.kind), library_id=payload.library_id)
+        every = await service.groups(kind=parse_kind(payload.kind), library_id=payload.library_id)
+        # 分组已经不存在的决定留着不会有害, 但会让人在设置里看到一条对不上任何组的记录.
+        dropped = await self._repo.drop_stale_wash_choices({group.group_key for group in every})
+        if dropped:
+            current().info("wash choices dropped", count=dropped)
+        # 「都留着」的组不进统计也不给自动执行: 使用者已经表态不洗这两份.
+        groups = [group for group in every if not group.ignored]
         await self.report_progress(1, 1, "done")
 
         # 只把「档位不同」或「同档位体积明显更大」的组交给自动执行; 其余仍在清单里等人挑.
@@ -202,7 +209,7 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
         重新计算而不是信任请求: 候选列表可能已经过期, 而「要搬走的路径」必须以此刻的磁盘为准.
         显式给的键里如果有已经不成立的组, 记为跳过而不是失败 —— 上一轮或别的流程已经处理完了.
         """
-        groups = await service.groups(kind=kind, library_id=library_id)
+        groups = await service.groups(kind=kind, library_id=library_id, include_ignored=False)
         if keys is None:
             return groups
         wanted = set(keys)

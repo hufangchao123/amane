@@ -5,17 +5,20 @@
 目录则落库根), 失败侧取失败目录; 两边都可能没有落点, 那说明文件已经在它该在的地方, 只记一条说明.
 
 搬运与整理 / 删除 / 洗版共用 ``LibraryTaskLocks``. 搬走的是视频与它同前缀的附属文件, 库内记录改指
-新路径, 因此文件仍在库里被跟踪 (可再次刮削、可再整理).
+新路径, 因此文件仍在库里被跟踪 (可再次刮削、可再整理). 落点就是库根且库开了自动整理时, 顺带排一次
+该文件的整理: 刮削链在开启转移后不再排整理, 少了这一步文件会以原名平铺在库根里.
 """
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..db.models import TaskType
+from ..library.delete import same_path
 from ..library.transfer import scrape_transfer_destination, transfer_scrape_result
 from ..utils.threads import path_exists
 from ._common import media_refresh_followups, refresh_external_subtitle, wash_scan_followups
-from .models import ScrapeTransferPayload, ScrapeTransferResult
-from .protocol import TaskHandler, TaskResult
+from .models import OrganizePayload, ScrapeTransferPayload, ScrapeTransferResult
+from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
     from ..config import HotSettings
@@ -69,6 +72,29 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         async with await self._library_locks.get(library.id):
             return await self._transfer_locked(payload, file, library, Path(destination), result)
 
+    def _organize_followups(
+        self, library: Library, file: MediaFile, destination: Path
+    ) -> list[FollowupTask]:
+        """落点就是库根时补一次整理, 让搬进来的文件按模板重命名归位.
+
+        落点是单独的成品目录 (显式 ``scrape_ok_dir``) 时不整理: 那是使用者已经排好的树, 再按模板搬
+        一次会把它打散. 整理排在转移自己的后继里, 与转移顺序执行, 不会争同一把库锁.
+        """
+        if not library.auto_organize or file.id is None or library.id is None:
+            return []
+        if not same_path(destination, Path(library.path)):
+            return []
+        return [
+            FollowupTask(
+                key=f"organize:{file.id}",
+                task_type=TaskType.ORGANIZE,
+                payload=OrganizePayload(library_id=library.id, media_file_ids=[file.id]).model_dump(
+                    mode="json"
+                ),
+                priority=-1,
+            )
+        ]
+
     async def _transfer_locked(
         self,
         payload: ScrapeTransferPayload,
@@ -111,6 +137,7 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         result.failed = len(outcome.failed)
         # 成品刚搬进库根: 与整理同口径, 让媒体服务器重扫一次.
         refresh = [
+            *(self._organize_followups(library, fresh, destination) if outcome.video_path != video else []),
             *media_refresh_followups(self._hot, library, changed=outcome.files, reason="transfer"),
             *wash_scan_followups(self._hot, library, changed=outcome.files),
         ]

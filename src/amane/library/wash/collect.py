@@ -22,7 +22,7 @@ from ...parsing import parse_file_info
 from ...utils.path import existing_disk_path
 from ...utils.threads import in_thread
 from ..rules import MEDIA_EXTENSIONS, is_in_trash, is_under_any, publish_roots
-from .model import WashEntry
+from .model import WashEntry, subtitle_rank_of
 from .trash import is_trash_path
 
 if TYPE_CHECKING:
@@ -47,6 +47,8 @@ class IndexRow:
     duration: float | None
     definition: str | None
     mosaic: Mosaic | None
+    has_subtitle_in_name: bool = False
+    has_external_subtitle: bool = False
 
 
 def index_row(media: MediaFile) -> IndexRow:
@@ -57,6 +59,8 @@ def index_row(media: MediaFile) -> IndexRow:
         duration=media.duration,
         definition=media.definition,
         mosaic=media.mosaic,
+        has_subtitle_in_name=media.has_subtitle_in_name,
+        has_external_subtitle=media.has_external_subtitle,
     )
 
 
@@ -111,6 +115,11 @@ def entries_from_rows(rows: Sequence[IndexRow], *, library_id: int) -> list[Wash
                 definition=row.definition or info.definition,
                 mosaic=row.mosaic or info.mosaic,
                 cd=info.cd,
+                subtitle_rank=subtitle_rank_of(
+                    path,
+                    has_subtitle_in_name=row.has_subtitle_in_name,
+                    has_external=row.has_external_subtitle,
+                ),
             )
         )
     return entries

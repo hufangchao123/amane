@@ -54,7 +54,8 @@
       "size": "Size",
       "state": "State",
       "created": "Trashed",
-      "expires": "Expires"
+      "expires": "Expires",
+      "actions": "Actions"
     },
     "kind": {
       "local": "Local",
@@ -78,7 +79,14 @@
     "confirmPurgeTitle": "Purge trash",
     "confirmPurgeMessage": "Only expired records are really deleted; the rest stay. Continue?",
     "selected_one": "{{count}} selected",
-    "selected_other": "{{count}} selected"
+    "selected_other": "{{count}} selected",
+    "pinned": "Pinned",
+    "ignored": "Ignored",
+    "ignoredDrops": "Keeping every copy",
+    "keepThis": "Keep this",
+    "keepAll": "Keep all",
+    "choiceRestore": "Undo",
+    "choiceFailed": "Could not save the decision"
   },
   "maintenance": {
     "title": "Library maintenance",

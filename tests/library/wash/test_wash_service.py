@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.config.manager import WashConfig
-from amane.db.models import SortOrder, WashRecordKind, WashRecordState
+from amane.db.models import SortOrder, WashChoiceAction, WashRecordKind, WashRecordState
 from amane.db.repos.ops_wash import WashRecordSortField
 from amane.handlers._common import LibraryTaskLocks
 from amane.library.wash.apply import wash_groups
@@ -247,3 +247,65 @@ async def test_records_sort_and_page(wash_lib: WashLibrary, locks: LibraryTaskLo
     if created.tzinfo is None:
         created = created.replace(tzinfo=UTC)
     assert timedelta(0) <= datetime.now(UTC) - created < timedelta(minutes=5)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_ignored_group_stays_listed_without_drops(wash_lib: WashLibrary) -> None:
+    """选了「都留着」: 组仍在列表里可以撤销, 但没有落选者、不释放体积、不进统计."""
+    await seed(wash_lib)
+    await wash_lib.repo.set_wash_choice("lib1:ABC-100", WashChoiceAction.IGNORE)
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    items, total = await service.candidates(limit=10)
+    ignored = next(item for item in items if item.group_key == "lib1:ABC-100")
+
+    assert total == 3
+    assert ignored.ignored is True
+    assert ignored.drop_paths == []
+    assert ignored.bytes_freed == 0
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_pinned_keep_overrides_the_algorithm(wash_lib: WashLibrary) -> None:
+    """钉住的那一份成为保留者, 另一份变成落选者 —— 即使算法会选反."""
+    await seed(wash_lib)
+    smaller = str(wash_lib.root / "a/ABC-100/ABC-100-720p.mp4")
+    await wash_lib.repo.set_wash_choice("lib1:ABC-100", WashChoiceAction.KEEP, keep_path=smaller)
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    items, _ = await service.candidates(limit=10)
+    pinned = next(item for item in items if item.group_key == "lib1:ABC-100")
+
+    assert pinned.keep_path == smaller
+    assert pinned.pinned is True
+    assert pinned.drop_paths == [str(wash_lib.root / "a/ABC-100/ABC-100-1080p.mkv")]
+    assert pinned.bytes_freed == 3000
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_execution_view_hides_ignored_groups(wash_lib: WashLibrary) -> None:
+    """执行路径拿到的分组不含「都留着」的组, 免得把使用者要留的文件搬走."""
+    await seed(wash_lib)
+    await wash_lib.repo.set_wash_choice("lib1:ABC-100", WashChoiceAction.IGNORE)
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    keys = [group.group_key for group in await service.groups(include_ignored=False)]
+
+    assert "lib1:ABC-100" not in keys
+    assert "lib1:ABC-200" in keys
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stale_choice_is_dropped_and_missing_keep_path_falls_back(wash_lib: WashLibrary) -> None:
+    """过期决定: 分组没了会被清掉; 钉住的那份没了则退回算法排序."""
+    await seed(wash_lib)
+    await wash_lib.repo.set_wash_choice("lib9:GONE-000", WashChoiceAction.IGNORE)
+    await wash_lib.repo.set_wash_choice("lib1:ABC-200", WashChoiceAction.KEEP, keep_path="/nowhere.mkv")
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    groups = await service.groups()
+    dropped = await wash_lib.repo.drop_stale_wash_choices({group.group_key for group in groups})
+    later = next(group for group in groups if group.group_key == "lib1:ABC-200")
+
+    assert dropped == 1
+    assert later.keep.path.endswith("ABC-200-1080p.mkv")

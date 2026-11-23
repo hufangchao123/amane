@@ -40,6 +40,7 @@ Emby 里同一部片只剩一个入口, 谁留下并不重要, 重要的是一�
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,7 +50,7 @@ from ...enums import StrmPrefer, WashPrefer
 from ...parsing import DEFINITION_VALUES, canonical_definition
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
     from ...parsing import Mosaic
 
@@ -72,6 +73,16 @@ CONTAINER_PRIORITY: tuple[str, ...] = (
 _DEFINITION_ORDER: dict[str, int] = {value: index for index, value in enumerate(DEFINITION_VALUES)}
 _UNKNOWN_DEFINITION: int = len(_DEFINITION_ORDER)
 
+#: 字幕维度取值: 文件名带中文字幕标记最好, 其次有外挂字幕, 最后是都没有.
+CHINESE_SUBTITLE_RANK: int = 0
+EXTERNAL_SUBTITLE_RANK: int = 1
+NO_SUBTITLE_RANK: int = 2
+
+#: 中文字幕的文件名标记. ``-c`` 单独成段才算 (常见于「番号-C」这种中文字幕版命名),
+#: 所以要连边界一起匹配, 否则 ``-ch``/``-cd2`` 之类会被误判.
+_CHINESE_SUBTITLE_PATTERN = re.compile(r"(?:^|[-._\s\[\]()])c(?:$|[-._\s\[\]()])", re.IGNORECASE)
+_CHINESE_SUBTITLE_TOKENS = ("中字", "中文", "字幕", "简中", "繁中", "chs", "cht", "chinese")
+
 
 @dataclass(frozen=True, slots=True)
 class WashEntry:
@@ -91,6 +102,8 @@ class WashEntry:
     mosaic: Mosaic | None = None
     cd: int | None = None
     mtime: float | None = None
+    subtitle_rank: int = NO_SUBTITLE_RANK
+    """字幕维度: 越小越好, 见 ``subtitle_rank_of``; 缺省按「没有字幕」算."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +115,8 @@ class WashGroup:
     library_id: int
     keep: WashEntry
     drops: tuple[WashEntry, ...]
+    ignored: bool = False
+    """使用者选了「都留着」: 组仍在列表里 (可以撤销), 但没有落选者、不计体积."""
 
     @property
     def bytes_freed(self) -> int:
@@ -175,6 +190,9 @@ def is_unambiguous(group: WashGroup, *, min_gain_percent: int) -> bool:
     if group.kind is not WashRecordKind.LOCAL or not group.drops:
         return False
     keep = group.keep
+    if any(drop.subtitle_rank < keep.subtitle_rank for drop in group.drops):
+        # 落选者带着更好的字幕: 「更清晰」不等于「更该留」, 这种取舍交给使用者.
+        return False
     keep_rank = definition_rank(keep.definition)
     if any(definition_rank(drop.definition) != keep_rank for drop in group.drops):
         return all(keep_rank < definition_rank(drop.definition) for drop in group.drops)
@@ -183,6 +201,20 @@ def is_unambiguous(group: WashGroup, *, min_gain_percent: int) -> bool:
     if any(drop.duration is None or drop.duration <= 0 for drop in group.drops):
         return False
     return all(drop.size > 0 and (keep.size - drop.size) * 100 >= drop.size * min_gain_percent for drop in group.drops)
+
+
+def subtitle_rank_of(path: str | Path, *, has_subtitle_in_name: bool = False, has_external: bool = False) -> int:
+    """一份文件的字幕维度取值: 越小越好.
+
+    「带中文字幕」比「有字幕」更有意义 —— 库里绝大多数作品缺的是中文, 一份英文字幕不能顶替.
+    文件名里的 ``-C``/中字/简中那类标记最先看, 其次才是同目录有没有外挂字幕.
+    """
+    stem = Path(path).stem.casefold()
+    if _CHINESE_SUBTITLE_PATTERN.search(stem) or any(token in stem for token in _CHINESE_SUBTITLE_TOKENS):
+        return CHINESE_SUBTITLE_RANK
+    if has_external or has_subtitle_in_name:
+        return EXTERNAL_SUBTITLE_RANK
+    return NO_SUBTITLE_RANK
 
 
 def definition_rank(definition: str | None) -> int:
@@ -204,26 +236,53 @@ def container_rank(path: str | Path) -> int:
         return len(CONTAINER_PRIORITY)
 
 
-def local_sort_key(entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY) -> tuple[int, float, int, int, str]:
-    """本地组的排序键 (升序即优先级从高到低).
+def _prefer_key(entry: WashEntry, prefer: WashPrefer) -> tuple[float, ...]:
+    """一个比较维度的键: 元组内部仍是「先比第一项」.
 
-    默认的五档见模块文档; 其余三种策略只按一个维度比较, 再用容器与路径做决定性兜底 ——
-    用户选了「按体积」就是要体积最大的那份, 不能又被分辨率翻盘.
+    ``quality`` 保持模块文档里的三档; 其余维度各出一项. 返回值统一成浮点元组, 方便按顺序拼起来.
     """
-    container = container_rank(entry.path)
+    if prefer is WashPrefer.SUBTITLE:
+        return (float(entry.subtitle_rank),)
     if prefer is WashPrefer.LARGEST:
-        return (0, 0.0, -entry.size, container, entry.path)
+        return (-float(entry.size),)
     if prefer is WashPrefer.NEWEST:
-        return (0, -(entry.mtime if entry.mtime is not None else 0.0), 0, container, entry.path)
+        return (-(entry.mtime if entry.mtime is not None else 0.0),)
     if prefer is WashPrefer.OLDEST:
         # 缺少修改时间的排在最后: 拿不出时间就不该被当成「更旧」.
         age = entry.mtime if entry.mtime is not None else float("inf")
-        return (0, age, 0, container, entry.path)
+        return (age,)
     bitrate = entry.size / entry.duration if entry.duration is not None and entry.duration > 0 else 0.0
-    return (definition_rank(entry.definition), -bitrate, -entry.size, container, entry.path)
+    return (float(definition_rank(entry.definition)), -bitrate, -float(entry.size))
 
 
-def strm_sort_key(entry: WashEntry, prefer: StrmPrefer = StrmPrefer.PATH) -> tuple[int, float, int, int, str]:
+def _prefer_levels(prefer: Sequence[WashPrefer] | WashPrefer) -> tuple[WashPrefer, ...]:
+    """配置里存的是有序列表; 老调用方传单个枚举或空列表时都退化成默认.
+
+    同一个维度重复出现没有意义 (第二次比的值完全一样), 去掉重复保序.
+    """
+    if isinstance(prefer, WashPrefer):
+        return (prefer,)
+    ordered: list[WashPrefer] = []
+    for item in prefer:
+        if item not in ordered:
+            ordered.append(item)
+    return tuple(ordered) or (WashPrefer.QUALITY,)
+
+
+def local_sort_key(entry: WashEntry, prefer: Sequence[WashPrefer] | WashPrefer = WashPrefer.QUALITY) -> tuple:
+    """本地组的排序键 (升序即优先级从高到低).
+
+    按配置里排定的维度顺序拼接, 每个维度可以贡献多于一项 (画质是三档); 最后两档固定是容器与
+    路径, 只用来保证同样的输入每次选出同一份 —— 用户只选了「按体积」时, 体积相同才轮到它们.
+    """
+    levels = _prefer_levels(prefer)
+    head: list[float] = []
+    for level in levels:
+        head.extend(_prefer_key(entry, level))
+    return (*head, container_rank(entry.path), entry.path)
+
+
+def strm_sort_key(entry: WashEntry, prefer: StrmPrefer = StrmPrefer.PATH) -> tuple:
     """STRM 组的排序键 (升序即优先级从高到低).
 
     默认只比容器与路径: 指针本身没有画质与体积, 写进文件名的档位说的是云端那份文件, 未经校验.
@@ -241,10 +300,17 @@ def strm_sort_key(entry: WashEntry, prefer: StrmPrefer = StrmPrefer.PATH) -> tup
 
 
 def sort_key(
-    entry: WashEntry, prefer: WashPrefer = WashPrefer.QUALITY, strm_prefer: StrmPrefer = StrmPrefer.PATH
-) -> tuple[int, float, int, int, str]:
-    """按条目的 kind 选排序键; 本地与 STRM 各有一套策略, 调用方须保证同一组 kind 一致."""
+    entry: WashEntry,
+    prefer: Sequence[WashPrefer] | WashPrefer = WashPrefer.QUALITY,
+    strm_prefer: StrmPrefer = StrmPrefer.PATH,
+) -> tuple:
+    """按条目的 kind 选排序键; 本地与 STRM 各有一套策略, 调用方须保证同一组 kind 一致.
+
+    STRM 只让字幕维度参与: 指针的体积与档位都不可信, 但「云盘那份有没有中文字幕」是实情.
+    """
     if entry.kind is WashRecordKind.STRM:
+        if WashPrefer.SUBTITLE in _prefer_levels(prefer):
+            return (float(entry.subtitle_rank), *strm_sort_key(entry, strm_prefer))
         return strm_sort_key(entry, strm_prefer)
     return local_sort_key(entry, prefer)
 
@@ -253,7 +319,7 @@ def build_groups(
     entries: Iterable[WashEntry],
     *,
     min_size_bytes: int,
-    prefer: WashPrefer = WashPrefer.QUALITY,
+    prefer: Sequence[WashPrefer] | WashPrefer = WashPrefer.QUALITY,
     strm_prefer: StrmPrefer = StrmPrefer.PATH,
 ) -> list[WashGroup]:
     """按 ``group_key`` 归并并选出保留者, 只返回至少两份候选的组.
