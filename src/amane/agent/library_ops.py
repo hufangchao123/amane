@@ -11,6 +11,8 @@ from ..db.models import Library, TaskType
 from ..db.repo_types import LibraryUpdates
 from ..enums import LibraryAutomation, LibraryIngest
 from ..handlers.models import RefreshPayload, ScanMode
+from ..library.scrape_paths import check_scrape_dirs
+from ..scheduler.watcher import WATCH_FIELDS
 from .tools import TOOL_OK, AgentDeps, require_approval, unknown_field_error
 
 _LIBRARY_UPDATE_KEYS = frozenset(
@@ -42,6 +44,11 @@ _LIBRARY_UPDATE_KEYS = frozenset(
         "trailer_pattern",
         "blacklist_patterns",
         "min_file_size",
+        "scrape_transfer",
+        "scrape_input_dir",
+        "scrape_ok_dir",
+        "scrape_fail_dir",
+        "keep_source_dirs",
     }
 )
 
@@ -72,6 +79,11 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
         recursive: bool = True,
         patterns: list[str] | None = None,
         scan: bool = True,
+        scrape_transfer: bool = False,
+        scrape_input_dir: str | None = None,
+        scrape_ok_dir: str | None = None,
+        scrape_fail_dir: str | None = None,
+        keep_source_dirs: bool = False,
     ) -> dict[str, Any]:
         """Create a media library; optional initial REFRESH(scan=add)."""
         patterns = list(patterns or [])
@@ -79,6 +91,15 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
             await check_directory_path(path, ctx.deps.bridge.safe_dirs)
         except ValueError as exc:
             return {"error": str(exc)}
+        problem = check_scrape_dirs(
+            transfer=scrape_transfer,
+            input_dir=scrape_input_dir,
+            ok_dir=scrape_ok_dir,
+            fail_dir=scrape_fail_dir,
+            library_path=path,
+        )
+        if problem is not None:
+            return {"error": problem}
         display = name or Path(path).name
         try:
             lib = await ctx.deps.repo.create_library(
@@ -88,6 +109,11 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
                 auto_organize=auto_organize,
                 recursive=recursive,
                 patterns=patterns,
+                scrape_transfer=scrape_transfer,
+                scrape_input_dir=scrape_input_dir,
+                scrape_ok_dir=scrape_ok_dir,
+                scrape_fail_dir=scrape_fail_dir,
+                keep_source_dirs=keep_source_dirs,
             )
         except ValueError as exc:
             return {"error": str(exc)}
@@ -135,24 +161,25 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
                 await check_directory_path(str(patch["path"]), ctx.deps.bridge.safe_dirs)
             except ValueError as exc:
                 return {"error": str(exc)}
+        current = await ctx.deps.repo.get_library(library_id)
+        if current is None:
+            return {"error": f"library {library_id} 不存在"}
+        problem = check_scrape_dirs(
+            transfer=patch.get("scrape_transfer", current.scrape_transfer),
+            input_dir=patch.get("scrape_input_dir", current.scrape_input_dir),
+            ok_dir=patch.get("scrape_ok_dir", current.scrape_ok_dir),
+            fail_dir=patch.get("scrape_fail_dir", current.scrape_fail_dir),
+            library_path=str(patch.get("path") or current.path),
+        )
+        if problem is not None:
+            return {"error": problem}
         try:
             lib = await ctx.deps.repo.update_library(library_id, **cast(LibraryUpdates, patch))
         except ValueError as exc:
             return {"error": str(exc)}
         if lib is None:
             return {"error": f"library {library_id} 不存在"}
-        watch_fields = {
-            "automation",
-            "ingest",
-            "cloud_path",
-            "path",
-            "recursive",
-            "patterns",
-            "trailer_pattern",
-            "blacklist_patterns",
-            "min_file_size",
-        }
-        if watch_fields & set(patch):
+        if WATCH_FIELDS & set(patch):
             _sync_library(ctx.deps, lib)
         return TOOL_OK
 

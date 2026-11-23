@@ -207,6 +207,67 @@ async def test_library_create_refresh_and_delete_approval(write_deps: AgentDeps,
 
 
 @pytest.mark.asyncio
+async def test_library_scrape_transfer_dirs_validated(write_deps: AgentDeps, tmp_path: Path) -> None:
+    """助理改转移目录时与页面同一套校验: 落进库内的目的目录会把文件反复登记."""
+    lib_dir, done = tmp_path / "lib", tmp_path / "done"
+    lib_dir.mkdir()
+    cap = build_library_ops_capability()
+
+    overlap = await tool_fn(cap, "create_library")(
+        ToolCallContext(write_deps),
+        path=str(lib_dir),
+        scan=False,
+        scrape_transfer=True,
+        scrape_ok_dir=str(lib_dir / "done"),
+    )
+    assert "不能位于" in overlap["error"] or "重叠" in overlap["error"]
+
+    created = await tool_fn(cap, "create_library")(
+        ToolCallContext(write_deps),
+        path=str(lib_dir),
+        scan=False,
+        scrape_transfer=True,
+        scrape_ok_dir=str(done),
+        keep_source_dirs=True,
+    )
+    library_id = int(created["library_id"])
+    lib = await write_deps.repo.get_library(library_id)
+    assert lib is not None
+    assert lib.scrape_ok_dir == str(done)
+    assert lib.keep_source_dirs is True
+
+    empty = await tool_fn(cap, "update_library")(
+        ToolCallContext(write_deps), library_id=library_id, patch={"scrape_ok_dir": None}
+    )
+    assert "至少填一个目录" in empty["error"]
+
+    patched = await tool_fn(cap, "update_library")(
+        ToolCallContext(write_deps), library_id=library_id, patch={"scrape_fail_dir": str(tmp_path / "failed")}
+    )
+    assert patched == TOOL_OK
+    lib = await write_deps.repo.get_library(library_id)
+    assert lib is not None
+    assert lib.scrape_fail_dir == str(tmp_path / "failed")
+
+
+@pytest.mark.asyncio
+async def test_wash_apply_submission_requires_approval(write_deps: AgentDeps) -> None:
+    """洗版会删文件, 助理提交前必须过人这一关."""
+    cap = build_task_ops_capability()
+    with pytest.raises(ApprovalRequired) as exc:
+        await tool_fn(cap, "submit_task")(
+            ToolCallContext(write_deps, tool_call_id="tc-wash"), submission={"type": "wash_apply"}
+        )
+    assert (exc.value.metadata or {})["tool"] == "submit_task"
+
+    submitted = await tool_fn(cap, "submit_task")(
+        ToolCallContext(write_deps, tool_call_id="tc-wash", tool_call_approved=True),
+        submission={"type": "wash_apply"},
+    )
+    assert submitted["task_id"] > 0
+
+
+@pytest.mark.asyncio
 async def test_task_submit_cancel_retry(write_deps: AgentDeps) -> None:
     submitted = await tool_fn(build_task_ops_capability(), "submit_task")(
         ToolCallContext(write_deps), submission={"type": "scrape", "number": "TSK-001"}

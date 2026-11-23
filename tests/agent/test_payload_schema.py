@@ -52,6 +52,27 @@ async def test_schema_tool_covers_members(builder: Callable[[], Any], tool_name:
         assert out["properties"]["type"]["const"] == submission_type
 
 
+MEDIA_OPS_TASK_TYPES = {
+    "scrape_transfer",
+    "transfer_115",
+    "subtitle_fetch",
+    "subtitle_audit",
+    "wash_scan",
+    "wash_apply",
+    "nfo_patch",
+    "notify",
+    "avatar_check",
+    "media_refresh",
+}
+MEDIA_OPS_ROUTINE_TYPES = {"transfer_115", "wash_scan", "wash_purge", "notify_digest", "media_refresh"}
+
+
+def test_media_ops_types_are_admitted() -> None:
+    """媒体运维的任务与例行都要能由助理提交, 否则助理看不见这些功能."""
+    assert set(TASK_SUBMISSION.members) >= MEDIA_OPS_TASK_TYPES
+    assert set(ROUTINE_SUBMISSION.members) >= MEDIA_OPS_ROUTINE_TYPES
+
+
 def test_delete_not_admitted_to_agent() -> None:
     """删除是面板专用入口: 联合体里有它, 助理的成员表里没有."""
     assert "delete" in _union_types(TaskSubmission)

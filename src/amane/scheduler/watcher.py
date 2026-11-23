@@ -11,6 +11,27 @@ from ..library import MEDIA_EXTENSIONS, LibraryFileKind, LibraryScan
 from ..library.rules import is_in_trash
 from ..utils.path import path_is_under, path_key
 
+#: 改动这些库字段要重建观察点: 库路径、发现通道与刮削后转移的目录都决定观察哪个目录.
+WATCH_FIELDS = frozenset(
+    {
+        "automation",
+        "scrape_transfer",
+        "scrape_input_dir",
+        "scrape_ok_dir",
+        "scrape_fail_dir",
+        "keep_source_dirs",
+        "ingest",
+        "cloud_path",
+        "path",
+        "recursive",
+        "patterns",
+        "trailer_pattern",
+        "blacklist_patterns",
+        "min_file_size",
+    }
+)
+
+
 if sys.platform == "win32":
     from .watcher_win import WindowsObserver as _NativeObserver
 else:

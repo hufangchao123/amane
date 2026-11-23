@@ -1,6 +1,6 @@
 """任务与定时任务入参的按需披露.
 
-`TaskSubmission` (9 型) 与 `RoutineSubmission` (4 型) 的联合体远大于其余工具定义, 随工具签名内联会长期
+`TaskSubmission` 与 `RoutineSubmission` 的联合体远大于其余工具定义, 随工具签名内联会长期
 占用每次请求的固定前缀. 因此分两级披露: 工具的 `submission_type` 参数枚举可用类型, 字段定义由模型按需
 调用取得; 校验失败时同一份字段定义随错误返回. schema 与校验共用同一组模型, 不存在第二份定义.
 """
@@ -15,7 +15,13 @@ from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from ..api.models.tasks import (
     ActorScrapeSubmission,
+    AvatarCheckSubmission,
     CleanupSubmission,
+    MediaRefreshRoutine,
+    MediaRefreshSubmission,
+    NfoPatchSubmission,
+    NotifyDigestRoutine,
+    NotifySubmission,
     OrganizeSubmission,
     R18ImportSubmission,
     RefreshSubmission,
@@ -23,8 +29,15 @@ from ..api.models.tasks import (
     RoutineSubmission,
     ScanInvalidSubmission,
     ScrapeSubmission,
+    ScrapeTransferSubmission,
+    SubtitleAuditSubmission,
+    SubtitleFetchSubmission,
     TaskSubmission,
+    Transfer115Submission,
     UpscaleSubmission,
+    WashApplySubmission,
+    WashPurgeRoutine,
+    WashScanSubmission,
 )
 
 TaskSubmissionType = Literal[
@@ -32,13 +45,33 @@ TaskSubmissionType = Literal[
     "organize",
     "scan_invalid",
     "scrape",
+    "scrape_transfer",
     "cleanup",
     "upscale",
     "r18_import",
     "actor_scrape",
     "rescrape",
+    "transfer_115",
+    "subtitle_fetch",
+    "subtitle_audit",
+    "wash_scan",
+    "wash_apply",
+    "nfo_patch",
+    "notify",
+    "avatar_check",
+    "media_refresh",
 ]
-RoutineSubmissionType = Literal["cleanup", "upscale", "r18_import", "rescrape"]
+RoutineSubmissionType = Literal[
+    "cleanup",
+    "upscale",
+    "r18_import",
+    "rescrape",
+    "transfer_115",
+    "wash_scan",
+    "wash_purge",
+    "notify_digest",
+    "media_refresh",
+]
 
 _TASK_MEMBERS: dict[str, type[BaseModel]] = {
     "refresh": RefreshSubmission,
@@ -50,12 +83,27 @@ _TASK_MEMBERS: dict[str, type[BaseModel]] = {
     "r18_import": R18ImportSubmission,
     "actor_scrape": ActorScrapeSubmission,
     "rescrape": RescrapeSubmission,
+    "scrape_transfer": ScrapeTransferSubmission,
+    "transfer_115": Transfer115Submission,
+    "subtitle_fetch": SubtitleFetchSubmission,
+    "subtitle_audit": SubtitleAuditSubmission,
+    "wash_scan": WashScanSubmission,
+    "wash_apply": WashApplySubmission,
+    "nfo_patch": NfoPatchSubmission,
+    "notify": NotifySubmission,
+    "avatar_check": AvatarCheckSubmission,
+    "media_refresh": MediaRefreshSubmission,
 }
 _ROUTINE_MEMBERS: dict[str, type[BaseModel]] = {
     "cleanup": CleanupSubmission,
     "upscale": UpscaleSubmission,
     "r18_import": R18ImportSubmission,
     "rescrape": RescrapeSubmission,
+    "transfer_115": Transfer115Submission,
+    "wash_scan": WashScanSubmission,
+    "wash_purge": WashPurgeRoutine,
+    "notify_digest": NotifyDigestRoutine,
+    "media_refresh": MediaRefreshRoutine,
 }
 
 

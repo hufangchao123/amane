@@ -10,10 +10,13 @@ from pydantic_ai import RunContext
 from pydantic_ai.capabilities import Capability
 
 from ..api.support.task_resolve import resolve_submission
-from ..db.models import TaskStatus
+from ..db.models import TaskStatus, TaskType
 from ..scheduler.worker import CANCEL_ERROR
 from .payload_schema import TASK_SUBMISSION, TaskSubmissionType
-from .tools import TOOL_OK, AgentDeps
+from .tools import TOOL_OK, AgentDeps, require_approval
+
+#: 不可逆的任务: 洗版带 ``purge_ids`` 时是真删, 空载荷则按当前策略重算全部候选.
+_DESTRUCTIVE_TASK_TYPES = frozenset({TaskType.WASH_APPLY})
 
 
 def build_task_ops_capability() -> Capability[AgentDeps]:
@@ -45,6 +48,14 @@ def build_task_ops_capability() -> Capability[AgentDeps]:
             return {"error": str(exc.detail)}
         except ValueError as exc:
             return {"error": str(exc)}
+        if task_type in _DESTRUCTIVE_TASK_TYPES:
+            # 与 UI 一致: 洗版要人点头, 助理不能自己决定删哪些文件.
+            require_approval(
+                ctx,
+                sql=f"提交任务: {task_type.value}",
+                tool="submit_task",
+                extra={"type": task_type.value},
+            )
         task = await ctx.deps.repo.create_task(task_type=task_type, payload=payload)
         assert task.id is not None
         return {"task_id": task.id}

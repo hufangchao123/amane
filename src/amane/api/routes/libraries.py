@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException, Response
 
 from ...db.models import TaskType
 from ...handlers import RefreshPayload, ScanMode
+from ...library.scrape_paths import check_scrape_dirs
+from ...scheduler.watcher import WATCH_FIELDS
 from ...utils.model import to_resp
 from ..deps import RepoDep, RuntimeDep
 from ..models import (
@@ -38,66 +40,19 @@ async def list_libraries(repo: RepoDep) -> LibraryListResponse:
     return LibraryListResponse(items=[to_resp(LibraryResponse, lib) for lib in items])
 
 
-def _reject_overlap(path: Path, other: Path, *, field: str, other_name: str) -> None:
-    """两个目录互相包含时拒绝: 扫描与搬运会互相触发, 同一个文件被反复登记或反复搬动."""
-    if path == other or other in path.parents or path in other.parents:
-        raise HTTPException(status_code=422, detail=f"{field}不能与{other_name}重叠: {path}")
-
-
-def _outside_only(path: Path, root: Path, *, field: str, other_name: str) -> None:
-    """目的目录可以等于上位目录 (等于就是留在原地), 但不能落在它下面: 搬进库内的子目录会被当成新文件重新入库."""
-    if path != root and root in path.parents:
-        raise HTTPException(status_code=422, detail=f"{field}不能位于{other_name}之下: {path}")
-
-
-def _check_scrape_dirs(
-    *,
-    transfer: bool,
-    input_dir: str | None,
-    ok_dir: str | None,
-    fail_dir: str | None,
-    library_path: str,
-) -> None:
-    """刮削后转移的目录校验: 三个目录都可空, 但要留一个.
-
-    输入目录给定时它必须在库外, 否则与扫描互相触发; 成功与失败目录可以等于库根 (等于就是留在
-    原地), 但不能落在库根之下, 否则搬过去的文件会被重新登记成新文件. 三者之间不得互相包含.
-    """
-    if not transfer:
-        return
-    if not input_dir and not ok_dir and not fail_dir:
-        raise HTTPException(status_code=422, detail="开启刮削后转移时至少填一个目录")
-
-    root = Path(library_path).resolve()
-    source = Path(input_dir).resolve() if input_dir else None
-    if source is not None:
-        _reject_overlap(source, root, field="输入目录", other_name="库根")
-
-    targets: list[tuple[str, Path]] = []
-    for field, raw in (("成功目录", ok_dir), ("失败目录", fail_dir)):
-        if not raw:
-            continue
-        target = Path(raw).resolve()
-        _outside_only(target, root, field=field, other_name="库根")
-        if source is not None:
-            _reject_overlap(target, source, field=field, other_name="输入目录")
-        targets.append((field, target))
-
-    if len(targets) == 2 and targets[0][1] == targets[1][1]:
-        raise HTTPException(status_code=422, detail="成功目录与失败目录不能相同")
-
-
 @router.post("", status_code=201)
 async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: RuntimeDep) -> LibraryResponse:
     # 校验路径: 须存在、是目录、位于 safe_dirs 内
     await validate_directory_path(req.path, runtime.safe_dirs)
-    _check_scrape_dirs(
+    problem = check_scrape_dirs(
         transfer=req.scrape_transfer,
         input_dir=req.scrape_input_dir,
         ok_dir=req.scrape_ok_dir,
         fail_dir=req.scrape_fail_dir,
         library_path=req.path,
     )
+    if problem is not None:
+        raise HTTPException(status_code=422, detail=problem)
 
     name = req.name or Path(req.path).name
 
@@ -179,24 +134,6 @@ async def get_library(library_id: int, repo: RepoDep) -> LibraryResponse:
 
 
 #: 改动这些字段要重建监控: 观察点由路径、发现通道与三个转移目录共同决定.
-WATCH_FIELDS = frozenset(
-    {
-        "automation",
-        "scrape_transfer",
-        "scrape_input_dir",
-        "scrape_ok_dir",
-        "ingest",
-        "cloud_path",
-        "path",
-        "recursive",
-        "patterns",
-        "trailer_pattern",
-        "blacklist_patterns",
-        "min_file_size",
-    }
-)
-
-
 @router.patch("/{library_id}")
 async def update_library(
     library_id: int,
@@ -215,13 +152,15 @@ async def update_library(
     current = await repo.get_library(library_id)
     if current is None:
         raise HTTPException(status_code=404, detail="媒体库不存在")
-    _check_scrape_dirs(
+    problem = check_scrape_dirs(
         transfer=updates.get("scrape_transfer", current.scrape_transfer),
         input_dir=updates.get("scrape_input_dir", current.scrape_input_dir),
         ok_dir=updates.get("scrape_ok_dir", current.scrape_ok_dir),
         fail_dir=updates.get("scrape_fail_dir", current.scrape_fail_dir),
         library_path=updates.get("path", current.path),
     )
+    if problem is not None:
+        raise HTTPException(status_code=422, detail=problem)
 
     try:
         lib = await repo.update_library(library_id, **updates)
