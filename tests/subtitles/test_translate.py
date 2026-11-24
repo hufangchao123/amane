@@ -54,14 +54,18 @@ class TestTranslateLines:
     async def test_translates_every_line(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch(monkeypatch, [json.dumps(["你好", "再见"], ensure_ascii=False)])
 
-        assert await translate_lines(_FakeModel(), ["こんにちは", "さようなら"]) == ["你好", "再见"]
+        outcome = await translate_lines(_FakeModel(), ["こんにちは", "さようなら"])
+        assert outcome.lines == ["你好", "再见"]
+        assert outcome.complete is True
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_missing_lines_fall_back_to_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """模型少回一行时按原文补齐, 不让整片字幕错位."""
         _patch(monkeypatch, [json.dumps(["你好"], ensure_ascii=False)])
 
-        assert await translate_lines(_FakeModel(), ["こんにちは", "さようなら"]) == ["你好", "さようなら"]
+        outcome = await translate_lines(_FakeModel(), ["こんにちは", "さようなら"])
+        assert outcome.lines == ["你好", "さようなら"]
+        assert outcome.failed_batches == 1
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_model_error_keeps_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,7 +74,9 @@ class TestTranslateLines:
 
         monkeypatch.setattr(module, "model_request", boom)
 
-        assert await translate_lines(_FakeModel(), ["こんにちは"]) == ["こんにちは"]
+        outcome = await translate_lines(_FakeModel(), ["こんにちは"])
+        assert outcome.lines == ["こんにちは"]
+        assert outcome.nothing_translated is True
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_batches_split(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,5 +85,7 @@ class TestTranslateLines:
             [json.dumps(["a1", "a2"], ensure_ascii=False), json.dumps(["b1"], ensure_ascii=False)],
         )
 
-        assert await translate_lines(_FakeModel(), ["x", "y", "z"], batch_size=2) == ["a1", "a2", "b1"]
+        outcome = await translate_lines(_FakeModel(), ["x", "y", "z"], batch_size=2)
+        assert outcome.lines == ["a1", "a2", "b1"]
+        assert outcome.total_batches == 2
         assert len(calls.payloads) == 2

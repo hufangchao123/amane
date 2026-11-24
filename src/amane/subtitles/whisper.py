@@ -149,10 +149,13 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 
-def to_srt(segments: Sequence[Segment]) -> str:
-    """把分段拼成 SRT 正文 (Latin-1 之外的字都保留, 文件按 UTF-8 写)."""
+def to_srt(segments: Sequence[Segment], *, start_index: int = 1) -> str:
+    """把分段拼成 SRT 正文 (Latin-1 之外的字都保留, 文件按 UTF-8 写).
+
+    start_index 让调用方在正文前加了一条标记时把编号续上, 免得两个 "1".
+    """
     lines: list[str] = []
-    for index, segment in enumerate(segments, start=1):
+    for index, segment in enumerate(segments, start=start_index):
         lines.append(str(index))
         lines.append(f"{format_timestamp(segment.start)} --> {format_timestamp(segment.end)}")
         lines.append(segment.text)

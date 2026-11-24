@@ -179,6 +179,11 @@ def is_video_media(path: Path, media_extensions: frozenset[str] | None = None) -
     return path.suffix.lower() in extensions
 
 
+def is_pointer_media(path: Path) -> bool:
+    """指向别处媒体的路径文件 (.strm), 本地没有音轨与画面."""
+    return path.suffix.lower() in _POINTER_EXTENSIONS
+
+
 def is_undersized_video(path: Path, min_file_size: int, media_extensions: frozenset[str] | None = None) -> bool:
     """低于阈值的视频文件.
 

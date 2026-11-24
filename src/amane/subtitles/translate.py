@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import structlog
 from pydantic_ai.direct import model_request
@@ -37,6 +38,25 @@ class TranslationError(Exception):
     """翻译失败: 端点不可达或返回的形状不对."""
 
 
+@dataclass(frozen=True, slots=True)
+class TranslationOutcome:
+    """逐批翻译的结果; 只回正文, 失败批数由调用方决定怎么处理."""
+
+    lines: list[str]
+    failed_batches: int
+    total_batches: int
+
+    @property
+    def complete(self) -> bool:
+        """整片都译到: 没有一批回退原文."""
+        return self.failed_batches == 0
+
+    @property
+    def nothing_translated(self) -> bool:
+        """一批都没译成: 端点整体不可用, 落盘只会得到一份日文字幕."""
+        return self.total_batches > 0 and self.failed_batches == self.total_batches
+
+
 def parse_lines(text: str) -> list[str]:
     """从模型输出里取出行数组; 兼容被包在代码块里的 JSON."""
     cleaned = _FENCE.sub("", text).strip()
@@ -56,9 +76,10 @@ async def translate_lines(
     lines: Sequence[str],
     *,
     batch_size: int = BATCH_SIZE,
-) -> list[str]:
+) -> TranslationOutcome:
     """逐批翻译; 单批失败保留原文并继续, 不让一行砸掉整片字幕."""
     translated: list[str] = []
+    failed = 0
     for start in range(0, len(lines), batch_size):
         batch = list(lines[start : start + batch_size])
         payload = json.dumps(batch, ensure_ascii=False)
@@ -76,9 +97,15 @@ async def translate_lines(
         except Exception as exc:  # 模型端异常种类由 provider 决定
             logger.warning("subtitle translate failed", batch_start=start, error=str(exc))
             translated.extend(batch)
+            failed += 1
             continue
         if len(got) != len(batch):
             logger.warning("subtitle translate line count off", expected=len(batch), got=len(got))
+            failed += 1
             got = [*got, *batch[len(got) :]][: len(batch)]
         translated.extend(text.strip() or original for text, original in zip(got, batch, strict=True))
-    return translated
+    return TranslationOutcome(
+        lines=translated,
+        failed_batches=failed,
+        total_batches=(len(lines) + batch_size - 1) // batch_size,
+    )

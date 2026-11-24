@@ -17,7 +17,7 @@ import httpx2
 import structlog
 
 from ..db.models import MediaFileStatus
-from ..library.rules import has_companion_subtitle, is_video_media
+from ..library.rules import has_companion_subtitle, is_pointer_media, is_video_media
 from ..llm.model import build_model
 from ..subtitles.targets import is_multi_disc
 from ..subtitles.translate import TranslationError, translate_lines
@@ -26,6 +26,7 @@ from ..subtitles.whisper import (
     WhisperError,
     extract_audio,
     ffmpeg_path,
+    format_timestamp,
     srt_lines,
     to_srt,
     transcribe,
@@ -168,6 +169,8 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             return _TargetOutcome(_Outcome.SKIPPED, "不是视频文件")
         if is_multi_disc(path):
             return _TargetOutcome(_Outcome.SKIPPED, "分卷不补字幕")
+        if is_pointer_media(path):
+            return _TargetOutcome(_Outcome.SKIPPED, "指针文件没有音轨")
         library = await self._repo.get_library(media.library_id)
         if library is None:
             return _TargetOutcome(_Outcome.FAILED, "媒体库不存在")
@@ -208,10 +211,20 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
                     model=self._hot.llm.model,
                 )
                 try:
-                    texts = await translate_lines(model, srt_lines(segments))
+                    outcome = await translate_lines(model, srt_lines(segments))
                 except TranslationError as exc:
                     return _TargetOutcome(_Outcome.FAILED, str(exc))
-                segments = with_texts(segments, texts)
+                if outcome.nothing_translated:
+                    # 端点整体不可用: 落盘只会得到一份日文字幕, 记失败等网关恢复后重跑.
+                    return _TargetOutcome(_Outcome.FAILED, "大模型端点没有可用账号, 译文没生成")
+                if not outcome.complete:
+                    logger.warning(
+                        "subtitle translate partially fell back",
+                        media_file_id=media.id,
+                        failed_batches=outcome.failed_batches,
+                        total_batches=outcome.total_batches,
+                    )
+                segments = with_texts(segments, outcome.lines)
                 translated = True
             return await self._write(media, library, segments, translated=translated)
         finally:
@@ -236,7 +249,8 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             target = video.with_suffix("").with_suffix(f".{language_tag}.srt")
             if await asyncio.to_thread(target.exists):
                 return _TargetOutcome(_Outcome.SKIPPED, "目标字幕已存在")
-            body = f"1\n00:00:00,000 --> 00:00:02,000\n{MACHINE_MARK} (Whisper)\n\n" + to_srt(segments)
+            marker = f"1\n{format_timestamp(0.0)} --> {format_timestamp(2.0)}\n{MACHINE_MARK} (Whisper)\n\n"
+            body = marker + to_srt(segments, start_index=2)
             try:
                 await asyncio.to_thread(target.write_text, body, encoding="utf-8")
             except OSError as exc:
