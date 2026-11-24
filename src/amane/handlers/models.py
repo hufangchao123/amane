@@ -256,6 +256,36 @@ class DeleteResult(BaseModel):
     文件 / 下载进度, 目录不再为空或无法读取), 这些条目同时计入 `failed`."""
 
 
+class MediaPurgePayload(BaseModel):
+    """片库里勾选一批条目, 连它们的文件一起删掉.
+
+    与 DELETE 的区别: DELETE 从清理清单出发 (路径集合), 这里从片库条目出发 (元数据集合).
+    复验口径相同: 文件不在就不删也不报错, 目录里出现的更像下载进度则拒绝.
+    """
+
+    library_id: int = Field(description="条目所属 Library ID")
+    metadata_ids: list[int] = Field(min_length=1, max_length=200, description="要清掉的片库条目")
+    delete_files: bool = Field(default=True, description="连同磁盘文件一起删; 关闭则只删条目与索引")
+    prune_empty_dirs: bool = Field(default=True, description="删除本次腾空的目录 (库根与回收站除外)")
+
+
+class MediaPurgeResult(BaseModel):
+    type: Literal[TaskType.MEDIA_PURGE] = TaskType.MEDIA_PURGE
+    files_deleted: int = 0
+    """删掉的磁盘文件数."""
+    indexed: int = 0
+    """随之删除的索引行数."""
+    metadata_deleted: int = 0
+    """删掉的片库条目数."""
+    missing: int = 0
+    """条目存在但没有文件, 或文件已不在磁盘."""
+    refused: int = 0
+    """复验拒绝 (目录里像下载进度、路径在回收站里) 的文件数."""
+    failed: int = 0
+    freed_bytes: int = 0
+    pruned_dirs: int = 0
+
+
 # --- CLEANUP ---
 
 

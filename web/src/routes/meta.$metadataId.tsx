@@ -27,6 +27,7 @@ import {
   IconGitMerge,
   IconLock,
   IconLockOpen,
+  IconFileX,
   IconPencil,
   IconPhotoOff,
   IconPlayerPlay,
@@ -239,6 +240,42 @@ function TitleDetailPage() {
     });
     if (!ok) return;
     deleteMutation.mutate({ path: { metadata_id: id } });
+  }
+
+  const purgeMutation = useMutation({
+    ...submitTaskMutation(),
+    onSuccess: (data) => {
+      notifications.show({
+        message: t("purge.queued", { id: data?.id ?? "" }),
+        color: "blue",
+      });
+    },
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
+
+  /** 按库分组提交: 任务一次只处理一个库, 片子的文件可能分在多个库里. */
+  async function handlePurge() {
+    const files = data?.files ?? [];
+    const libraryIds = [...new Set(files.map((f) => f.library_id))];
+    const ok = await confirm({
+      title: t("purge.title"),
+      message: t("purge.confirm", { id, files: files.length }),
+      confirmLabel: t("purge.title"),
+    });
+    if (!ok) return;
+    if (libraryIds.length === 0) {
+      notifications.show({ message: t("purge.noFiles"), color: "yellow" });
+      return;
+    }
+    for (const libraryId of libraryIds) {
+      purgeMutation.mutate({
+        body: { type: "media_purge", library_id: libraryId, metadata_ids: [Number(id)] },
+      });
+    }
   }
 
   const { data: userTagOptions } = useQuery(listFacetsOptions(USER_TAG_FACET_LIST));
@@ -879,6 +916,16 @@ function TitleDetailPage() {
               onClick={() => void handleDelete()}
             >
               {t("common:actions.delete")}
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="red"
+              leftSection={<IconFileX size={14} />}
+              loading={purgeMutation.isPending}
+              onClick={() => void handlePurge()}
+            >
+              {t("purge.action")}
             </Button>
           </Group>
         </Stack>

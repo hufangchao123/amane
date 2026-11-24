@@ -403,5 +403,12 @@
     "unlocked": "未锁定",
     "toggleLocked": "解锁字段",
     "toggleUnlocked": "锁定字段"
+  },
+  "purge": {
+    "action": "删除条目与文件",
+    "title": "删除条目与文件",
+    "confirm": "将删除 {{id}} 的 {{files}} 份文件与片库条目，不可恢复。",
+    "queued": "已提交删除任务 #{{id}}",
+    "noFiles": "这个条目没有文件，只需删除条目本身"
   }
 }

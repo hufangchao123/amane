@@ -83,7 +83,8 @@
     "notify_digest": "摘要推送",
     "avatar_check": "头像校验",
     "scrape_transfer": "刮削后转移",
-    "subtitle_generate": "转写生成字幕"
+    "subtitle_generate": "转写生成字幕",
+    "media_purge": "删除条目与文件"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -166,7 +167,7 @@
       "orphans": "孤儿",
       "groups": "分组",
       "droppable": "可删",
-      "freed": "释放",
+      "freed": "释放空间",
       "trashed": "已入回收站",
       "restored": "已还原",
       "purged": "已清理",
@@ -190,9 +191,11 @@
       "multiDisc": "分卷",
       "generated": "已生成",
       "translated": "已译中文",
-      "metadataRemoved": "片库条目",
+      "metadataRemoved": "清理条目",
       "filesRemoved": "删记录",
-      "resourcesRemoved": "删资源"
+      "resourcesRemoved": "删资源",
+      "filesDeleted": "删除文件",
+      "indexed": "摘除索引"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -231,7 +234,8 @@
       "avatar_check": "头像校验",
       "notify": "通知",
       "scrape_transfer": "刮削后转移",
-      "subtitle_generate": "转写生成字幕"
+      "subtitle_generate": "转写生成字幕",
+      "media_purge": "删除条目与文件"
     },
     "cleanup": {
       "remove_missing_files": {
@@ -626,6 +630,24 @@
       "limit": {
         "label": "单轮份数",
         "description": "这一轮最多转几份; 一份要跑几十分钟, 默认值刻意压得小"
+      }
+    },
+    "media_purge": {
+      "library_id": {
+        "label": "媒体库",
+        "description": "要清理的媒体库; 条目与文件必须在这个库里"
+      },
+      "metadata_ids": {
+        "label": "条目 id",
+        "description": "要删掉的片库条目 id; 一次最多 200 个"
+      },
+      "delete_files": {
+        "label": "同时删除文件",
+        "description": "关闭时只摘掉条目与索引, 磁盘保持原样"
+      },
+      "prune_empty_dirs": {
+        "label": "剪掉空目录",
+        "description": "文件删完后把空掉的目录收回"
       }
     }
   },

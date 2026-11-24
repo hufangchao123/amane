@@ -245,6 +245,31 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
     case "scan_invalid":
     case "delete":
       return <EmptyHint visible={!failed} />;
+
+    case "media_purge":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            {
+              label: t("result.counts.filesDeleted"),
+              value: result.files_deleted ?? 0,
+              tone: "red",
+            },
+            {
+              label: t("result.counts.metadataRemoved"),
+              value: result.metadata_deleted ?? 0,
+              tone: "gray",
+            },
+            { label: t("result.counts.indexed"), value: result.indexed ?? 0, tone: "gray" },
+            {
+              label: t("result.counts.freed"),
+              value: formatFileSize(result.freed_bytes ?? 0),
+              tone: "teal",
+            },
+          ]}
+        />
+      );
     default:
       return assertNever(result, "TaskResult");
   }

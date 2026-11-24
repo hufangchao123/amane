@@ -26,6 +26,7 @@ from ..handlers import (
     CleanupHandler,
     DeleteHandler,
     LibraryTaskLocks,
+    MediaPurgeHandler,
     MediaRefreshHandler,
     NfoPatchHandler,
     NotifyHandler,
@@ -621,6 +622,7 @@ def build_handlers(
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo, hot)
     handlers[TaskType.SUBTITLE_GENERATE] = SubtitleGenerateHandler(repo, hot, library_locks)
+    handlers[TaskType.MEDIA_PURGE] = MediaPurgeHandler(repo, hot, library_locks=library_locks)
     handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, hot, library_locks)
     handlers[TaskType.NOTIFY] = NotifyHandler(repo, hot)
     handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, WebAvatarSource(web_client), state_dir=state_dir)

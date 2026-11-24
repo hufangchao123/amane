@@ -9,6 +9,7 @@ from ...handlers import (
     AvatarCheckPayload,
     CleanupPayload,
     DeletePayload,
+    MediaPurgePayload,
     MediaRefreshPayload,
     NfoPatchPayload,
     NotifyPayload,
@@ -34,6 +35,7 @@ from ..models import (
     AvatarCheckSubmission,
     CleanupSubmission,
     DeleteSubmission,
+    MediaPurgeSubmission,
     MediaRefreshSubmission,
     NfoPatchSubmission,
     NotifySubmission,
@@ -64,6 +66,7 @@ ResolvedPayload = (
     | ScrapeTransferPayload
     | ScanInvalidPayload
     | DeletePayload
+    | MediaPurgePayload
     | OrganizePayload
     | CleanupPayload
     | UpscalePayload
@@ -141,6 +144,14 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.AVATAR_CHECK, AvatarCheckPayload(limit=req.limit, clear_broken=req.clear_broken)
         case NotifySubmission():
             return TaskType.NOTIFY, NotifyPayload(kind=req.kind, title=req.title, body=req.body)
+        case MediaPurgeSubmission():
+            return TaskType.MEDIA_PURGE, MediaPurgePayload(
+                library_id=req.library_id,
+                metadata_ids=req.metadata_ids,
+                delete_files=req.delete_files,
+                prune_empty_dirs=req.prune_empty_dirs,
+            )
+
         case NfoPatchSubmission():
             return TaskType.NFO_PATCH, NfoPatchPayload(kind=req.kind, library_id=req.library_id, dry_run=req.dry_run)
         case WashApplySubmission():

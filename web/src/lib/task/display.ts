@@ -1,4 +1,5 @@
 import {
+  IconFileX,
   IconUserCheck,
   IconFileText,
   type Icon,
@@ -52,6 +53,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   actor_push: IconCloudUpload,
   subtitle_fetch: IconSubtitles,
   subtitle_audit: IconSubtitles,
+  media_purge: IconFileX,
   subtitle_generate: IconMicrophone,
   wash_scan: IconArrowsExchange,
   wash_apply: IconArrowsExchange,

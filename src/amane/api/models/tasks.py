@@ -18,6 +18,8 @@ from ...handlers import (
     CleanupResult,
     DeletePayload,
     DeleteResult,
+    MediaPurgePayload,
+    MediaPurgeResult,
     MediaRefreshPayload,
     MediaRefreshResult,
     NfoPatchPayload,
@@ -70,6 +72,7 @@ TaskResultPayload = Annotated[
     | OrganizeResult
     | ScanInvalidResult
     | DeleteResult
+    | MediaPurgeResult
     | ScrapeResult
     | ScrapeTransferResult
     | CleanupResult
@@ -335,6 +338,12 @@ class SubtitleGenerateSubmission(SubtitleGeneratePayload):
     type: Literal["subtitle_generate"]
 
 
+class MediaPurgeSubmission(MediaPurgePayload):
+    """片库条目清理: 由条目 id 出发删文件与元数据."""
+
+    type: Literal["media_purge"] = "media_purge"
+
+
 class NfoPatchSubmission(NfoPatchPayload):
     """NFO 修补; 默认只统计不写盘."""
 
@@ -390,6 +399,7 @@ TaskSubmission = Annotated[
     | WashScanSubmission
     | WashApplySubmission
     | MediaRefreshSubmission
+    | MediaPurgeSubmission
     | NfoPatchSubmission
     | NotifySubmission
     | AvatarCheckSubmission,

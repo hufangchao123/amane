@@ -47,6 +47,7 @@ export type PanelOnlyTaskType =
   | "semantic_benchmark"
   | "subtitle_fetch"
   | "subtitle_audit"
+  | "media_purge"
   | "subtitle_generate"
   | "wash_scan"
   | "wash_apply"
@@ -117,6 +118,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "actor_push",
   "subtitle_fetch",
   "subtitle_audit",
+  "media_purge",
   "subtitle_generate",
   "wash_scan",
   "wash_apply",

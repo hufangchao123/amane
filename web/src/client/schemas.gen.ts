@@ -5751,6 +5751,104 @@ export const MediaListResponseSchema = {
     title: 'MediaListResponse'
 } as const;
 
+export const MediaPurgeResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'media_purge',
+            title: 'Type',
+            default: 'media_purge'
+        },
+        files_deleted: {
+            type: 'integer',
+            title: 'Files Deleted',
+            default: 0
+        },
+        indexed: {
+            type: 'integer',
+            title: 'Indexed',
+            default: 0
+        },
+        metadata_deleted: {
+            type: 'integer',
+            title: 'Metadata Deleted',
+            default: 0
+        },
+        missing: {
+            type: 'integer',
+            title: 'Missing',
+            default: 0
+        },
+        refused: {
+            type: 'integer',
+            title: 'Refused',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        freed_bytes: {
+            type: 'integer',
+            title: 'Freed Bytes',
+            default: 0
+        },
+        pruned_dirs: {
+            type: 'integer',
+            title: 'Pruned Dirs',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'MediaPurgeResult'
+} as const;
+
+export const MediaPurgeSubmissionSchema = {
+    properties: {
+        library_id: {
+            type: 'integer',
+            title: 'Library Id',
+            description: '条目所属 Library ID'
+        },
+        metadata_ids: {
+            items: {
+                type: 'integer'
+            },
+            type: 'array',
+            maxItems: 200,
+            minItems: 1,
+            title: 'Metadata Ids',
+            description: '要清掉的片库条目'
+        },
+        delete_files: {
+            type: 'boolean',
+            title: 'Delete Files',
+            description: '连同磁盘文件一起删; 关闭则只删条目与索引',
+            default: true
+        },
+        prune_empty_dirs: {
+            type: 'boolean',
+            title: 'Prune Empty Dirs',
+            description: '删除本次腾空的目录 (库根与回收站除外)',
+            default: true
+        },
+        type: {
+            type: 'string',
+            const: 'media_purge',
+            title: 'Type',
+            default: 'media_purge'
+        }
+    },
+    type: 'object',
+    required: [
+        'library_id',
+        'metadata_ids'
+    ],
+    title: 'MediaPurgeSubmission',
+    description: '片库条目清理: 由条目 id 出发删文件与元数据.'
+} as const;
+
 export const MediaRefreshResultSchema = {
     properties: {
         type: {
@@ -11274,6 +11372,9 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/MediaRefreshSubmission'
                     },
                     {
+                        $ref: '#/components/schemas/MediaPurgeSubmission'
+                    },
+                    {
                         $ref: '#/components/schemas/NfoPatchSubmission'
                     },
                     {
@@ -11291,6 +11392,7 @@ export const TaskBatchSubmitRequestSchema = {
                         avatar_check: '#/components/schemas/AvatarCheckSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
+                        media_purge: '#/components/schemas/MediaPurgeSubmission',
                         media_refresh: '#/components/schemas/MediaRefreshSubmission',
                         nfo_patch: '#/components/schemas/NfoPatchSubmission',
                         notify: '#/components/schemas/NotifySubmission',
@@ -11838,6 +11940,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/DeleteResult'
                         },
                         {
+                            $ref: '#/components/schemas/MediaPurgeResult'
+                        },
+                        {
                             $ref: '#/components/schemas/ScrapeResult'
                         },
                         {
@@ -11903,6 +12008,7 @@ export const TaskResponseSchema = {
                             avatar_check: '#/components/schemas/AvatarCheckResult',
                             cleanup: '#/components/schemas/CleanupResult',
                             delete: '#/components/schemas/DeleteResult',
+                            media_purge: '#/components/schemas/MediaPurgeResult',
                             media_refresh: '#/components/schemas/MediaRefreshResult',
                             nfo_patch: '#/components/schemas/NfoPatchResult',
                             notify: '#/components/schemas/NotifyResult',
@@ -11979,6 +12085,7 @@ export const TaskTypeSchema = {
         'rescrape',
         'scan_invalid',
         'delete',
+        'media_purge',
         'semantic_index',
         'semantic_benchmark',
         'actor_push',

@@ -4,6 +4,7 @@ from .actor_scrape import *
 from .avatar_check import *
 from .delete import *
 from .file import *
+from .media_purge import *
 from .media_refresh import *
 from .models import *
 from .nfo_patch import *

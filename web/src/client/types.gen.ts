@@ -2790,6 +2790,84 @@ export type MediaListResponse = {
 };
 
 /**
+ * MediaPurgeResult
+ */
+export type MediaPurgeResult = {
+    /**
+     * Type
+     */
+    type?: 'media_purge';
+    /**
+     * Files Deleted
+     */
+    files_deleted?: number;
+    /**
+     * Indexed
+     */
+    indexed?: number;
+    /**
+     * Metadata Deleted
+     */
+    metadata_deleted?: number;
+    /**
+     * Missing
+     */
+    missing?: number;
+    /**
+     * Refused
+     */
+    refused?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Freed Bytes
+     */
+    freed_bytes?: number;
+    /**
+     * Pruned Dirs
+     */
+    pruned_dirs?: number;
+};
+
+/**
+ * MediaPurgeSubmission
+ *
+ * 片库条目清理: 由条目 id 出发删文件与元数据.
+ */
+export type MediaPurgeSubmission = {
+    /**
+     * Library Id
+     *
+     * 条目所属 Library ID
+     */
+    library_id: number;
+    /**
+     * Metadata Ids
+     *
+     * 要清掉的片库条目
+     */
+    metadata_ids: Array<number>;
+    /**
+     * Delete Files
+     *
+     * 连同磁盘文件一起删; 关闭则只删条目与索引
+     */
+    delete_files?: boolean;
+    /**
+     * Prune Empty Dirs
+     *
+     * 删除本次腾空的目录 (库根与回收站除外)
+     */
+    prune_empty_dirs?: boolean;
+    /**
+     * Type
+     */
+    type?: 'media_purge';
+};
+
+/**
  * MediaRefreshResult
  */
 export type MediaRefreshResult = {
@@ -5997,7 +6075,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | SubtitleGenerateSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | SubtitleGenerateSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | MediaPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6291,6 +6369,8 @@ export type TaskResponse = {
     } & ScanInvalidResult) | ({
         type: 'delete';
     } & DeleteResult) | ({
+        type: 'media_purge';
+    } & MediaPurgeResult) | ({
         type: 'scrape';
     } & ScrapeResult) | ({
         type: 'scrape_transfer';
@@ -6344,7 +6424,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'subtitle_generate' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'media_purge' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'subtitle_generate' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10224,6 +10304,8 @@ export type SubmitTaskData = {
     } & WashApplySubmission) | ({
         type: 'media_refresh';
     } & MediaRefreshSubmission) | ({
+        type: 'media_purge';
+    } & MediaPurgeSubmission) | ({
         type: 'nfo_patch';
     } & NfoPatchSubmission) | ({
         type: 'notify';

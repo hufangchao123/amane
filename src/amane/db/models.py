@@ -44,6 +44,7 @@ class TaskType(StrEnum):
     RESCRAPE = "rescrape"
     SCAN_INVALID = "scan_invalid"
     DELETE = "delete"
+    MEDIA_PURGE = "media_purge"
     SEMANTIC_INDEX = "semantic_index"
     SEMANTIC_BENCHMARK = "semantic_benchmark"
     ACTOR_PUSH = "actor_push"

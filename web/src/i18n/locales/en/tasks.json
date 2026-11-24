@@ -95,7 +95,8 @@
     "notify_digest": "Digest push",
     "avatar_check": "Avatar check",
     "scrape_transfer": "Transfer after scrape",
-    "subtitle_generate": "Generate subtitles"
+    "subtitle_generate": "Generate subtitles",
+    "media_purge": "Delete entry and files"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -221,9 +222,11 @@
       "multiDisc": "Multi-disc",
       "generated": "Generated",
       "translated": "Translated to Chinese",
-      "metadataRemoved": "Library entries",
+      "metadataRemoved": "Entries removed",
       "filesRemoved": "Records removed",
-      "resourcesRemoved": "Resources removed"
+      "resourcesRemoved": "Resources removed",
+      "filesDeleted": "Files deleted",
+      "indexed": "Index rows dropped"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -263,7 +266,8 @@
       "avatar_check": "Avatar check",
       "notify": "Notify",
       "scrape_transfer": "Post-scrape transfer",
-      "subtitle_generate": "Generate subtitles"
+      "subtitle_generate": "Generate subtitles",
+      "media_purge": "Delete entry and files"
     },
     "cleanup": {
       "remove_missing_files": {
@@ -657,6 +661,24 @@
       "limit": {
         "label": "Files per run",
         "description": "How many files this run transcribes; one file takes tens of minutes"
+      }
+    },
+    "media_purge": {
+      "library_id": {
+        "label": "Library",
+        "description": "Library the entries belong to"
+      },
+      "metadata_ids": {
+        "label": "Entry ids",
+        "description": "Catalog entries to delete; up to 200 at once"
+      },
+      "delete_files": {
+        "label": "Delete files too",
+        "description": "Off keeps the files on disk and only drops the entry"
+      },
+      "prune_empty_dirs": {
+        "label": "Prune empty directories",
+        "description": "Remove directories that become empty"
       }
     }
   },

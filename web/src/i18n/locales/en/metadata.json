@@ -430,5 +430,12 @@
     "unlocked": "Unlocked",
     "toggleLocked": "Unlock field",
     "toggleUnlocked": "Lock field"
+  },
+  "purge": {
+    "action": "Delete entry and files",
+    "title": "Delete entry and files",
+    "confirm": "This deletes {{files}} file(s) of {{id}} and the catalog entry. It cannot be undone.",
+    "queued": "Purge task submitted #{{id}}",
+    "noFiles": "This entry has no files; deleting the entry alone is enough"
   }
 }
