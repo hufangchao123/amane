@@ -961,7 +961,7 @@
           "description": "Separate timeouts for audio extraction and transcription"
         },
         "fallback_after_fetch": {
-          "label": "Transcribe on miss",
+          "label": "Transcribe when fetch misses",
           "description": "Transcribe the file when no subtitle source has it. Costs CPU, off by default"
         }
       }
