@@ -348,6 +348,7 @@ class TestTaskResult:
                     "failed": 0,
                     "pruned_dirs": 0,
                     "unreadable": 0,
+                    "untracked": 0,
                     "conflicts": [
                         {
                             "path": "/lib/incoming/NSFS-039.mp4",

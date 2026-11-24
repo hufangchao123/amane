@@ -5,14 +5,17 @@ import {
   Button,
   Group,
   SegmentedControl,
+  Stack,
   Text,
   TextInput,
   Title,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
   IconFilter,
+  IconRefresh,
   IconSearch,
   IconSparkles,
   IconTable,
@@ -50,6 +53,7 @@ import {
 } from "@/components/media/facet-filter-controls";
 import { MetaTable } from "@/components/media/meta-table";
 import { PosterGrid } from "@/components/media/poster-grid";
+import { extractErrorMessage } from "@/lib/api-error";
 import { activeFacetFilters, addFacetId, type FacetFilters, removeFacetId } from "@/lib/facets";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
 import { EMBEDDING_KINDS } from "@/lib/exhaustive-maps";
@@ -283,6 +287,13 @@ function MetaIndexPage() {
     [gridQuery.data],
   );
   const total = isList ? (listQuery.data?.total ?? 0) : (gridQuery.data?.pages[0]?.total ?? 0);
+  // 列表与网格是同一批数据的两种视图: 请求失败要说出来, 不能渲染成「没有影片」.
+  const listIsError = isList ? listQuery.isError : gridQuery.isError;
+  const listError = isList ? listQuery.error : gridQuery.error;
+  const retryList = () => {
+    if (isList) void listQuery.refetch();
+    else void gridQuery.refetch();
+  };
   const semanticHits = useMemo(() => {
     const map = new Map<number, SemanticHitInfo>();
     if (!semanticActive) return map;
@@ -683,6 +694,30 @@ function MetaIndexPage() {
       {semanticNotice != null ? (
         <Alert color="blue" title={t("semantic.unavailableTitle")} maw={720} mx="auto" w="100%">
           {semanticNotice}
+        </Alert>
+      ) : listIsError ? (
+        <Alert
+          color="red"
+          variant="light"
+          icon={<IconAlertTriangle size={16} />}
+          title={t("listLoadFailed")}
+          maw={720}
+          mx="auto"
+          w="100%"
+        >
+          <Stack gap="xs" align="flex-start">
+            <Text size="xs">
+              {extractErrorMessage(listError, t("common:toast.operationFailed"))}
+            </Text>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              onClick={retryList}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </Stack>
         </Alert>
       ) : isList ? (
         <MetaTable

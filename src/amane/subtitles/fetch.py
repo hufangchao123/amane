@@ -9,16 +9,14 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel
 
 from ..db.models import MediaFileStatus, TaskStatus, TaskType
-from ..library.rules import is_pointer_media
 from . import avsubtitles, subtitlecat
 from .models import SubtitleDownload, SubtitleSourceError
-from .targets import is_multi_disc
+from .targets import GapKind, classify_gap
 from .transport import SubtitleHttp
 
 if TYPE_CHECKING:
@@ -124,9 +122,10 @@ class SubtitleFetcher:
     async def summary(self) -> SubtitleFetchSummary:
         """缺口按"已刮削但没有任何字幕"计: 未刮削的条目连番号都未必有, 抓也抓不到."""
         gaps = await self._repo.list_media_files(status=[MediaFileStatus.SCRAPED], has_subtitle=False, limit=None)
-        multi_disc = sum(1 for media in gaps if is_multi_disc(media.path))
-        pointer = sum(1 for media in gaps if is_pointer_media(Path(media.path)))
-        missing = len(gaps) - multi_disc - pointer
+        kinds = [classify_gap(media.path) for media in gaps]
+        multi_disc = sum(1 for kind in kinds if kind is GapKind.MULTI_DISC)
+        pointer = sum(1 for kind in kinds if kind is GapKind.POINTER)
+        missing = sum(1 for kind in kinds if kind is GapKind.MISSING)
         queued = await self._repo.count_tasks(
             statuses=[TaskStatus.QUEUED, TaskStatus.RUNNING],
             task_types=[TaskType.SUBTITLE_FETCH],

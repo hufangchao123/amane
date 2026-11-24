@@ -159,6 +159,49 @@ class TestDeleteTarget:
         assert (target.read_bytes(), neighbor.read_bytes()) == (b"poster", b"fanart")
         assert (tally.deleted, tally.failed) == (0, 2)
 
+    def test_ok_dir_file_deleted(self, tmp_path: Path) -> None:
+        """成品目录在库根之外 (刮削后转移): 那里的条目同样可删, 否则转移过的文件永远删不掉."""
+        lib, done = tmp_path / "lib", tmp_path / "done"
+        lib.mkdir()
+        target = done / "ABC-123" / "ABC-123.mp4"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"0123456789")
+
+        tally = DeleteTally()
+        tally.record(delete_target.sync(target, library_root=lib, bases=(done,)))
+
+        assert not target.exists()
+        assert (tally.deleted, tally.failed) == (1, 0)
+        assert tally.freed_bytes == 10
+
+    def test_ok_dir_itself_refused(self, tmp_path: Path) -> None:
+        """授权根本身不删: 与库根同理, 目标是里面的若干条目."""
+        lib, done = tmp_path / "lib", tmp_path / "done"
+        lib.mkdir()
+        done.mkdir()
+        (done / "ABC-123.mp4").write_bytes(b"x")
+
+        outcome = delete_target.sync(done, library_root=lib, bases=(done,))
+
+        assert outcome.status == "failed"
+        assert "publish root" in (outcome.error or "")
+        assert (done / "ABC-123.mp4").exists()
+
+    def test_outside_extra_bases_refused(self, tmp_path: Path) -> None:
+        """认下成品目录不等于放开库外: 这些根之外的路径仍然拒绝."""
+        lib, done, other = tmp_path / "lib", tmp_path / "done", tmp_path / "other"
+        lib.mkdir()
+        done.mkdir()
+        other.mkdir()
+        target = other / "poster.jpg"
+        target.write_bytes(b"poster")
+
+        tally = DeleteTally()
+        tally.record(delete_target.sync(target, library_root=lib, bases=(done,)))
+
+        assert target.read_bytes() == b"poster"
+        assert (tally.deleted, tally.failed) == (0, 1)
+
     def test_library_root_refused(self, tmp_path: Path) -> None:
         lib = tmp_path / "lib"
         lib.mkdir()

@@ -143,3 +143,56 @@ async def test_organize_prune_keeps_unreadable_rows(
     assert result.result is not None
     assert result.result.unreadable == 1
     assert await repo.list_media_files(library_id=lib.id, limit=None)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_organize_deletes_untracked_row_whose_file_is_gone(
+    repo: Repository, resource_store: ResourceStore, tmp_path: Path
+) -> None:
+    """文件确实不在了才删行: 未跟踪不是删除的理由, 缺失才是."""
+    lib_root, elsewhere = tmp_path / "lib", tmp_path / "elsewhere"
+    lib_root.mkdir()
+    elsewhere.mkdir()
+    target = elsewhere / "ABC-123.mp4"
+    lib = await repo.create_library(name="t", path=str(lib_root))
+    assert lib.id is not None
+    await repo.create_media_file(lib.id, path=str(target), number="ABC-123", status=MediaFileStatus.SCRAPED)
+
+    handler = OrganizeHandler(repo, HotSettings(), resource_store)
+    payload = OrganizePayload(library_id=lib.id)
+    await payload.resolve(repo)
+    result = await handler.handle(payload)
+
+    assert result.success is True
+    assert result.result is not None
+    assert result.result.untracked == 0
+    assert await repo.list_media_files(library_id=lib.id, limit=None) == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_subdirectory_refresh_keeps_rows_outside_it(repo: Repository, tmp_path: Path) -> None:
+    """子目录范围内的刷新看不到库里的其它行, 不能拿这一趟的结果做集合差把那些行删掉."""
+    lib_root = tmp_path / "lib"
+    inside = lib_root / "keep"
+    outside = lib_root / "other"
+    inside.mkdir(parents=True)
+    outside.mkdir(parents=True)
+    kept = outside / "ABC-124.mp4"
+    kept.write_bytes(b"x" * 64)
+    lib = await repo.create_library(name="t", path=str(lib_root))
+    assert lib.id is not None
+    await repo.create_media_file(lib.id, path=str(kept), number="ABC-124", status=MediaFileStatus.SCRAPED)
+
+    handler = RefreshHandler(repo)
+    payload = RefreshPayload(
+        library_id=lib.id,
+        path=str(inside),
+        recursive=True,
+        scan=[ScanMode.add, ScanMode.remove],
+    )
+    await payload.resolve(repo)
+    result = await handler.handle(payload)
+
+    assert result.success is True
+    rows = await repo.list_media_files(library_id=lib.id, limit=None)
+    assert [row.path for row in rows] == [str(kept)]

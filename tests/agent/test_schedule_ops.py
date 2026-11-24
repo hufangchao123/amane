@@ -74,7 +74,7 @@ async def test_create_update_and_trigger_schedule(schedule_deps: AgentDeps) -> N
         "type": "cleanup",
         "remove_missing_files": False,
         "remove_unreferenced_resources": True,
-        "remove_orphan_metadata": True,
+        "remove_orphan_metadata": False,
     }
 
     updated = await _tool_fn("update_schedule")(

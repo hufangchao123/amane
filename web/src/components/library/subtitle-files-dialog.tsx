@@ -19,8 +19,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api-token";
+import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
-import { formatFileSize } from "@/lib/utils";
+import { formatDate, formatFileSize } from "@/lib/utils";
 
 interface SubtitleFileEntry {
   name: string;
@@ -47,6 +48,14 @@ interface SubtitleFilesDialogProps {
   onChanged?: () => void;
 }
 
+/** 已知的中文语言标签; 其余段 (如 `CD2` / `004`) 是文件名里的分卷或序号, 不是语言. */
+const ZH_LANGUAGE_LABELS: ReadonlySet<string> = new Set(["zh", "zh-cn", "zh-tw"]);
+
+function knownLanguageLabel(language: string | null): string | null {
+  if (!language) return null;
+  return ZH_LANGUAGE_LABELS.has(language.toLowerCase()) ? language : null;
+}
+
 interface ErrorBody {
   detail?: string;
 }
@@ -66,7 +75,7 @@ export function SubtitleFilesDialog({
   onClose,
   onChanged,
 }: SubtitleFilesDialogProps) {
-  const { t } = useTranslation(["library", "common"]);
+  const { t, i18n } = useTranslation(["library", "common"]);
   const [busy, setBusy] = useState(false);
   const [customName, setCustomName] = useState("");
 
@@ -103,6 +112,11 @@ export function SubtitleFilesDialog({
       notifications.show({ message: t("library:upload.done"), color: "teal" });
       onChanged?.();
       await listingQuery.refetch();
+    } catch (err) {
+      notifications.show({
+        message: extractErrorMessage(err, t("library:upload.failed")),
+        color: "red",
+      });
     } finally {
       setBusy(false);
     }
@@ -131,13 +145,21 @@ export function SubtitleFilesDialog({
       }
       onChanged?.();
       await listingQuery.refetch();
+    } catch (err) {
+      notifications.show({
+        message: extractErrorMessage(err, t("subtitles.deleteFailed")),
+        color: "red",
+      });
     } finally {
       setBusy(false);
     }
   }
 
   const files = listing?.files ?? [];
-  const extensions = (listing?.extensions ?? []).join(",");
+  const extensionList = listing?.extensions ?? [];
+  const extensions = extensionList.join(",");
+  // 库没配字幕扩展名: 后端不知道能收什么格式, 传上去也不会有结果.
+  const noExtensions = listing != null && extensionList.length === 0;
 
   return (
     <Modal
@@ -162,66 +184,68 @@ export function SubtitleFilesDialog({
           <Group justify="center" py="md">
             <Loader size="sm" />
           </Group>
-        ) : files.length === 0 ? (
+        ) : error != null ? null : files.length === 0 ? (
           <Text size="sm" c="dimmed">
             {t("subtitles.empty")}
           </Text>
         ) : (
-          <Table verticalSpacing="xs" fz="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>{t("subtitles.columns.name")}</Table.Th>
-                <Table.Th w={90}>{t("subtitles.columns.language")}</Table.Th>
-                <Table.Th w={110}>{t("subtitles.columns.size")}</Table.Th>
-                <Table.Th w={140}>{t("subtitles.columns.modified")}</Table.Th>
-                <Table.Th w={48} />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {files.map((entry) => (
-                <Table.Tr key={entry.path}>
-                  <Table.Td>
-                    <Text size="sm" truncate="end" ff="monospace">
-                      {entry.name}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    {entry.language ? (
-                      <Badge size="sm" variant="light">
-                        {entry.language}
-                      </Badge>
-                    ) : (
-                      <Text size="sm" c="dimmed">
-                        —
-                      </Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{formatFileSize(entry.size)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm" c="dimmed">
-                      {entry.modified_at ? entry.modified_at.slice(0, 10) : "—"}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Tooltip label={t("subtitles.deleteAction")}>
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        size="sm"
-                        disabled={busy}
-                        aria-label={t("subtitles.deleteAction")}
-                        onClick={() => void handleDelete(entry)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Table.Td>
+          <Table.ScrollContainer minWidth={520}>
+            <Table verticalSpacing="xs" fz="sm">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{t("subtitles.columns.name")}</Table.Th>
+                  <Table.Th w={90}>{t("subtitles.columns.language")}</Table.Th>
+                  <Table.Th w={110}>{t("subtitles.columns.size")}</Table.Th>
+                  <Table.Th w={140}>{t("subtitles.columns.modified")}</Table.Th>
+                  <Table.Th w={48} />
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {files.map((entry) => (
+                  <Table.Tr key={entry.path}>
+                    <Table.Td>
+                      <Text size="sm" truncate="end" ff="monospace">
+                        {entry.name}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      {knownLanguageLabel(entry.language) != null ? (
+                        <Badge size="sm" variant="light">
+                          {entry.language}
+                        </Badge>
+                      ) : (
+                        <Text size="sm" c="dimmed">
+                          —
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{formatFileSize(entry.size)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">
+                        {formatDate(entry.modified_at, i18n.language)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Tooltip label={t("subtitles.deleteAction")}>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="sm"
+                          disabled={busy}
+                          aria-label={t("subtitles.deleteAction")}
+                          onClick={() => void handleDelete(entry)}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
         )}
 
         <Stack gap="xs">
@@ -232,9 +256,15 @@ export function SubtitleFilesDialog({
             value={customName}
             onChange={(event) => setCustomName(event.currentTarget.value)}
           />
+          {noExtensions && (
+            <Text size="xs" c="dimmed">
+              {t("subtitles.noExtensions")}
+            </Text>
+          )}
           <Group justify="flex-end">
             <FileButton
               accept={extensions || ".srt,.ass,.ssa,.vtt,.sub"}
+              disabled={noExtensions}
               onChange={(file) => {
                 if (file) void handleUpload(file);
               }}
@@ -246,6 +276,7 @@ export function SubtitleFilesDialog({
                   variant="light"
                   leftSection={<IconUpload size={14} />}
                   loading={busy}
+                  disabled={noExtensions}
                 >
                   {t("subtitles.uploadAction")}
                 </Button>

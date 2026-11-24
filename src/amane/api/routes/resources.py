@@ -14,6 +14,7 @@ from ...media.file_type import detect_media_type, is_image_mime
 from ...media.resource_store import URL_HASH_PATTERN
 from ...net.egress import EgressPolicy
 from ...net.errors import EgressRejected, RequestError
+from ...utils.urls import redact_url
 from ..deps import RuntimeDep
 from ..support.http_cache import RESOURCE_CACHE_HEADERS, format_etag, maybe_not_modified
 from ..support.media_type import media_type_and_headers
@@ -33,7 +34,7 @@ def _image_response(request: Request, url: str, path: pathlib.Path, content_hash
     # 只回放按内容判定为图片的文件, 扩展名不作依据 (URL 路径由上游决定). 地址判定无法防御 DNS rebinding,
     # 也无法约束由代理解析的目标; 缓存命中的资源还可能来自不做地址判定的刮削下载.
     if not is_image_mime(detect_media_type(path)):
-        logger.warning("proxy image content is not an image", url=url)
+        logger.warning("proxy image content is not an image", url=redact_url(url))
         raise HTTPException(status_code=502, detail="上游内容不是图片")
 
     not_modified = maybe_not_modified(request, content_hash)
@@ -75,12 +76,12 @@ async def proxy_image(
     try:
         await _PROXY_EGRESS.ensure_allowed(url)
     except EgressRejected as e:
-        logger.warning("proxy image address rejected", url=url, reason=e.message)
+        logger.warning("proxy image address rejected", url=redact_url(url), reason=e.message)
         raise HTTPException(status_code=400, detail=e.detail) from e
     except RequestError as e:
         # 解析失败是上游不可达, 不是地址不合规: 回 502 但不进负缓存 — 解析失败多为瞬态,
         # 缓存 15 分钟会让网络恢复后同一地址继续失败.
-        logger.warning("proxy image host unreachable", url=url, reason=e.message)
+        logger.warning("proxy image host unreachable", url=redact_url(url), reason=e.message)
         raise HTTPException(status_code=502, detail="上游图片获取失败") from e
 
     # 负缓存命中则直接 502
@@ -99,7 +100,7 @@ async def proxy_image(
     local_path = await failures.coalesce(url, _acquire)
     if local_path is None:
         failures.remember(url)
-        logger.warning("proxy image acquire failed", url=url)
+        logger.warning("proxy image acquire failed", url=redact_url(url))
         raise HTTPException(status_code=502, detail="上游图片获取失败")
 
     # 成功后清除负缓存

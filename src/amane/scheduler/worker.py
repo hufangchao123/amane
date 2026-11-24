@@ -27,10 +27,13 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 CANCEL_ERROR = "已由用户取消"
+# 停服打断与人工取消是两回事: 前者是运维动作, 事后排查要能区分开, 所以另给一句文案.
+SHUTDOWN_ERROR = "服务停止, 任务被中断"
 # 一天待发通知算「同一件事」: 失败通知按任务类型合并, 队列里有一条就不再排.
 PENDING_NOTIFY_STATUSES = (TaskStatus.QUEUED, TaskStatus.RUNNING)
 
-_DEFAULT_SHUTDOWN_TIMEOUT = 0
+# 关闭时给活跃任务的宽限: 0 会让第一轮等待立刻超时, 在飞任务全部被取消.
+_DEFAULT_SHUTDOWN_TIMEOUT = 10.0
 # 关闭时等待主循环 (含尚未结算的认领) 退出的兜底阈值; 正常路径只等它自己退出.
 MAIN_LOOP_STOP_TIMEOUT = 5.0
 # 主循环崩溃后的退避重启: 首次等待与单次上限, 每次崩溃翻倍直到上限.
@@ -62,6 +65,8 @@ class AsyncWorker:
         self._concurrency = concurrency
         self._poll_interval = poll_interval
         self._shutdown_timeout = shutdown_timeout
+        # 停服时置位: 被打断的任务落库文案与人工取消区分开.
+        self._shutting_down = False
         self._semaphore = asyncio.Semaphore(concurrency)
         self._is_main = True
         # retire() 唤醒轮询中的主循环; 主循环自行退出, 不取消.
@@ -153,21 +158,31 @@ class AsyncWorker:
             await asyncio.gather(*list(self._active_tasks.values()), return_exceptions=True)
         self._close_recorders()
 
-    async def shutdown_active(self) -> None:
-        """关闭专用: 限时等待活跃任务, 超时取消; 不取消主循环, 不清扫数据库."""
+    async def shutdown_active(self, *, graceful: bool = True) -> None:
+        """处置活跃任务; 不取消主循环, 不清扫数据库.
+
+        ``graceful`` 只在服务真的要停时打开: 那时值得给任务一段收尾时间, 被打断的任务记「服务停止」.
+        配置热切换引起的 worker 换代不走宽限 —— 换代会重新入队, 等 10 秒只是把请求拖慢,
+        而任务是被有意打断的, 记「已由用户取消」才与实际相符.
+        """
+        self._shutting_down = graceful
         active = list(self._active_tasks.values())
         if active:
-            try:
-                await asyncio.wait_for(asyncio.gather(*active, return_exceptions=True), timeout=self._shutdown_timeout)
-            except TimeoutError:
-                logger.warning(
-                    "shutdown timeout, cancelling active tasks",
-                    timeout=self._shutdown_timeout,
-                    active_count=len(active),
-                )
-                for task in active:
-                    task.cancel()
-                await asyncio.gather(*active, return_exceptions=True)
+            if graceful:
+                try:
+                    await asyncio.wait_for(
+                        asyncio.gather(*active, return_exceptions=True), timeout=self._shutdown_timeout
+                    )
+                    active = []
+                except TimeoutError:
+                    logger.warning(
+                        "shutdown timeout, cancelling active tasks",
+                        timeout=self._shutdown_timeout,
+                        active_count=len(active),
+                    )
+            for task in active:
+                task.cancel()
+            await asyncio.gather(*active, return_exceptions=True)
         self._close_recorders()
 
     def _close_recorders(self) -> None:
@@ -308,7 +323,8 @@ class AsyncWorker:
                 try:
                     # 队列里已有一条未发出的失败通知就不再排: 站点挂掉时是成批失败, 逐条推会把真正的
                     # 异常刷没; 一条待发通知足以说明有人失败, 具体清单仍看任务列表.
-                    if await self._repo.count_tasks(PENDING_NOTIFY_STATUSES, [TaskType.NOTIFY]) > 0:
+                    # 只算 kind == "message" 的那些: 例行周报 (kind="digest") 排队时不能把失败通知吞掉.
+                    if await self._repo.count_pending_notify_messages() > 0:
                         logger.info("failure notify coalesced", task_type=task_type_str)
                         return
                     await self._repo.create_task(
@@ -364,13 +380,14 @@ class AsyncWorker:
                     result = await handler.handle(typed_payload)
                 except asyncio.CancelledError:
                     duration_s = round(time.monotonic() - start_time, 2)
-                    logger.info("task cancelled", duration_s=duration_s)
-                    await self._repo.fail_running_task(task_id, error=CANCEL_ERROR, result=_failure_payload())
-                    await _finalize_recorder(success=False, error=CANCEL_ERROR)
+                    reason = SHUTDOWN_ERROR if self._shutting_down else CANCEL_ERROR
+                    logger.info("task cancelled", duration_s=duration_s, reason=reason)
+                    await self._repo.fail_running_task(task_id, error=reason, result=_failure_payload())
+                    await _finalize_recorder(success=False, error=reason)
                     if self._event_bus:
                         await self._event_bus.emit(
                             EventType.TASK_FAILED,
-                            {"task_id": task_id, "type": task_type_str, "error": CANCEL_ERROR},
+                            {"task_id": task_id, "type": task_type_str, "error": reason},
                         )
                     self._done_queue.put_nowait(task_id)
                     return

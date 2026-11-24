@@ -27,6 +27,8 @@ from ..models import (
     Series,
     SortOrder,
     Studio,
+    WashRecord,
+    WashRecordState,
     has_subtitle_predicate,
     metadata_number_predicate,
     metadata_vr_predicate,
@@ -653,10 +655,15 @@ class MetadataRepoMixin(RepositoryMixinBase):
 
         片库是"有这条片子"的目录, 文件全没了还留着条目只会让使用者以为库里还有;
         返回删掉的条数.
+
+        还在洗版回收站里的番号一律不算孤儿: 那部片子仍在 30 天可还原窗口内, 删掉元数据后
+        即便点「还原」拿回来的也只是一行未刮削的空白记录.
         """
         async with self._session() as session:
             referenced = select(col(MediaFile.metadata_id)).where(col(MediaFile.metadata_id).is_not(None))
-            orphans = list((await session.exec(select(Metadata).where(col(Metadata.id).not_in(referenced)))).all())
+            candidates = list((await session.exec(select(Metadata).where(col(Metadata.id).not_in(referenced)))).all())
+            parked = await self._trashed_wash_numbers(session)
+            orphans = [metadata for metadata in candidates if metadata.number.strip().upper() not in parked]
             ids = [metadata.id for metadata in orphans if metadata.id is not None]
             if not ids:
                 return 0
@@ -665,6 +672,19 @@ class MetadataRepoMixin(RepositoryMixinBase):
             await session.commit()
         await self._drop_embeddings(ids)
         return len(ids)
+
+    async def _trashed_wash_numbers(self, session: AsyncSession) -> set[str]:
+        """回收站里仍可还原的番号集合; 分组键形如 ``lib1:IPX-580``, 取第二段."""
+        rows = await session.exec(
+            select(col(WashRecord.group_key)).where(col(WashRecord.state) == WashRecordState.TRASHED)
+        )
+        numbers: set[str] = set()
+        for group_key in rows.all():
+            _prefix, _, rest = str(group_key).partition(":")
+            number = rest.split(":", 1)[0]
+            if number:
+                numbers.add(number.strip().upper())
+        return numbers
 
     async def _drop_embeddings(self, metadata_ids: list[int]) -> None:
         """主库提交之后清除 sidecar: 跨库没有事务, 先删除向量会在主库回滚时丢弃仍有效的数据.

@@ -209,6 +209,11 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
         log_dir=cold.log_dir,
         get_hot=lambda: config.hot,
     )
+    # 上一次进程若是被硬杀 (SIGKILL / OOM / 断电), 残留的 RUNNING 行不会自己消失:
+    # 队列认领只看 QUEUED, 界面却永远显示「运行中」, 独占型任务 (演员刮削) 还会被这些僵尸行挡住不再执行.
+    stale = await repo.fail_all_running_tasks()
+    if stale:
+        logger.warning("stale running tasks marked failed", count=stale)
     worker.start()
 
     cron_scheduler = CronScheduler(repo, get_hot=lambda: config.hot)

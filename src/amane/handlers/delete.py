@@ -26,6 +26,7 @@ from ..library import (
     same_path,
 )
 from ..library.cleanup.orphan import JunkKind, classify_junk
+from ..library.rules import delete_roots
 from ..utils.path import is_name_surrogate, path_key
 from ..utils.threads import in_thread, path_is_dir
 from ._common import LibraryTaskLocks, media_refresh_followups
@@ -102,6 +103,12 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
         library_root: Path,
         library: Library,
     ) -> TaskResult[DeleteResult]:
+        # 成品可以落在成功目录, 它在库根之外: 只认库根会让那些文件删不掉, 面板也列不出来.
+        bases = tuple(
+            root
+            for root in delete_roots(path=library.path, ok_dir=library.scrape_ok_dir)
+            if not same_path(root, library_root)
+        )
         excluded_keys = _path_keys(payload.exclude, root=library_root)
         included_keys = _path_keys(payload.include, root=library_root)
         targets = [
@@ -140,7 +147,7 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
                     logger.warning("delete reverify rejected", path=str(entry.path), reason=refusal)
                     await self.report_progress(i, total, entry.path.name)
                     continue
-            outcome = await delete_target(entry.path, library_root=library_root)
+            outcome = await delete_target(entry.path, library_root=library_root, bases=bases)
             tally.record(outcome)
             if outcome.status != "failed":
                 removed_paths.append(entry.path)
@@ -154,9 +161,9 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
         if payload.prune_empty_dirs and removed_paths and not library.keep_source_dirs:
             candidates: set[Path] = set()
             for path in removed_paths:
-                candidates.update(ancestor_dirs(path, library_root=library_root))
+                candidates.update(ancestor_dirs(path, library_root=library_root, bases=bases))
             if candidates:
-                pruned = (await prune_empty_dirs(candidates, library_root=library_root)).removed
+                pruned = (await prune_empty_dirs(candidates, library_root=library_root, bases=bases)).removed
         await self.report_progress(total, total, "done")
 
         logger.info(

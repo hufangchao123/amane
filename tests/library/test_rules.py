@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from amane.db.models import Library
 from amane.library.rules import (
     compile_skip_patterns,
+    delete_roots,
     has_companion_subtitle,
     is_in_trash,
     is_partial_download,
@@ -227,3 +228,13 @@ class TestPartialDownload:
     def test_finished_file_is_not_partial(self):
         assert is_partial_download(Path("/lib/ABC-123.mkv")) is False
         assert is_partial_download(Path("/lib/ABC-123-1080p.mp4")) is False
+
+
+def test_delete_roots_drops_ok_dir_containing_library(tmp_path: Path) -> None:
+    """成功目录是库根的上位目录时不算可删根: 认它等于放开库根之外的整棵目录树."""
+    lib = tmp_path / "media" / "lib"
+    lib.mkdir(parents=True)
+
+    assert delete_roots(path=str(lib), ok_dir=str(tmp_path / "done")) == [lib, tmp_path / "done"]
+    assert delete_roots(path=str(lib), ok_dir=str(tmp_path / "media")) == [lib]
+    assert delete_roots(path=str(lib)) == [lib]

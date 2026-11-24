@@ -853,7 +853,18 @@ def build_inventory_tree(inventory: CleanupInventory) -> InventoryNode:
             children=tuple(nodes),
         )
 
-    return build(inventory.root)
+    root_node = build(inventory.root)
+    outside = [entry for entry in inventory.entries if not _is_under(entry.path, inventory.root)]
+    if outside:
+        # 成品可以落在库根之外的成品目录: 它们的祖先链不经过库根, 折叠不进根的子树. 直接作为根的
+        # 条目挂上 — 库外路径在响应里本来就是绝对路径, 面板不需要分层也能列出与选中.
+        extra = sorted(
+            (_entry_node(entry, counted=counted) for entry in outside), key=lambda node: (not node.is_dir, node.name)
+        )
+        root_node.children = (*root_node.children, *extra)
+        root_node.entry_count += sum(node.entry_count for node in extra)
+        root_node.entry_bytes += sum(node.entry_bytes for node in extra)
+    return root_node
 
 
 def inventory_tree(inventory: CleanupInventory) -> InventoryNode:

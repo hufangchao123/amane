@@ -29,6 +29,7 @@ from urllib.parse import urlsplit
 
 import structlog
 
+from ..utils.urls import redact_url
 from .errors import FailureKind, FailureReason, RequestFailure, classify_block
 
 if TYPE_CHECKING:
@@ -522,7 +523,7 @@ class BskBackend:
                 kind=FailureKind.UNEXPECTED,
                 message=f"bsk 等待人工协作, 请在浏览器窗口完成验证后重试: {detail}",
             )
-        logger.error("bsk page fetch failed", url=url, error=detail)
+        logger.error("bsk page fetch failed", url=redact_url(url), error=detail)
         return RequestFailure(kind=FailureKind.UNEXPECTED, message=f"bsk error: {detail}")
 
     async def _ensure_session(self, session: _Session) -> str:

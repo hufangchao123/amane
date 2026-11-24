@@ -18,9 +18,15 @@ def _reject_overlap(path: Path, other: Path, *, field: str, other_name: str) -> 
 
 
 def _outside_only(path: Path, root: Path, *, field: str, other_name: str) -> str | None:
-    """目的目录可以等于上位目录 (等于就是留在原地), 但不能落在它下面."""
+    """目的目录可以等于上位目录 (等于就是留在原地), 但不能落在它下面, 也不能包含它.
+
+    包含库根时成品落在库根旁边的同层目录, 那已经是库外: 转移把文件搬出库外, 之后扫描与清理
+    都不认它, 因此按同一道门拒绝.
+    """
     if path != root and root in path.parents:
         return f"{field}不能位于{other_name}之下: {path}"
+    if path in root.parents:
+        return f"{field}不能包含{other_name}: {path}"
     return None
 
 

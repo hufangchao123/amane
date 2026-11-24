@@ -529,6 +529,11 @@ function OrganizeCounts({ result }: { result: OrganizeResult }) {
           {t("result.organize.prunedDirs", { count: result.pruned_dirs })}
         </Badge>
       ) : null}
+      {(result.untracked ?? 0) > 0 ? (
+        <Badge color="yellow" variant="light">
+          {t("result.organize.untracked", { count: result.untracked ?? 0 })}
+        </Badge>
+      ) : null}
     </Group>
   );
 }
@@ -564,7 +569,7 @@ function OrganizeConflicts({ result }: { result: OrganizeResult }) {
               {conflict.target}
             </Text>
             <Text size="xs" c="orange">
-              {t(`result.organize.reason.${conflict.reason}`)}
+              {t(`result.organize.reason.${conflict.reason}`, { defaultValue: conflict.reason })}
             </Text>
           </div>
         ))}
@@ -628,7 +633,8 @@ function OutcomeGroup({ kind, rows }: { kind: SiteOutcomeKind; rows: SiteOutcome
 function FailedSiteRow({ row }: { row: SiteOutcomeRecord }) {
   const { t } = useTranslation("tasks");
   // 原因/状态码/详情均为结构化字段, 不做任何文本解析.
-  const reasonText = row.reason != null ? t(`reason.${row.reason}`) : null;
+  const reasonText =
+    row.reason != null ? t(`reason.${row.reason}`, { defaultValue: row.reason }) : null;
   const statusText = row.http_status != null ? `HTTP ${row.http_status}` : null;
   const primary = reasonText ?? statusText ?? row.detail ?? t("result.detail.unknown");
   const suffix = row.detail && (reasonText || statusText) ? ` · ${row.detail}` : "";

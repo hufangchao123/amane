@@ -1364,10 +1364,10 @@ async def test_organize_placed_outside_library(
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_organize_prunes_path_outside_library_root(
+async def test_organize_keeps_untracked_path_outside_library_root(
     repo: Repository, resource_store: ResourceStore, tmp_path: Path
 ) -> None:
-    """落盘前删除不在本库内的索引, 即使该文件仍在磁盘上."""
+    """库外的行不因「未跟踪」而删: 文件仍在盘上就留着 (只计入 `untracked`), 删行只看文件是否真的不在."""
     lib_root = tmp_path / "lib"
     lib_root.mkdir()
     stray = tmp_path / "away" / "NSFS-039.mp4"
@@ -1381,7 +1381,9 @@ async def test_organize_prunes_path_outside_library_root(
     org = OrganizeHandler(repo, HotSettings(), resource_store)
     result = await org.handle(OrganizePayload(library_id=lib.id, path=str(lib_root)))
     assert result.success is True
-    assert await repo.get_media_file(stray_row.id) is None
+    assert result.result is not None
+    assert result.result.untracked == 1
+    assert await repo.get_media_file(stray_row.id) is not None
     assert stray.exists()
 
 

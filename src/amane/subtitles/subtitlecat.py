@@ -124,6 +124,7 @@ async def fetch(
             provider="subtitlecat",
             description=f"{number} ← {candidate.title}",
             name_hint=path,
+            preferred_suffixes=preferred_suffixes,
         )
     if last_error is not None:
         raise last_error

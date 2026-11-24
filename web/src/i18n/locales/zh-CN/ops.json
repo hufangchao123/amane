@@ -152,6 +152,7 @@
       "title": "最近推送",
       "refresh": "刷新",
       "empty": "还没有推送记录。",
+      "loadFailed": "推送记录加载失败",
       "ok": "成功",
       "failed": "失败",
       "columns": {

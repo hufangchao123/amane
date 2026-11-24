@@ -1,5 +1,17 @@
-import { Badge, Button, Card, Group, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Stack,
+  Table,
+  Text,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +19,7 @@ import type { TFunction } from "i18next";
 import { notifyStatusOptions, notifyStatusQueryKey } from "@/client/@tanstack/react-query.gen";
 import { submitTask } from "@/client/sdk.gen";
 import { extractErrorMessage } from "@/lib/api-error";
+import { formatDateTime } from "@/lib/utils";
 
 type Translate = TFunction<["ops"]>;
 
@@ -40,6 +53,7 @@ function recordKindLabel(t: Translate, kind: string): string {
  */
 export function NotifyPanel() {
   const { t, i18n } = useTranslation("ops");
+  const { t: tCommon } = useTranslation("common");
   const queryClient = useQueryClient();
   const query = useQuery({ ...notifyStatusOptions(), refetchOnMount: "always" as const });
   const [title, setTitle] = useState("");
@@ -129,7 +143,29 @@ export function NotifyPanel() {
               {t("notify.records.refresh")}
             </Button>
           </Group>
-          {records.length === 0 ? (
+          {query.isError ? (
+            <Alert
+              color="red"
+              variant="light"
+              icon={<IconAlertTriangle size={16} />}
+              title={t("notify.records.loadFailed")}
+            >
+              <Stack gap="xs" align="flex-start">
+                <Text size="xs">
+                  {extractErrorMessage(query.error, tCommon("toast.operationFailed"))}
+                </Text>
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconRefresh size={14} />}
+                  loading={query.isFetching}
+                  onClick={() => void query.refetch()}
+                >
+                  {tCommon("actions.retry")}
+                </Button>
+              </Stack>
+            </Alert>
+          ) : records.length === 0 ? (
             <Text size="sm" c="dimmed">
               {t("notify.records.empty")}
             </Text>
@@ -149,9 +185,7 @@ export function NotifyPanel() {
                   {records.map((record, index) => (
                     <Table.Tr key={`${record.created_at}-${index}`}>
                       <Table.Td>
-                        <Text size="xs">
-                          {new Date(record.created_at).toLocaleString(i18n.language)}
-                        </Text>
+                        <Text size="xs">{formatDateTime(record.created_at, i18n.language)}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Text size="xs">{recordKindLabel(t, record.kind)}</Text>

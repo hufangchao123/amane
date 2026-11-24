@@ -12,10 +12,10 @@ import httpx2
 import structlog
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ...handlers._common import refresh_external_subtitle
+from ...handlers._common import media_refresh_followups, refresh_external_subtitle
 from ...subtitles import SubtitleFetcher
 from ...subtitles.whisper import SAMPLE_RATE, WhisperError, transcribe
-from ..deps import ConfigDep, RepoDep
+from ..deps import ConfigDep, RepoDep, RuntimeDep
 from ..models.subtitles import (
     SubtitleFileEntry,
     SubtitleFilesResponse,
@@ -37,6 +37,33 @@ def _subtitle_target(video: Path, language: str, suffix: str) -> Path:
     return video.with_suffix("").with_name(f"{video.stem}.{language}{suffix}")
 
 
+def _clean_language(language: str) -> str:
+    """校验语言标记: 它会被直接拼进文件名, 放开就等于允许任意路径段.
+
+    规则与 ``_language_of_name`` 的解析口径一致 (字母数字与连字符, 最多 8 字符);
+    留空按简体中文.
+    """
+    value = language.strip() or "zh"
+    if len(value) > 8 or not all(part.isalnum() for part in value.split("-")):
+        raise HTTPException(status_code=422, detail=f"语言标记不合法: {value}")
+    return value
+
+
+async def _read_limited(file: UploadFile) -> bytes:
+    """按上限读, 读到超限即停: 先整块读进内存再判大小会让 20 MB 的上限形同虚设."""
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(1024 * 1024):
+        total += len(chunk)
+        if total > _MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="字幕文件超过 20 MB")
+        chunks.append(chunk)
+    payload = b"".join(chunks)
+    if not payload:
+        raise HTTPException(status_code=422, detail="上传的文件是空的")
+    return payload
+
+
 def _language_of_name(video: Path, name: str) -> str | None:
     """从 ``<视频名>.<语言><扩展名>`` 里取语言段; 形态对不上就返回空."""
     stem = Path(name).stem
@@ -56,9 +83,15 @@ async def _media_and_library(repo: RepoDep, media_file_id: int):
     if media is None:
         raise HTTPException(status_code=404, detail="媒体文件不存在")
     library = await repo.get_library(media.library_id) if media.library_id is not None else None
-    if library is None:
+    if library is None or library.id is None:
         raise HTTPException(status_code=422, detail="媒体文件不属于任何媒体库")
     return media, library
+
+
+async def _refresh_media_server(runtime, repo, library, *, reason: str, changed: int) -> None:
+    """改过盘上的字幕后让媒体服务器重扫: 与整理、洗版、删除共用同一处判定与同一个后继键."""
+    followups = media_refresh_followups(runtime.config.hot, library, changed=changed, reason=reason)
+    await repo.create_followups_unless_queued([(item.task_type, item.payload, item.priority) for item in followups])
 
 
 def _allowed_extensions(library) -> set[str]:
@@ -104,10 +137,14 @@ async def list_subtitle_files(
 @router.post("/delete", response_model=SubtitleFilesResponse)
 async def delete_subtitle_file(
     repo: RepoDep,
+    runtime: RuntimeDep,
     media_file_id: Annotated[int, Form(description="媒体文件的 id")],
     path: Annotated[str, Form(description="要删除的字幕文件路径")],
 ) -> SubtitleFilesResponse:
-    """删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里."""
+    """删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里.
+
+    取库锁再动手: 整理与洗版可能正把这份视频搬去别处, 锁外删会删到刚被搬走的旧路径上.
+    """
     media, library = await _media_and_library(repo, media_file_id)
     video = Path(media.path)
     target = Path(path)
@@ -115,13 +152,16 @@ async def delete_subtitle_file(
         raise HTTPException(status_code=422, detail="只能删除与该视频同目录的字幕")
     if target.suffix.lower() not in _allowed_extensions(library):
         raise HTTPException(status_code=422, detail=f"不是字幕文件: {target.name}")
-    try:
-        target.unlink()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="字幕文件已不存在") from None
-    except OSError as error:
-        raise HTTPException(status_code=422, detail=f"删除失败: {error.strerror or error}") from error
-    await refresh_external_subtitle(repo, media, library)
+    async with await runtime.library_locks.get(library.id):
+        try:
+            target.unlink()
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="字幕文件已不存在") from None
+        except OSError as error:
+            raise HTTPException(status_code=422, detail=f"删除失败: {error.strerror or error}") from error
+        fresh = await repo.get_media_file(media_file_id)
+        await refresh_external_subtitle(repo, fresh or media, library)
+        await _refresh_media_server(runtime, repo, library, reason="subtitles", changed=1)
     logger.info("subtitle deleted", media_id=media_file_id, path=str(target))
     return await list_subtitle_files(repo, media_file_id)
 
@@ -129,6 +169,7 @@ async def delete_subtitle_file(
 @router.post("/upload", response_model=SubtitleUploadResponse)
 async def upload_subtitle(
     repo: RepoDep,
+    runtime: RuntimeDep,
     media_file_id: Annotated[int, Form(description="媒体文件的 id")],
     file: Annotated[UploadFile, File(description="字幕文件 (srt/ass/ssa/vtt/sub)")],
     language: Annotated[str, Form(description="语言标记, 用于文件名")] = "zh",
@@ -143,22 +184,17 @@ async def upload_subtitle(
     if media is None:
         raise HTTPException(status_code=404, detail="媒体文件不存在")
     library = await repo.get_library(media.library_id) if media.library_id is not None else None
-    if library is None:
+    if library is None or library.id is None:
         raise HTTPException(status_code=422, detail="媒体文件不属于任何媒体库")
     suffix = Path(file.filename or "").suffix.lower()
-    allowed = {item.lower() for item in library.subtitle_extensions}
+    allowed = _allowed_extensions(library)
     if suffix not in allowed:
         wanted = ", ".join(sorted(allowed)) or "未配置"
         raise HTTPException(status_code=422, detail=f"字幕格式不支持: {suffix or '无扩展名'} (库接受 {wanted})")
     video = Path(media.path)
     if not video.parent.is_dir():
         raise HTTPException(status_code=422, detail=f"视频所在目录不存在: {video.parent}")
-    payload = await file.read()
-    if not payload:
-        raise HTTPException(status_code=422, detail="上传的文件是空的")
-    if len(payload) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="字幕文件超过 20 MB")
-    language = language.strip() or "zh"
+    language = _clean_language(language)
     custom = filename.strip()
     if custom:
         if Path(custom).name != custom or custom in {".", ".."}:
@@ -168,10 +204,18 @@ async def upload_subtitle(
         target = video.parent / custom
     else:
         target = _subtitle_target(video, language, suffix)
-    temporary = target.with_name(f".{target.name}.upload-tmp")
-    temporary.write_bytes(payload)
-    temporary.replace(target)
-    await refresh_external_subtitle(repo, media, library)
+    payload = await _read_limited(file)
+    async with await runtime.library_locks.get(library.id):
+        temporary = target.with_name(f".{target.name}.upload-tmp")
+        try:
+            temporary.write_bytes(payload)
+            temporary.replace(target)
+        except OSError as error:
+            temporary.unlink(missing_ok=True)
+            raise HTTPException(status_code=422, detail=f"写字幕失败: {error.strerror or error}") from error
+        fresh = await repo.get_media_file(media_file_id)
+        await refresh_external_subtitle(repo, fresh or media, library)
+        await _refresh_media_server(runtime, repo, library, reason="subtitles", changed=1)
     logger.info("subtitle uploaded", media_id=media_file_id, path=str(target), bytes=len(payload))
     return SubtitleUploadResponse(path=str(target), bytes_written=len(payload), language=language)
 

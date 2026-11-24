@@ -167,6 +167,15 @@ class LLMTranslator:
         return _THINK.sub("", text).strip() if text else None
 
 
+def build_model_http_client(proxy: str | None = None) -> AsyncClient:
+    """翻译路径专用的传输客户端: 带 proxy 与统一超时, 生命周期归调用方 (``async with``).
+
+    不传客户端时 pydantic-ai 会自建并托管默认客户端, 那条路不带 proxy —— 端点需要代理时请求全部超时,
+    报错还会落到「端点没有可用账号」这类误导性的结论上.
+    """
+    return AsyncClient(proxy=proxy, timeout=Timeout(_TIMEOUT), follow_redirects=True)
+
+
 def build_translator(
     *,
     enabled: bool,
@@ -185,7 +194,7 @@ def build_translator(
     if not enabled or not api_key:
         return None
     # 翻译路径自建传输客户端 (proxy + 超时) 并交给 provider; 助理不传, 由 pydantic-ai 构造默认客户端.
-    http_client = AsyncClient(proxy=proxy, timeout=Timeout(_TIMEOUT), follow_redirects=True)
+    http_client = build_model_http_client(proxy)
     return LLMTranslator(
         build_model(api_type, base_url=base_url, api_key=api_key, model=model, http_client=http_client),
         cache,

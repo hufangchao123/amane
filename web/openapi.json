@@ -6862,7 +6862,7 @@
           "subtitles"
         ],
         "summary": "Delete Subtitle File",
-        "description": "删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里.",
+        "description": "删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里.\n\n取库锁再动手: 整理与洗版可能正把这份视频搬去别处, 锁外删会删到刚被搬走的旧路径上.",
         "operationId": "delete_subtitle_file",
         "requestBody": {
           "content": {
@@ -9240,8 +9240,8 @@
           "remove_orphan_metadata": {
             "type": "boolean",
             "title": "Remove Orphan Metadata",
-            "description": "删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)",
-            "default": true
+            "description": "删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目); 以番号元数据为核心、或文件还在洗版回收站里的部署不应打开",
+            "default": false
           },
           "type": {
             "type": "string",
@@ -11524,7 +11524,7 @@
             "default": {
               "concurrency": 10,
               "poll_interval": 2.0,
-              "shutdown_timeout": 0.0
+              "shutdown_timeout": 10.0
             }
           },
           "logging": {
@@ -15263,6 +15263,11 @@
           "unreadable": {
             "type": "integer",
             "title": "Unreadable",
+            "default": 0
+          },
+          "untracked": {
+            "type": "integer",
+            "title": "Untracked",
             "default": 0
           },
           "conflicts": {
@@ -20902,7 +20907,7 @@
             "maximum": 120.0,
             "minimum": 0.0,
             "title": "Shutdown Timeout",
-            "default": 0,
+            "default": 10.0,
             "x-hidden": true
           }
         },

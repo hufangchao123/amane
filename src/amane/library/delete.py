@@ -3,7 +3,7 @@
 调用方给出目标与库根, 本模块只做磁盘操作: 不读配置, 不访问数据库,
 不推导调用方未给出的路径 — 清单之外的路径一律拒绝.
 
-边界判定使用字面路径 (``path_is_under``), 基准是调用方给出的库根, 不是当前库设置:
+边界判定使用字面路径 (``path_is_under``), 基准是调用方给出的库根与附加根, 不是当前库设置:
 库内可能存在指向库外的符号链接, 解析符号链接会把库外内容纳入范围. 符号链接以外的目标
 另按真实路径复核一次 (``resolved_path``): 目录链接 (Windows 的 junction 与挂载点) 在枚举与
 删除里都当普通目录处理, 字面路径判定拦不到它里面指向库外的内容.
@@ -23,7 +23,7 @@ import structlog
 
 from ..utils.path import existing_disk_path, path_is_under, resolved_path
 from ..utils.threads import in_thread
-from .rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME
+from .rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME, is_under_any
 
 logger = structlog.get_logger()
 
@@ -97,16 +97,17 @@ class PruneResult:
 
 
 @in_thread
-def delete_target(path: Path, *, library_root: Path) -> DeleteOutcome:
+def delete_target(path: Path, *, library_root: Path, bases: Sequence[Path] = ()) -> DeleteOutcome:
     """删除一个目标 (文件、符号链接或目录).
 
-    库根外的一切一律拒绝, 没有例外; 库根自身与 ``.amane_trash`` 自身同样拒绝.
+    授权范围是库根与调用方给出的 ``bases`` (成功目录: 成品可以落在库根之外), 范围外的一切一律
+    拒绝; 这些根自身与 ``.amane_trash`` 自身同样拒绝.
     """
     disk_path = existing_disk_path(path, follow_symlinks=False)
     if disk_path is None:
         return DeleteOutcome(status="changed")
 
-    refusal = _refuse_reason(disk_path, library_root=library_root)
+    refusal = _refuse_reason(disk_path, library_root=library_root, bases=bases)
     if refusal is not None:
         logger.warning("delete refused", path=str(disk_path), reason=refusal)
         return DeleteOutcome(status="failed", error=refusal)
@@ -114,7 +115,7 @@ def delete_target(path: Path, *, library_root: Path) -> DeleteOutcome:
     # 符号链接按字面路径删除链接自身, 真实路径在哪里都不影响; 其余目标按真实路径复核一次.
     is_link = disk_path.is_symlink()
     if not is_link:
-        resolved_refusal = _resolved_refusal(disk_path, library_root=library_root)
+        resolved_refusal = _resolved_refusal(disk_path, library_root=library_root, bases=bases)
         if resolved_refusal is not None:
             logger.warning("delete refused", path=str(disk_path), reason=resolved_refusal)
             return DeleteOutcome(status="failed", error=resolved_refusal)
@@ -264,7 +265,7 @@ def _crosses_boundary(st: os.stat_result, *, dev: int) -> bool:
     return st.st_dev != dev or _is_reparse_point(st)
 
 
-def _refuse_reason(target: Path, *, library_root: Path) -> str | None:
+def _refuse_reason(target: Path, *, library_root: Path, bases: Sequence[Path] = ()) -> str | None:
     if same_path(target, library_root):
         return f"refuse to delete library root: {target}"
     if same_path(target, library_root / TRASH_DIRNAME):
@@ -272,21 +273,24 @@ def _refuse_reason(target: Path, *, library_root: Path) -> str | None:
     if _is_wash_dir(target, library_root):
         # 洗版回收站还在可还原窗口里, 删掉会让 wash_records 指向不存在的文件.
         return f"refuse to delete wash trash: {target}"
-    if path_is_under(target, library_root):
+    if any(same_path(target, base) for base in bases):
+        # 与库根同理: 删掉成品目录自身等于删掉整批成品, 而清单里的目标是其中若干条目.
+        return f"refuse to delete publish root: {target}"
+    if is_under_any(target, (library_root, *bases)):
         return None
-    return f"outside library root: {target}"
+    return f"outside allowed roots: {target}"
 
 
-def _resolved_refusal(target: Path, *, library_root: Path) -> str | None:
-    """目标的真实路径是否落在库根的真实路径内.
+def _resolved_refusal(target: Path, *, library_root: Path, bases: Sequence[Path] = ()) -> str | None:
+    """目标的真实路径是否落在某个授权根的真实路径内.
 
-    字面路径在库内、真实路径在库外只可能来自路径中的目录链接: 它把路径引到别处, 而字面比较
-    看不出这一点. 两侧都取真实路径比较, 库路径自身是别名时同样成立.
+    字面路径在授权范围内、真实路径在范围外只可能来自路径中的目录链接: 它把路径引到别处, 而字面
+    比较看不出这一点. 两侧都取真实路径比较, 库路径自身是别名时同样成立.
     """
     real_target = resolved_path(target)
-    if path_is_under(real_target, resolved_path(library_root)):
+    if any(path_is_under(real_target, resolved_path(root)) for root in (library_root, *bases)):
         return None
-    return f"resolved path outside library root: {target} -> {real_target}"
+    return f"resolved path outside allowed roots: {target} -> {real_target}"
 
 
 def same_path(left: Path, right: Path) -> bool:

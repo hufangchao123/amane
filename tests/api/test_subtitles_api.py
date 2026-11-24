@@ -144,6 +144,21 @@ class TestUpload:
         assert response.status_code == 404
 
     @pytest.mark.asyncio(loop_scope="function")
+    @pytest.mark.parametrize("language", ["a/b", "..", "zh-cn-extra-long", "zh CN"])
+    async def test_bad_language_is_422(self, client: AsyncClient, repo: Repository, tmp_path: Path, language: str):
+        """语言标记会拼进文件名, 放开等于允许任意路径段."""
+        media = await self._seed(repo, tmp_path / "lib")
+
+        response = await client.post(
+            "subtitles/upload",
+            data={"media_file_id": str(media.id), "language": language},
+            files={"file": ("AD-1.srt", b"1\n", "text/plain")},
+        )
+
+        assert response.status_code == 422
+        assert "语言标记不合法" in response.json()["detail"]
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_pointer_file_accepts_upload(self, client: AsyncClient, repo: Repository, tmp_path: Path):
         """.strm 没有音轨, 手动上传是唯一能补字幕的路子: 字幕落在指针文件旁边."""
         library = await repo.create_library(

@@ -20,10 +20,11 @@ from amane.config import (
     NotifyConfig,
     ScrapingConfig,
     SiteConfig,
+    SubtitleFetchConfig,
     WatermarkConfig,
     WorkerConfig,
 )
-from amane.config.manager import LANG_METADATA_FIELD_SET
+from amane.config.manager import DEFAULT_SUBTITLE_PROVIDERS, LANG_METADATA_FIELD_SET
 from amane.enums import (
     ApiType,
     BrowserBackendName,
@@ -700,6 +701,16 @@ class TestConfigManagerLoad:
 
         mgr = ConfigManager.with_cold(cold)
         assert mgr.hot.worker.concurrency == 4
+
+    def test_removed_subtitle_provider_dropped(self):
+        """旧配置里的来源名已下线时只丢弃那一项, 不连带把整份配置判成非法."""
+        config = SubtitleFetchConfig(enabled=True, providers=["assrt", "subtitlecat"])  # type: ignore[list-item]
+        assert config.providers == ["subtitlecat"]
+
+    def test_only_removed_providers_falls_back_to_defaults(self):
+        """来源全过期时回落默认: 用户升级后至少还能用现有站点."""
+        config = SubtitleFetchConfig(enabled=True, providers=["assrt"])  # type: ignore[list-item]
+        assert config.providers == list(DEFAULT_SUBTITLE_PROVIDERS)
 
     def test_legacy_notify_section_dropped(self, tmp_path: Path):
         """旧 TOML 的 notify.sections 里可能还有已删的 transfer 段."""

@@ -298,6 +298,7 @@
   "invalidId": "无效的影片 ID",
   "confirmDelete": "确定删除影片 #{{id}}？此操作不可撤销",
   "empty": "暂无影片记录",
+  "listLoadFailed": "影片列表加载失败",
   "editor": {
     "title": {
       "label": "标题"

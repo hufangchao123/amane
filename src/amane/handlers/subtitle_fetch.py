@@ -35,6 +35,10 @@ from ._common import LibraryTaskLocks, media_refresh_followups, refresh_external
 from .models import SubtitleFetchPayload, SubtitleFetchResult, SubtitleGeneratePayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
+_SCAN_PAGE = 200
+"""逐页扫描缺口的页大小: 分卷与指针文件多时, 需要多看几页才能凑够本轮额度."""
+
+
 if TYPE_CHECKING:
     from ..config.manager import HotSettings, SubtitleFetchConfig
     from ..db.models import Library, MediaFile, Metadata
@@ -174,26 +178,39 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         return SubtitleFetchResult(fetched=placed, missing=missing, failed=failed)
 
     async def _select_targets(self, payload: SubtitleFetchPayload) -> list[MediaFile]:
-        """选择本轮要补的文件: 显式指定优先, 否则全库按缺口挑."""
+        """选择本轮要补的文件: 显式指定优先, 否则按缺口挑.
+
+        分卷文件在 SQL 层之后就筛掉, 不占本轮额度: 它们注定被跳过, 让它们占额度的话
+        「补齐此库 (200)」可能一份也没抓, 结果还显示成功.
+        """
         if payload.media_file_id is not None:
             media = await self._repo.get_media_file(payload.media_file_id)
             if media is None:
                 raise _TargetError(f"媒体文件不存在: {payload.media_file_id}")
             return [media]
-        if payload.library_id is not None:
-            if await self._repo.get_library(payload.library_id) is None:
-                raise _TargetError(f"媒体库不存在: {payload.library_id}")
-            return await self._repo.list_media_files(
+        if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
+            raise _TargetError(f"媒体库不存在: {payload.library_id}")
+        return await self._fillable(payload)
+
+    async def _fillable(self, payload: SubtitleFetchPayload) -> list[MediaFile]:
+        """按页扫描缺口表, 取到 ``limit`` 份可尝试的目标或扫完为止."""
+        picked: list[MediaFile] = []
+        offset = 0
+        page = max(payload.limit, _SCAN_PAGE)
+        while len(picked) < payload.limit:
+            rows = await self._repo.list_media_files(
                 status=[MediaFileStatus.SCRAPED],
                 library_id=payload.library_id,
                 has_subtitle=False,
-                limit=payload.limit,
+                limit=page,
+                offset=offset,
             )
-        return await self._repo.list_media_files(
-            status=[MediaFileStatus.SCRAPED],
-            has_subtitle=False,
-            limit=payload.limit,
-        )
+            if not rows:
+                break
+            offset += len(rows)
+            # 只排掉注定跳过的分卷: 指针文件 (.strm) 同样能按番号从站点抓到字幕.
+            picked.extend(media for media in rows if not is_multi_disc(media.path))
+        return picked[: payload.limit]
 
     async def _process(
         self,

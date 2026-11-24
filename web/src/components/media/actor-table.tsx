@@ -58,7 +58,7 @@ import { confirm } from "@/lib/confirm";
 import { USER_TAG_FACET_LIST } from "@/lib/facets";
 import { exhaustiveRecord } from "@/lib/exhaustive";
 import { ageFromBirthday } from "@/lib/format-birthday";
-import { proxyImageUrl } from "@/lib/utils";
+import { formatDate, proxyImageUrl } from "@/lib/utils";
 import { ClearPersonNotice } from "@/components/media/clear-person-notice";
 import { MergeNotice } from "@/components/media/merge-notice";
 import { ProxyImage } from "@/components/media/proxy-image";
@@ -148,7 +148,7 @@ export interface ActorTableProps {
   onSort: (field: ActorSortField) => void;
 }
 
-function cellValue(actor: ActorResponse, field: SortableColumn): string {
+function cellValue(actor: ActorResponse, field: SortableColumn, locale: string): string {
   switch (field) {
     case "name":
       return actor.name;
@@ -169,7 +169,7 @@ function cellValue(actor: ActorResponse, field: SortableColumn): string {
     case "has_image":
       return actor.image_urls?.length ? "✓" : "";
     case "updated_at":
-      return actor.updated_at ? new Date(actor.updated_at).toLocaleDateString() : "";
+      return formatDate(actor.updated_at, locale);
     default: {
       const _: never = field;
       return _;
@@ -206,7 +206,7 @@ export function ActorTable({
   onPageChange,
   onSort,
 }: ActorTableProps) {
-  const { t } = useTranslation(["metadata", "common"]);
+  const { t, i18n } = useTranslation(["metadata", "common"]);
   const queryClient = useQueryClient();
   const kind = "actor" as const;
   const pageIds = items.map((i) => i.id);
@@ -618,7 +618,7 @@ export function ActorTable({
                   </Badge>
                 </Table.Td>
                 {SORTABLE_COLUMNS.filter((f) => f !== "name").map((field) => {
-                  const raw = cellValue(actor, field);
+                  const raw = cellValue(actor, field, i18n.language);
                   const age =
                     field === "birthday" && actor.birthday ? ageFromBirthday(actor.birthday) : null;
                   const value =

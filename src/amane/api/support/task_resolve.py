@@ -109,6 +109,7 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.CLEANUP, CleanupPayload(
                 remove_missing_files=req.remove_missing_files,
                 remove_unreferenced_resources=req.remove_unreferenced_resources,
+                remove_orphan_metadata=req.remove_orphan_metadata,
             )
         case UpscaleSubmission():
             return TaskType.UPSCALE, UpscalePayload(

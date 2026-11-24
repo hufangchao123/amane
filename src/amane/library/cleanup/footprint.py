@@ -2,8 +2,8 @@
 
 删除文件 = 媒体文件自身 + 按库路径模板反解出的刮削产物 + 同目录同名字幕;
 删除文件与作品文件夹 = 该作品文件夹下的全部内容, 只在该目录仅含这一条媒体索引且不是库根时提供.
-展开只收库根内的路径: 配置链接模板时产物落在库外的链接树, 那些不归本功能管;
-工作目录里的目录链接 (Windows 的 junction 与挂载点) 同样不展开, 它由用户布置.
+展开只收库根与成功目录内的路径: 成品可以落在库根之外, 而配置链接模板时产物落在库外的链接树,
+那些不归本功能管; 工作目录里的目录链接 (Windows 的 junction 与挂载点) 同样不展开, 它由用户布置.
 """
 
 from __future__ import annotations
@@ -20,9 +20,16 @@ import structlog
 
 from ...organize.path_templates import resolve_paths
 from ...parsing import parse_file_info
-from ...utils.path import existing_disk_path, is_name_surrogate_dir, path_is_under, path_key
+from ...utils.path import existing_disk_path, is_name_surrogate_dir, path_key
 from ...utils.threads import in_thread
-from ..rules import DEFAULT_SUBTITLE_EXTENSIONS, TRASH_DIRNAME, WASH_TRASH_DIRNAME, is_partial_download
+from ..rules import (
+    DEFAULT_SUBTITLE_EXTENSIONS,
+    TRASH_DIRNAME,
+    WASH_TRASH_DIRNAME,
+    delete_roots,
+    is_partial_download,
+    is_under_any,
+)
 from .inventory import (
     MAX_INVENTORY_ENTRIES,
     CleanupInventory,
@@ -84,6 +91,8 @@ def build_footprint(
     """
     assert library.id is not None
     root = Path(library.path)
+    # 成品可以落在成功目录, 它在库根之外: 只认库根会让那些文件在面板上列不出来, 也就删不掉.
+    roots = delete_roots(path=library.path, ok_dir=library.scrape_ok_dir)
     entries: list[InventoryEntry] = []
     notices: list[FootprintNotice] = []
     seen: set[str] = set()
@@ -104,9 +113,10 @@ def build_footprint(
         if disk is None:
             notices.append(FootprintNotice(FootprintNoticeKind.MISSING, path=path))
             return
-        if not path_is_under(disk, root):
+        if not is_under_any(disk, roots):
             if indexed_file:
-                # 索引里的文件本该在库根内: 落在这里说明库路径与索引写法不一致 (旧库的符号链接别名).
+                # 索引里的文件本该在库根或成功目录内: 落在这里说明库路径与索引写法不一致
+                # (旧库的符号链接别名), 或成功目录已经改到别处.
                 notices.append(FootprintNotice(FootprintNoticeKind.OUTSIDE_ROOT, path=disk))
             # 模板产物落在库外链接树是正常的, 那些不归本功能管.
             return

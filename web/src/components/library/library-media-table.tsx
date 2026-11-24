@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   Badge,
   Box,
   Button,
@@ -13,6 +14,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconDots,
   IconFolderDown,
   IconForms,
@@ -45,7 +47,7 @@ import { useIdSelection } from "@/hooks/use-id-selection";
 import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
 import { assertNever } from "@/lib/exhaustive";
-import { formatFileSize } from "@/lib/utils";
+import { formatDate, formatFileSize } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui";
 import classes from "./library-media-table.module.css";
 
@@ -151,6 +153,9 @@ export interface LibraryMediaTableProps {
   onPageChange: (page: number) => void;
   onSort: (field: MediaSortField) => void;
   trailing?: ReactNode;
+  /** 列表查询失败时的错误对象; 有值即渲染失败提示而不是「空列表」. */
+  error?: unknown;
+  onRetry?: () => void;
 }
 
 export function LibraryMediaTable({
@@ -165,8 +170,10 @@ export function LibraryMediaTable({
   onPageChange,
   onSort,
   trailing,
+  error,
+  onRetry,
 }: LibraryMediaTableProps) {
-  const { t } = useTranslation(["library", "common"]);
+  const { t, i18n } = useTranslation(["library", "common"]);
   const queryClient = useQueryClient();
   const limit = useUIStore((s) => s.pageSizes.libraryMedia);
   const { selected, selectedIds, toggleOne, toggleAll, isAllSelected, clear } = useIdSelection();
@@ -303,9 +310,28 @@ export function LibraryMediaTable({
       confirmLabel: t("common:actions.delete"),
     });
     if (!ok) return;
-    await deleteMedia({ path: { media_id: mediaId } });
-    notifications.show({ message: t("common:toast.mediaDeleted"), color: "blue" });
-    invalidate();
+    try {
+      await deleteMedia({ path: { media_id: mediaId }, throwOnError: true });
+      notifications.show({ message: t("common:toast.mediaDeleted"), color: "blue" });
+      invalidate();
+    } catch (err) {
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      });
+    }
+  }
+
+  async function handleScrapeOne(mediaId: number) {
+    try {
+      await submitTask({ body: { type: "scrape", media_id: mediaId }, throwOnError: true });
+      notifications.show({ message: t("common:toast.scrapeStarted"), color: "blue" });
+    } catch (err) {
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      });
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -423,7 +449,11 @@ export function LibraryMediaTable({
           <Table.Thead>
             <Table.Tr>
               <Table.Th w={40}>
-                <Checkbox checked={allSelected} onChange={() => toggleAll(pageIds)} />
+                <Checkbox
+                  checked={allSelected}
+                  aria-label={t("columns.selectAll")}
+                  onChange={() => toggleAll(pageIds)}
+                />
               </Table.Th>
               <Table.Th w={120} visibleFrom={METADATA_VISIBLE_FROM}>
                 {t("columns.metadata")}
@@ -454,7 +484,11 @@ export function LibraryMediaTable({
                   bg={selected.has(item.id) ? "var(--mantine-color-blue-light)" : undefined}
                 >
                   <Table.Td>
-                    <Checkbox checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                    <Checkbox
+                      checked={selected.has(item.id)}
+                      aria-label={rel}
+                      onChange={() => toggleOne(item.id)}
+                    />
                   </Table.Td>
                   <Table.Td style={CELL_OVERFLOW} visibleFrom={METADATA_VISIBLE_FROM}>
                     {item.metadata_id != null ? (
@@ -490,7 +524,7 @@ export function LibraryMediaTable({
                   </Table.Td>
                   <Table.Td style={CELL_OVERFLOW}>
                     <Badge size="sm" variant="light" color={statusColor(item.status)}>
-                      {t(`filters.${item.status}`)}
+                      {t(`filters.${item.status}`, { defaultValue: item.status })}
                     </Badge>
                   </Table.Td>
                   <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.size}>
@@ -500,7 +534,7 @@ export function LibraryMediaTable({
                   </Table.Td>
                   <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.updated_at}>
                     <Text size="sm" truncate>
-                      {item.updated_at ? item.updated_at.slice(0, 10) : "—"}
+                      {formatDate(item.updated_at, i18n.language)}
                     </Text>
                   </Table.Td>
                   <Table.Td>
@@ -516,14 +550,7 @@ export function LibraryMediaTable({
                       <HintedActionIcon
                         variant="subtle"
                         label={t("actions.scrape")}
-                        onClick={() =>
-                          submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
-                            notifications.show({
-                              message: t("common:toast.scrapeStarted"),
-                              color: "blue",
-                            }),
-                          )
-                        }
+                        onClick={() => void handleScrapeOne(item.id)}
                       >
                         <IconRefresh size={16} />
                       </HintedActionIcon>
@@ -571,14 +598,7 @@ export function LibraryMediaTable({
                           </Menu.Item>
                           <Menu.Item
                             leftSection={<IconRefresh size={14} />}
-                            onClick={() =>
-                              submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
-                                notifications.show({
-                                  message: t("common:toast.scrapeStarted"),
-                                  color: "blue",
-                                }),
-                              )
-                            }
+                            onClick={() => void handleScrapeOne(item.id)}
                           >
                             {t("actions.scrape")}
                           </Menu.Item>
@@ -604,7 +624,30 @@ export function LibraryMediaTable({
           </Table.Tbody>
         </Table>
 
-        {!isLoading && items.length === 0 && (
+        {error != null && (
+          <Alert
+            color="red"
+            variant="light"
+            mt="sm"
+            icon={<IconAlertTriangle size={16} />}
+            title={t("mediaLoadFailed")}
+          >
+            <Stack gap="xs" align="flex-start">
+              <Text size="xs">{extractErrorMessage(error, t("common:toast.operationFailed"))}</Text>
+              {onRetry != null && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconRefresh size={14} />}
+                  onClick={onRetry}
+                >
+                  {t("common:actions.retry")}
+                </Button>
+              )}
+            </Stack>
+          </Alert>
+        )}
+        {!isLoading && error == null && items.length === 0 && (
           <Text c="dimmed" size="sm" ta="center" py="xl">
             {t("empty")}
           </Text>

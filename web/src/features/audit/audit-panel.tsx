@@ -22,6 +22,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
+import { formatDateTime } from "@/lib/utils";
 
 const METHOD_FILTERS = ["", "POST", "PUT", "PATCH", "DELETE"] as const;
 
@@ -129,9 +130,7 @@ export function AuditPanel() {
                   <Table.Tbody>
                     {items.map((item) => (
                       <Table.Tr key={item.id}>
-                        <Table.Td>
-                          {new Date(item.created_at).toLocaleString(i18n.language)}
-                        </Table.Td>
+                        <Table.Td>{formatDateTime(item.created_at, i18n.language)}</Table.Td>
                         <Table.Td>
                           <Badge variant="light">{item.method}</Badge>
                         </Table.Td>

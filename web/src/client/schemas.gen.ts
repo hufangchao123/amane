@@ -1730,8 +1730,8 @@ export const CleanupSubmissionSchema = {
         remove_orphan_metadata: {
             type: 'boolean',
             title: 'Remove Orphan Metadata',
-            description: '删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)',
-            default: true
+            description: '删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目); 以番号元数据为核心、或文件还在洗版回收站里的部署不应打开',
+            default: false
         },
         type: {
             type: 'string',
@@ -4062,7 +4062,7 @@ export const HotSettingsSchema = {
             default: {
                 concurrency: 10,
                 poll_interval: 2,
-                shutdown_timeout: 0
+                shutdown_timeout: 10
             }
         },
         logging: {
@@ -7865,6 +7865,11 @@ export const OrganizeResultSchema = {
         unreadable: {
             type: 'integer',
             title: 'Unreadable',
+            default: 0
+        },
+        untracked: {
+            type: 'integer',
+            title: 'Untracked',
             default: 0
         },
         conflicts: {
@@ -13651,7 +13656,7 @@ export const WorkerConfigSchema = {
             maximum: 120,
             minimum: 0,
             title: 'Shutdown Timeout',
-            default: 0,
+            default: 10,
             'x-hidden': true
         }
     },

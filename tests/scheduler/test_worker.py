@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from amane.db.models import Task, TaskStatus, TaskType
 from amane.handlers.protocol import FollowupTask, TaskHandler, TaskResult
 from amane.scheduler import worker as worker_module
-from amane.scheduler.worker import CANCEL_ERROR, AsyncWorker
+from amane.scheduler.worker import CANCEL_ERROR, SHUTDOWN_ERROR, AsyncWorker
 from tests.helpers import LOAD_TOLERANT_TIMEOUT
 
 if TYPE_CHECKING:
@@ -273,7 +273,7 @@ async def test_worker_shutdown_active_cancels_running(repo: Repository) -> None:
     fetched = await repo.get_task(t.id)
     assert fetched is not None
     assert fetched.status == TaskStatus.FAILED
-    assert fetched.error == CANCEL_ERROR
+    assert fetched.error == SHUTDOWN_ERROR
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -606,7 +606,7 @@ async def test_worker_cancel_keeps_failure_result(repo: Repository) -> None:
     fetched = await repo.get_task(t.id)
     assert fetched is not None
     assert fetched.status == TaskStatus.FAILED
-    assert fetched.error == CANCEL_ERROR
+    assert fetched.error == SHUTDOWN_ERROR
     assert fetched.result == {"type": "refresh", "added": 0, "removed": 0, "scrape": 0}
 
 

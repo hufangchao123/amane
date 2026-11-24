@@ -1037,7 +1037,7 @@ export type CleanupSubmission = {
     /**
      * Remove Orphan Metadata
      *
-     * 删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)
+     * 删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目); 以番号元数据为核心、或文件还在洗版回收站里的部署不应打开
      */
     remove_orphan_metadata?: boolean;
     /**
@@ -4066,6 +4066,10 @@ export type OrganizeResult = {
      * Unreadable
      */
     unreadable?: number;
+    /**
+     * Untracked
+     */
+    untracked?: number;
     /**
      * Conflicts
      */

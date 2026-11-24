@@ -289,6 +289,20 @@ class TasksRepoMixin(RepositoryMixinBase):
         async with self._session() as session:
             return await session.get(Task, task_id)
 
+    async def count_pending_notify_messages(self) -> int:
+        """排队中/执行中的「失败通知」条数; 例行周报 (kind="digest") 不算.
+
+        失败通知的合并判据只该看同性质的通知: 周报在队列里排队时, 期间的任务失败仍要能推出去.
+        """
+        async with self._session() as session:
+            rows = await session.exec(
+                select(col(Task.payload)).where(
+                    col(Task.type) == TaskType.NOTIFY,
+                    col(Task.status).in_((TaskStatus.QUEUED, TaskStatus.RUNNING)),
+                )
+            )
+            return sum(1 for payload in rows.all() if dict(payload).get("kind", "message") == "message")
+
     async def claim_next_task(self) -> Task | None:
         """认领优先级最高的 QUEUED 行, 标为 RUNNING.
 
@@ -338,6 +352,8 @@ class TasksRepoMixin(RepositoryMixinBase):
         """父完成与子创建须在同一事务. 同父同 key 只留第一条, UNIQUE(parent, key) 拒绝重复.
 
         先以条件 UPDATE 取得 ``RUNNING → DONE``; 命中 0 行说明父任务不在运行中 (已终态或已删除), 不创建后继.
+        后继还要与队列里已有任务比对「同类型 + 同载荷」: 一百个文件各自扇出一条整库刷新, 载荷完全相同,
+        逐条建会把队列塞满同款扫描, 而每条都要真扫一遍库.
         """
         async with self._task_insert_lock, self._session() as session:
             updated = await session.exec(
@@ -357,6 +373,19 @@ class TasksRepoMixin(RepositoryMixinBase):
             task = await session.get(Task, task_id)
             assert task is not None
             root_id = task.root_task_id or task_id
+            # 只有没有互斥字段的类型需要按载荷比对: 有互斥字段的 (演员抓取等) 由 ``_insert_tasks``
+            # 按那个字段复用活跃行, 复用后仍要建边, 不能在这里跳过.
+            live: dict[TaskType, list[dict]] = {}
+            for task_type in {task_type for _, task_type, _, _ in followups}:
+                if _EXCLUSIVE_FIELDS.get(task_type) is not None:
+                    continue
+                result_rows = await session.exec(
+                    select(col(Task.payload)).where(
+                        col(Task.type) == task_type,
+                        col(Task.status).in_((TaskStatus.QUEUED, TaskStatus.RUNNING)),
+                    )
+                )
+                live[task_type] = [dict(payload) for payload in result_rows.all()]
             seen_keys: set[str] = set()
             pending: list[_PendingTask] = []
             keys: list[str] = []
@@ -364,6 +393,8 @@ class TasksRepoMixin(RepositoryMixinBase):
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
+                if payload in live.get(task_type, ()):
+                    continue
                 pending.append(_PendingTask(task_type, payload, priority, root_id))
                 keys.append(key)
             children = await _insert_tasks(session, pending)

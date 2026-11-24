@@ -29,6 +29,7 @@ import { TaskLogView } from "@/components/log/task-log-view";
 import { TaskResultPanel } from "@/components/task/task-result-panel";
 import { formatDuration } from "@/lib/format-duration";
 import { statusColor } from "@/lib/task/display";
+import { formatDateTime } from "@/lib/utils";
 import { useProgressStore } from "@/stores/progress";
 
 export interface TaskNodeActions {
@@ -84,7 +85,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 /** JSON 默认折叠. 列表不带 payload 与 result, 展开时按 id 取详情. */
 export function TaskDetailPanel({ task, linkKey, actions }: TaskDetailPanelProps) {
-  const { t } = useTranslation(["tasks", "common"]);
+  const { t, i18n } = useTranslation(["tasks", "common"]);
   const { data: detail, isError } = useQuery({ ...getTaskOptions({ path: { task_id: task.id } }) });
   const progress = useProgressStore((s) => s.byTask[task.id]);
   const duration = formatDuration(task.started_at, task.finished_at);
@@ -102,12 +103,8 @@ export function TaskDetailPanel({ task, linkKey, actions }: TaskDetailPanelProps
         {linkKey != null ? <Fact label={t("detail.linkKey")}>{linkKey}</Fact> : null}
         <Fact label={t("detail.priority")}>{task.priority ?? 0}</Fact>
         <Fact label={t("detail.retries")}>{task.retries ?? 0}</Fact>
-        <Fact label={t("detail.created")}>
-          {task.created_at ? new Date(task.created_at).toLocaleString() : "-"}
-        </Fact>
-        <Fact label={t("detail.started")}>
-          {task.started_at ? new Date(task.started_at).toLocaleString() : "-"}
-        </Fact>
+        <Fact label={t("detail.created")}>{formatDateTime(task.created_at, i18n.language)}</Fact>
+        <Fact label={t("detail.started")}>{formatDateTime(task.started_at, i18n.language)}</Fact>
         <Fact label={t("detail.duration")}>{duration ?? "-"}</Fact>
         <div>
           <Text size="xs" c="dimmed">

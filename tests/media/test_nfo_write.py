@@ -91,3 +91,29 @@ async def test_write_nfo_title_keeps_number_once(tmp_path: Path, number: str, ti
 
     root = ET.fromstring(nfo_path.read_text(encoding="utf-8"))
     assert [root.findtext(tag) for tag in ("title", "originaltitle", "sorttitle")] == [expected] * 3
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_rewrite_keeps_actor_thumbs(tmp_path: Path, metadata: Metadata):
+    """头像由 NFO 修补任务事后补进文件; 整理重写整份 NFO 时不能让补好的头像消失."""
+    nfo_path = tmp_path / "MIDV-123.nfo"
+    assert await write_nfo(metadata, nfo_path) is True
+    patched = nfo_path.read_text(encoding="utf-8").replace(
+        "    <name>Actor A</name>\n",
+        "    <name>Actor A</name>\n    <thumb>https://img.example.com/a.jpg</thumb>\n",
+    )
+    nfo_path.write_text(patched, encoding="utf-8")
+
+    assert await write_nfo(metadata, nfo_path) is True
+    content = nfo_path.read_text(encoding="utf-8")
+    assert "<thumb>https://img.example.com/a.jpg</thumb>" in content
+    # 没有头像的演员不能凭空多出一行空 thumb
+    assert content.count("<thumb>") == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_write_leaves_no_temporary_files(tmp_path: Path, metadata: Metadata):
+    """写入走临时文件加 replace: 正常结束时临时文件不能留在目录里."""
+    nfo_path = tmp_path / "MIDV-123.nfo"
+    assert await write_nfo(metadata, nfo_path) is True
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["MIDV-123.nfo"]

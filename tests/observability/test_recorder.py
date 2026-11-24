@@ -72,6 +72,8 @@ def test_recorder_failure_keeps_http(tmp_path: Path, task: Task):
     assert cfg["scraping"]["site_config"]["javdb"]["cookie"]["session"] == "***"
     secrets = json.loads((root / SECRETS_HOT_FILENAME).read_text())
     assert secrets["scraping"]["site_config"]["javdb"]["cookie"]["session"] == "secret"
+    # 记录目录会随任务积累, 明文密钥的副本必须只有属主可读
+    assert (root / SECRETS_HOT_FILENAME).stat().st_mode & 0o777 == 0o600
     summary = json.loads((root / "summary.json").read_text())
     assert "error" not in summary
     assert "number" not in summary

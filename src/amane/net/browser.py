@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Literal, NotRequired, Protocol, TypedDict
 import structlog
 
 from ..enums import BrowserBackendName
+from ..utils.urls import redact_url
 from .bsk import BskBackend
 from .errors import FailureKind, FailureReason, RequestError, RequestFailure, classify_block
 from .recording import skip_body_recording
@@ -333,7 +334,7 @@ class _LocalBackend(ABC):
             if exc.error is not None and _is_timeout(exc.error):
                 return None, RequestFailure(kind=FailureKind.TIMEOUT, message=f"browser page unreadable: {url}")
             detail = "unknown" if exc.error is None else f"{type(exc.error).__name__}: {exc.error}"
-            logger.error("browser page unreadable", url=url, error=detail)
+            logger.error("browser page unreadable", url=redact_url(url), error=detail)
             return None, RequestFailure(kind=FailureKind.UNEXPECTED, message=f"browser page unreadable: {detail}")
         except _ChallengeUnresolved:
             return None, RequestFailure(
@@ -344,7 +345,7 @@ class _LocalBackend(ABC):
         except Exception as exc:
             if _is_timeout(exc):
                 return None, RequestFailure(kind=FailureKind.TIMEOUT, message=f"browser timeout: {url}")
-            logger.error("browser page fetch failed", url=url, error=str(exc))
+            logger.error("browser page fetch failed", url=redact_url(url), error=str(exc))
             return None, RequestFailure(
                 kind=FailureKind.UNEXPECTED,
                 message=f"browser error: {type(exc).__name__}: {exc}",
@@ -354,7 +355,7 @@ class _LocalBackend(ABC):
                 try:
                     await page.close()
                 except Exception as exc:
-                    logger.debug("browser page close failed (ignored)", url=url, error=str(exc))
+                    logger.debug("browser page close failed (ignored)", url=redact_url(url), error=str(exc))
 
     async def _idle_content(self, page: _PageLike, settled: str, timeout_ms: float, deadline: float) -> str:
         """等网络静默到上限再读正文; 挑战页与长轮询不会 idle, 到点按当前正文继续.

@@ -41,6 +41,7 @@ import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { extractErrorMessage } from "@/lib/api-error";
 import { confirm, confirmWithCheckbox } from "@/lib/confirm";
 import { USER_TAG_FACET_LIST } from "@/lib/facets";
+import { formatDate } from "@/lib/utils";
 import { type MetaTableColumnKey, useUIStore } from "@/stores/ui";
 import { VrBadge } from "./vr-badge";
 import classes from "./meta-table.module.css";
@@ -105,7 +106,7 @@ export interface MetaTableProps {
   onSort: (field: MetadataSortField) => void;
 }
 
-function cellValue(item: MetadataListItem, field: SortableColumn): string {
+function cellValue(item: MetadataListItem, field: SortableColumn, locale: string): string {
   switch (field) {
     case "number":
       return item.number;
@@ -116,7 +117,7 @@ function cellValue(item: MetadataListItem, field: SortableColumn): string {
     case "release":
       return item.release ?? "";
     case "updated_at":
-      return item.updated_at ? item.updated_at.slice(0, 10) : "";
+      return formatDate(item.updated_at, locale);
     case "file_count":
       return String(item.file_count ?? 0);
   }
@@ -156,7 +157,7 @@ export function MetaTable({
   onPageChange,
   onSort,
 }: MetaTableProps) {
-  const { t } = useTranslation(["metadata", "common", "library"]);
+  const { t, i18n } = useTranslation(["metadata", "common", "library"]);
   const queryClient = useQueryClient();
   const limit = useUIStore((s) => s.pageSizes.metaList);
   const storedWidths = useUIStore((s) => s.metaColumnWidths);
@@ -404,7 +405,11 @@ export function MetaTable({
           <Table.Thead>
             <Table.Tr>
               <Table.Th w={40}>
-                <Checkbox checked={allSelected} onChange={() => toggleAll(pageIds)} />
+                <Checkbox
+                  checked={allSelected}
+                  aria-label={t("library:columns.selectAll")}
+                  onChange={() => toggleAll(pageIds)}
+                />
               </Table.Th>
               {SORTABLE_COLUMNS.map((field) => (
                 <SortableTh
@@ -442,10 +447,14 @@ export function MetaTable({
                 bg={selected.has(item.id) ? "var(--mantine-color-blue-light)" : undefined}
               >
                 <Table.Td>
-                  <Checkbox checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                  <Checkbox
+                    checked={selected.has(item.id)}
+                    aria-label={item.number}
+                    onChange={() => toggleOne(item.id)}
+                  />
                 </Table.Td>
                 {SORTABLE_COLUMNS.map((field) => {
-                  const value = cellValue(item, field);
+                  const value = cellValue(item, field, i18n.language);
                   return (
                     <Table.Td
                       key={field}

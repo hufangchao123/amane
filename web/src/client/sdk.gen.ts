@@ -1155,6 +1155,8 @@ export const listSubtitleFiles = <ThrowOnError extends boolean = false>(options:
  * Delete Subtitle File
  *
  * 删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里.
+ *
+ * 取库锁再动手: 整理与洗版可能正把这份视频搬去别处, 锁外删会删到刚被搬走的旧路径上.
  */
 export const deleteSubtitleFile = <ThrowOnError extends boolean = false>(options: Options<DeleteSubtitleFileData, ThrowOnError>): RequestResult<DeleteSubtitleFileResponses, DeleteSubtitleFileErrors, ThrowOnError> => (options.client ?? client).post<DeleteSubtitleFileResponses, DeleteSubtitleFileErrors, ThrowOnError>({
     ...urlSearchParamsBodySerializer,

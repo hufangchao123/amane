@@ -228,6 +228,49 @@ class TestFootprint:
         assert outcome.notices == []
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_ok_dir_products_listed(self, repo: Repository, tmp_path: Path) -> None:
+        """成品落在成功目录 (库根之外): 清单要收下, 否则面板列不出来也删不掉."""
+        from amane.db.models import MediaFileStatus
+
+        root, done = tmp_path / "lib", tmp_path / "done"
+        root.mkdir()
+        work = done / "NSFS-039"
+        work.mkdir(parents=True)
+        video = work / "NSFS-039.mp4"
+        video.write_bytes(b"v" * 100)
+        subtitle = work / "NSFS-039.zh.srt"
+        subtitle.write_text("sub")
+        lib = await repo.create_library(
+            name="t", path=str(root), write_nfo=True, scrape_transfer=True, scrape_ok_dir=str(done)
+        )
+        assert lib.id is not None
+        item = await repo.create_media_file(lib.id, path=str(video), number="NSFS-039", status=MediaFileStatus.SCRAPED)
+
+        outcome = build_footprint.sync(library=lib, items=[item], indexed=[item], metas={}, include_work_dir=False)
+
+        assert [entry.path for entry in outcome.inventory.entries] == [video, subtitle]
+        assert outcome.notices == []
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_indexed_file_outside_all_roots_is_notice(self, repo: Repository, tmp_path: Path) -> None:
+        """索引行在库根与成功目录之外: 仍是「不归本功能管」的提示, 不会被收进删除集合."""
+        from amane.db.models import MediaFileStatus
+
+        root, elsewhere = tmp_path / "lib", tmp_path / "elsewhere"
+        root.mkdir()
+        elsewhere.mkdir()
+        video = elsewhere / "NSFS-039.mp4"
+        video.write_bytes(b"v" * 100)
+        lib = await repo.create_library(name="t", path=str(root))
+        assert lib.id is not None
+        item = await repo.create_media_file(lib.id, path=str(video), number="NSFS-039", status=MediaFileStatus.SCRAPED)
+
+        outcome = build_footprint.sync(library=lib, items=[item], indexed=[item], metas={}, include_work_dir=False)
+
+        assert outcome.inventory.entries == []
+        assert outcome.notices == [FootprintNotice(FootprintNoticeKind.OUTSIDE_ROOT, path=video)]
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_truncation_ignores_paths_outside_root(self, repo: Repository, tmp_path: Path) -> None:
         """库外产物不进清单, 因此也不算「未纳入」: 提示里的数字只数真会进清单的路径."""
         from amane.db.models import MediaFileStatus

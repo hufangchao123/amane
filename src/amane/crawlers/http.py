@@ -17,6 +17,7 @@ import structlog
 from ..enums import BrowserMode
 from ..net.connectivity import ConnectivityOutcome, probe_get
 from ..net.errors import FailureKind, FailureReason, RequestError, RequestFailure, SourceError, classify_block
+from ..utils.urls import redact_url
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -127,7 +128,7 @@ class HttpClient:
         reason = classify_block(text)
         if reason is None:
             if wait_for is not None:
-                logger.debug("wait_for ignored on direct response", url=url, selector=wait_for)
+                logger.debug("wait_for ignored on direct response", url=redact_url(url), selector=wait_for)
             return text
         if self._policy.escalate(scope, reason):
             return await self._render(url, headers=headers, cookies=cookies, wait_for=wait_for)

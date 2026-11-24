@@ -1,8 +1,10 @@
 """Kodi ``<movie>`` NFO, 供 Emby / Jellyfin / Kodi 读取."""
 
+import asyncio
 import re
 from io import StringIO
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import aiofiles
 import structlog
@@ -17,6 +19,10 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+
+_ACTOR_BLOCK = re.compile(r"<actor>(.*?)</actor>", re.DOTALL)
+_ACTOR_NAME = re.compile(r"<name>(.*?)</name>", re.DOTALL)
+_ACTOR_THUMB = re.compile(r"<thumb>(.*?)</thumb>", re.DOTALL)
 
 _XML_ESCAPE_MAP: dict[str, str] = {
     "&": "&amp;",
@@ -35,6 +41,28 @@ def _escape_xml(text: str) -> str:
     return escaped
 
 
+def _unescape_xml(text: str) -> str:
+    """把写进 XML 文本节点的转义还原: 比对演员名时两侧必须同一形式."""
+    for char, entity in _XML_ESCAPE_MAP.items():
+        text = text.replace(entity, char)
+    return text
+
+
+def _actor_thumbs(text: str) -> dict[str, str]:
+    """已有 NFO 里每个演员块的头像地址 (按演员名索引).
+
+    头像由 ``library/nfo/patch.py`` 事后补进 NFO, 本模块整份重写时不带着它走,
+    整理一次就把补好的头像抹掉 —— 补得很贵 (要抓演员图片), 抹掉却是免费的.
+    """
+    thumbs: dict[str, str] = {}
+    for block in _ACTOR_BLOCK.findall(text):
+        name = _ACTOR_NAME.search(block)
+        thumb = _ACTOR_THUMB.search(block)
+        if name is not None and thumb is not None:
+            thumbs[_unescape_xml(name.group(1).strip())] = _unescape_xml(thumb.group(1).strip())
+    return thumbs
+
+
 def _title_with_number(number: str, title: str) -> str:
     """NFO 显示标题: 「番号 + 空格 + 标题」; 标题已以番号开头时不再重复拼接.
 
@@ -50,9 +78,19 @@ def _title_with_number(number: str, title: str) -> str:
     return f"{number} {text}".strip()
 
 
+async def _existing_thumbs(nfo_path: Path) -> dict[str, str]:
+    """读已有 NFO 里的演员头像; 文件不存在或读不出来时按没有处理 (重写不该因此失败)."""
+    try:
+        text = await asyncio.to_thread(nfo_path.read_text, encoding="utf-8")
+    except OSError, UnicodeDecodeError:
+        return {}
+    return _actor_thumbs(text)
+
+
 async def write_nfo(metadata: Metadata, nfo_path: Path) -> bool:
     try:
         nfo_path.parent.mkdir(parents=True, exist_ok=True)
+        thumbs = await _existing_thumbs(nfo_path)
 
         code = StringIO()
         code.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
@@ -85,6 +123,9 @@ async def write_nfo(metadata: Metadata, nfo_path: Path) -> bool:
             for actor in metadata.actors:
                 code.write("  <actor>\n")
                 code.write(f"    <name>{_escape_xml(actor)}</name>\n")
+                thumb = thumbs.get(actor)
+                if thumb:
+                    code.write(f"    <thumb>{_escape_xml(thumb)}</thumb>\n")
                 code.write("    <type>Actor</type>\n")
                 code.write("  </actor>\n")
 
@@ -135,8 +176,14 @@ async def write_nfo(metadata: Metadata, nfo_path: Path) -> bool:
 
         code.write("</movie>\n")
 
-        async with aiofiles.open(nfo_path, "w", encoding="UTF-8") as f:
-            await f.write(code.getvalue())
+        # 同目录临时文件 + replace: 中断不会留下半截 XML, 那会被媒体服务器当成损坏的 NFO.
+        temporary = nfo_path.with_name(f".{nfo_path.name}.{uuid4().hex}.tmp")
+        try:
+            async with aiofiles.open(temporary, "w", encoding="UTF-8") as f:
+                await f.write(code.getvalue())
+            await asyncio.to_thread(temporary.replace, nfo_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
         logger.debug("nfo written", path=str(nfo_path))
         return True

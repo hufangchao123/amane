@@ -515,7 +515,7 @@ class AppRuntime:
                     worker.cancel_main_loop()
                     await worker.wait_stopped()
             for worker in workers:
-                await worker.shutdown_active()
+                await worker.shutdown_active(graceful=closing)
             failed = await self.repo.fail_all_running_tasks()
             for task in list(self._retire_tasks):
                 with suppress(Exception):

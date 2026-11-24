@@ -15,7 +15,7 @@ import structlog
 
 from ..library.delete import ancestor_dirs, prune_empty_dirs, same_path
 from ..library.rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME, publish_roots
-from ..utils.threads import in_thread, path_is_dir
+from ..utils.threads import disk_probe, in_thread, path_is_dir
 from ._common import LibraryTaskLocks, media_refresh_followups
 from .models import MediaPurgePayload, MediaPurgeResult
 from .protocol import FollowupTask, TaskHandler, TaskResult
@@ -106,7 +106,12 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
         if _in_recycle(path):
             logger.warning("media purge refused", path=str(path), reason="路径在回收站里")
             return _FileOutcome(refused=1)
-        if not await _exists(path):
+        probe = await disk_probe(path, follow_symlinks=False)
+        if probe.unreadable:
+            # 读不到不等于没有: 挂载抖动时删掉索引行与片库条目, 盘上会留一份谁也认不出的文件.
+            logger.warning("media purge skipped", path=str(path), reason="路径读不到")
+            return _FileOutcome(failed=1)
+        if probe.path is None:
             if media.id is not None:
                 await self._repo.delete_media_file(media.id)
             return _FileOutcome(missing=1, indexed=1, path=path)
@@ -148,15 +153,6 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
         if self._config is None or changed <= 0:
             return []
         return media_refresh_followups(self._config, library, changed=changed, reason="delete")
-
-
-@in_thread
-def _exists(path: Path) -> bool:
-    """读取失败按「不在了」处理: 删记录总比删掉读不到的文件安全."""
-    try:
-        return path.exists()
-    except OSError:
-        return False
 
 
 @in_thread

@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import structlog
+from aiolimiter import AsyncLimiter
 from pydantic_ai.direct import model_request
 from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import Model
@@ -83,8 +84,12 @@ async def translate_lines(
     lines: Sequence[str],
     *,
     batch_size: int = BATCH_SIZE,
+    limiter: AsyncLimiter | None = None,
 ) -> TranslationOutcome:
-    """逐批翻译; 单批失败保留原文并继续, 不让一行砸掉整片字幕."""
+    """逐批翻译; 单批失败保留原文并继续, 不让一行砸掉整片字幕.
+
+    ``limiter`` 与字段翻译共用 ``llm.rate_limit``: 一部片十几批请求, 与刮削并发时不限速会把上游打到 429.
+    """
     translated: list[str] = []
     failed = 0
     request_failures = 0
@@ -100,7 +105,11 @@ async def translate_lines(
             )
         ]
         try:
-            response = await model_request(model, messages)
+            if limiter is None:
+                response = await model_request(model, messages)
+            else:
+                async with limiter:
+                    response = await model_request(model, messages)
             got = parse_lines(response.text or "")
         except Exception as exc:  # 模型端异常种类由 provider 决定
             logger.warning("subtitle translate failed", batch_start=start, error=str(exc))

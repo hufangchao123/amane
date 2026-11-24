@@ -21,6 +21,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.models import Resource
+from ..utils.urls import redact_url
 from .file_type import detect_media_type, is_image_mime
 
 if TYPE_CHECKING:
@@ -166,7 +167,7 @@ class ResourceStore:
             full_path = self._base_dir / record.file_path
             if not full_path.exists():
                 # 文件丢失则删除记录.
-                logger.warning("resource file missing, invalidating record", url=url, path=str(full_path))
+                logger.warning("resource file missing, invalidating record", url=redact_url(url), path=str(full_path))
                 await session.delete(record)
                 await session.commit()
                 return None
@@ -212,7 +213,7 @@ class ResourceStore:
         # 上游改派占位图时跳过, 不占用 dest 也不写记录.
         final_url = await client.resolve_final_url(url, egress=egress)
         if _is_placeholder_url(final_url):
-            logger.warning("resource is upstream placeholder", url=url, final_url=final_url)
+            logger.warning("resource is upstream placeholder", url=redact_url(url), final_url=final_url)
             return None
 
         dest = self._compute_path(url)
@@ -227,11 +228,11 @@ class ResourceStore:
         tmp = dest.with_name(f"{dest.stem}.{uuid4().hex}.part{dest.suffix}")
         try:
             if not await client.download(url, tmp, egress=egress, max_bytes=max_bytes):
-                logger.warning("resource download failed", url=url, host=urlsplit(url).hostname)
+                logger.warning("resource download failed", url=redact_url(url), host=urlsplit(url).hostname)
                 return None
             mime = detect_media_type(tmp)
             if image_only and not is_image_mime(mime):
-                logger.warning("resource is not an image", url=url, mime=mime)
+                logger.warning("resource is not an image", url=redact_url(url), mime=mime)
                 return None
             tmp.replace(dest)
         finally:
@@ -423,7 +424,7 @@ class ResourceStore:
             if path:
                 return AcquireResult(success=True, path=path, used_url=url, failed=failed)
             failed.append(url)
-            logger.debug("download source failed, trying next", url=url)
+            logger.debug("download source failed, trying next", url=redact_url(url))
 
         logger.warning("all download sources exhausted", urls_tried=len(urls))
         return AcquireResult(success=False, path=None, used_url=None, failed=failed)

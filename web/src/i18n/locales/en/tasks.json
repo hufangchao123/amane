@@ -46,7 +46,7 @@
     "created": "Created",
     "started": "Started",
     "duration": "Duration",
-    "retries": "Retries",
+    "retries": "Failures",
     "id": "ID",
     "root": "Root task",
     "linkKey": "Subtask",
@@ -165,7 +165,10 @@
         "subtitle_target_exists": "Subtitle target path already holds another file"
       },
       "conflictsTruncated_one": "{{count}} more not listed — see the task log",
-      "conflictsTruncated_other": "{{count}} more not listed — see the task log"
+      "conflictsTruncated_other": "{{count}} more not listed — see the task log",
+      "untracked": "Kept {{count}} rows outside the library",
+      "untracked_one": "Kept {{count}} row outside the library",
+      "untracked_other": "Kept {{count}} rows outside the library"
     },
     "detailTruncated": "Truncated",
     "loadFailed": "Failed to load details",

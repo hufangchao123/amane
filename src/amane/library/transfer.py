@@ -1,19 +1,22 @@
 """刮削后的文件转移.
 
-一个番号的视频与它同前缀的附属文件一起搬走: 字幕、NFO、封面都按 `<视频 stem>.<后缀>` 或
-`<视频 stem>-<名>.<后缀>` 命名, 因此按前缀收集; 同前缀的另一份视频 (不同清晰度) 不在此列.
+一个番号的视频与它的附属文件一起搬走: 字幕、NFO、封面都按视频的文件名或番号命名, 归属按番号
+判定, 解析不出番号的名字才退回前缀. 同目录里同一番号可能并存两个版本 (普通版与中字版),
+附属文件只跟着自己那个版本走.
 
 目的目录由调用方传入, 本模块不读配置: 成功与失败两个目的目录的语义在 handler 与库配置里.
 """
 
 from __future__ import annotations
 
+import errno
 import os
 import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from ..parsing import parse_file_info
 from ..utils.threads import in_thread
@@ -21,9 +24,17 @@ from .rules import MEDIA_EXTENSIONS
 
 if TYPE_CHECKING:
     from ..db.models import Library
+    from ..parsing.file_info import FileInfo
 
 # 不带字幕配置也会被搬走的附属文件: 元数据与图片.
 EXTRA_SIDECAR_SUFFIXES: frozenset[str] = frozenset({".nfo", ".jpg", ".jpeg", ".png", ".webp"})
+
+PARTIAL_SUFFIX = ".amane-partial"
+"""占位文件的后缀: 目的目录里 0 字节的真实文件, 命名成功但内容还没到.
+
+不用媒体后缀, 也不与下载器的临时后缀相同 (``library.rules.PARTIAL_SUFFIXES``): 占位落在扫描根
+里, 与正片同后缀会让扫描把它当成品.
+"""
 
 
 def scrape_transfer_destination(library: Library, outcome: str) -> str | None:
@@ -52,11 +63,10 @@ class TransferOutcome:
 
 
 def _matches_stem(name: str, stem: str) -> bool:
-    """同前缀判定: 名字以视频 stem (或番号) 开头, 且紧随其后的是分隔符.
+    """前缀判定: 名字以视频 stem (或番号) 开头, 且紧随其后的是分隔符.
 
-    只看「前缀 + 分隔符」而不看长度, 因此 `ABC-123-1080p.mp4` 的附属文件既可以是
-    `ABC-123-1080p.srt` (与 amane 默认模板一致) 也可以是 `ABC-123.nfo` (整理前的常见命名);
-    是否搬走由后缀决定, 同前缀的另一份视频靠后缀排除.
+    只在文件名解析不出番号时兜底: 只看「前缀 + 分隔符」而不看长度, 因此 `ABC-123-1080p.mp4` 的
+    附属文件既可以是 `ABC-123-1080p.srt` (与 amane 默认模板一致) 也可以是 `ABC-123.nfo`.
     """
     if not name.startswith(stem):
         return False
@@ -64,33 +74,89 @@ def _matches_stem(name: str, stem: str) -> bool:
     return rest[:1] in {".", "-", "_"}
 
 
-def _prefixes(video: Path) -> set[str]:
-    """可作为附属文件前缀的名字: 视频 stem 与解析出的番号."""
+def _belongs(name: str, video: FileInfo, prefixes: set[str]) -> bool:
+    """附属文件是否属于这个视频.
+
+    归属按番号判定: 同目录里 `ABC-123.mp4` 与中字版 `ABC-123-C.mp4` 解析出同一个番号, 前缀会把
+    中字版的字幕算到普通版头上, 搬走后中字版就没有字幕了. 番号相同还要比中字标记与分集 —— 两者
+    都决定「视频的哪一份」, 不比同样会搬错.
+    """
+    sub = parse_file_info(text=name)
+    if sub.number is None:
+        return any(_matches_stem(name, prefix) for prefix in prefixes)
+    if video.number is None or sub.number.casefold() != video.number.casefold():
+        return False
+    if sub.has_subtitle_in_name != video.has_subtitle_in_name:
+        return False
+    return _cd_belongs(video.cd, sub.cd)
+
+
+def _cd_belongs(video_cd: int | None, sub_cd: int | None) -> bool:
+    """分集口径与 `src/amane/organize/subtitles.py::_cd_belongs` 一致: 单片也算 cd=1 那一集的附属."""
+    if sub_cd == video_cd:
+        return True
+    return video_cd == 1 and sub_cd is None
+
+
+def _prefixes(video: Path, info: FileInfo) -> set[str]:
+    """兜底用的前缀: 视频 stem 与解析出的番号."""
     prefixes = {video.stem}
-    number = parse_file_info(path=video).number
-    if number:
-        prefixes.add(number)
+    if info.number:
+        prefixes.add(info.number)
     return prefixes
 
 
-def _free_target(directory: Path, name: str) -> Path | None:
-    """在目的目录里原子占一个名字, 已存在就加序号, 绝不覆盖已有文件.
+def _partial_path(target: Path) -> Path:
+    return target.with_name(f"{target.name}{PARTIAL_SUFFIX}")
 
-    「先看存在再搬」在并发下会失效: 两个库共用同一个成品目录时, 各自持自己的库锁, 都能通过
+
+def _free_target(directory: Path, name: str) -> Path | None:
+    """在目的目录里原子占一个名字, 已占用就加序号, 绝不覆盖已有文件.
+
+    「先检查存在再搬」在并发下会失效: 两个库共用同一个成品目录时, 各自持自己的库锁, 都能通过
     存在性检查拿到同一个目标, 后搬的那次会把先到的那份直接覆盖掉. 这里用 ``O_CREAT|O_EXCL``
-    先把名字占住, 抢不到就顺延序号.
+    先把占位文件写成, 抢不到就顺延序号; 占位用不进入媒体的后缀.
     """
     stem, suffix = Path(name).stem, Path(name).suffix
     for index in range(1, 1000):
         candidate = directory / (name if index == 1 else f"{stem} ({index}){suffix}")
+        if candidate.exists():
+            continue
         try:
-            os.close(os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+            os.close(os.open(_partial_path(candidate), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
         except FileExistsError:
             continue
         except OSError:
             return None
         return candidate
     return None
+
+
+def _place(source: Path, target: Path) -> None:
+    """把源文件写到已占位的目标名上.
+
+    同一文件系统内 ``replace`` 是原子的; 跨文件系统时回退为复制到同目录的临时名再替换 ——
+    ``shutil.move`` 在 EXDEV 下直接复制到目标路径, 中途失败 (空间不足 / 网络断) 会在成品目录里
+    留下半截的同名文件, 它看起来已经是一份完整的成品. 与 `src/amane/organize/file.py::_move`
+    同一口径.
+
+    成品落到目标名之后占位就撤掉: 它只负责在并发里占住名字, 留着会在扫描根里留下 0 字节文件.
+    撤在写完之后, 占位期间名字一直是占着的.
+    """
+    try:
+        source.replace(target)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
+        try:
+            shutil.copy2(source, temporary)
+            temporary.replace(target)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+        source.unlink(missing_ok=True)
+    _partial_path(target).unlink(missing_ok=True)
 
 
 def collect_sidecars(
@@ -104,7 +170,8 @@ def collect_sidecars(
     ``directory`` 用于重试: 视频已在目的目录, 而字幕/NFO/封面还留在原目录里.
     """
     allowed = {suffix.lower() for suffix in subtitle_suffixes} | EXTRA_SIDECAR_SUFFIXES
-    prefixes = _prefixes(video)
+    info = parse_file_info(path=video)
+    prefixes = _prefixes(video, info)
     base = directory or video.parent
     siblings: list[Path] = []
     for entry in base.iterdir():
@@ -114,7 +181,7 @@ def collect_sidecars(
             continue
         if entry.suffix.lower() in MEDIA_EXTENSIONS:
             continue
-        if any(_matches_stem(entry.name, prefix) for prefix in prefixes):
+        if _belongs(entry.name, info, prefixes):
             siblings.append(entry)
     return sorted(siblings, key=lambda path: path.name)
 
@@ -183,10 +250,10 @@ def transfer_scrape_result(
             continue
         try:
             size = source.stat().st_size
-            shutil.move(str(source), str(target))
+            _place(source, target)
         except OSError:
-            # 占位文件没被搬移覆盖掉: 删掉, 否则目的目录里留下一个 0 字节的影子文件.
-            target.unlink(missing_ok=True)
+            # 占位文件没被成品替换掉: 删掉, 否则目的目录里留下一个 0 字节的占位残片.
+            _partial_path(target).unlink(missing_ok=True)
             failed.append(source.name)
             continue
         moved += 1

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Badge,
   Button,
   Divider,
@@ -12,7 +13,14 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconClockPlay, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconClockPlay,
+  IconPencil,
+  IconPlus,
+  IconRefresh,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -34,13 +42,14 @@ import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
 import { DEFAULT_CRON, isUsableCron } from "@/lib/cron";
 import { ROUTINE_TYPES } from "@/lib/exhaustive-maps";
+import { formatDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/schedules")({ component: SchedulesPage });
 
 function SchedulesPage() {
-  const { t } = useTranslation(["schedules", "tasks", "common"]);
+  const { t, i18n } = useTranslation(["schedules", "tasks", "common"]);
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery(listSchedulesOptions());
+  const { data, isLoading, isError, error, refetch } = useQuery(listSchedulesOptions());
 
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
@@ -82,7 +91,15 @@ function SchedulesPage() {
         color: "red",
       }),
   });
-  const toggleMutation = useMutation({ ...updateScheduleMutation(), onSuccess: invalidate });
+  const toggleMutation = useMutation({
+    ...updateScheduleMutation(),
+    onSuccess: invalidate,
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
   const deleteMutation = useMutation({
     ...deleteScheduleMutation(),
     onSuccess: () => {
@@ -140,7 +157,28 @@ function SchedulesPage() {
         </Button>
       </Group>
 
-      {!isLoading && (data?.items.length ?? 0) === 0 && (
+      {isError && (
+        <Alert
+          color="red"
+          variant="light"
+          icon={<IconAlertTriangle size={16} />}
+          title={t("loadFailed")}
+        >
+          <Stack gap="xs" align="flex-start">
+            <Text size="xs">{extractErrorMessage(error, t("common:toast.operationFailed"))}</Text>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              onClick={() => void refetch()}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </Stack>
+        </Alert>
+      )}
+
+      {!isLoading && !isError && (data?.items.length ?? 0) === 0 && (
         <Text c="dimmed" size="sm" ta="center" py="xl">
           {t("empty")}
         </Text>
@@ -171,7 +209,7 @@ function SchedulesPage() {
                     <Text size="xs" c="dimmed">
                       {t("labels.nextRun")}:{" "}
                       {schedule.next_run
-                        ? new Date(schedule.next_run).toLocaleString()
+                        ? formatDateTime(schedule.next_run, i18n.language)
                         : t("labels.never")}
                     </Text>
                   </Group>

@@ -317,6 +317,7 @@
   "invalidId": "Invalid film ID",
   "confirmDelete": "Delete film #{{id}}? This cannot be undone",
   "empty": "No films",
+  "listLoadFailed": "Failed to load films",
   "editor": {
     "title": {
       "label": "Title"

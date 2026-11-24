@@ -3,14 +3,12 @@
 只读: 不移动文件, 不写库, 不发网络. 清理由回收站运维另行处理 —— 巡检给出路径, 不替人决定删除.
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..db import TaskType
 from ..db.models import MediaFileStatus
-from ..library.rules import is_pointer_media
 from ..subtitles.audit import SubtitleFinding, scan_library
-from ..subtitles.targets import is_multi_disc
+from ..subtitles.targets import GapKind, classify_gap
 from .models import SubtitleAuditPayload, SubtitleAuditResult, SubtitleFetchPayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
@@ -59,12 +57,13 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
             for file in files:
                 if file.status is not MediaFileStatus.SCRAPED or file.has_subtitle:
                     continue
-                if is_multi_disc(file.path):
-                    multi_disc += 1
-                elif is_pointer_media(Path(file.path)):
-                    pointer += 1
-                else:
-                    missing += 1
+                match classify_gap(file.path):
+                    case GapKind.MULTI_DISC:
+                        multi_disc += 1
+                    case GapKind.POINTER:
+                        pointer += 1
+                    case GapKind.MISSING:
+                        missing += 1
 
         await self.report_progress(len(libraries) + 1, len(libraries) + 1, "done")
         return TaskResult(

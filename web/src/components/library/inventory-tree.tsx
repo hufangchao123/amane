@@ -1,4 +1,5 @@
 import {
+  Alert,
   Badge,
   Button,
   Center,
@@ -12,11 +13,13 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconArrowsDiagonal,
   IconArrowsDiagonalMinimize,
   IconFile,
   IconFolder,
   IconFolderOpen,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -265,6 +268,12 @@ export function InventoryTree({
           <Center py="lg">
             <Loader size="sm" />
           </Center>
+        ) : level.isError ? (
+          <LevelLoadFailed
+            error={level.error}
+            isFetching={level.isFetching}
+            onRetry={() => void level.refetch()}
+          />
         ) : level.total === 0 ? (
           <Text size="sm" c="dimmed">
             {t("cleanup.empty")}
@@ -348,10 +357,48 @@ function useInventoryNodeLevel({
     entryCount: query.data?.pages[0]?.entry_count ?? 0,
     entryBytes: query.data?.pages[0]?.entry_bytes ?? 0,
     isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage: query.fetchNextPage,
   };
+}
+
+interface LevelLoadFailedProps {
+  error: unknown;
+  isFetching: boolean;
+  onRetry: () => void;
+}
+
+/** 一层节点读取失败: 与「这层没有内容」是两件事, 不能都渲染成空态. */
+function LevelLoadFailed({ error, isFetching, onRetry }: LevelLoadFailedProps) {
+  const { t } = useTranslation(["library", "common"]);
+  return (
+    <Alert
+      color="red"
+      variant="light"
+      icon={<IconAlertTriangle size={16} />}
+      title={t("cleanup.loadFailed")}
+    >
+      <Stack gap="xs">
+        <Text size="xs">{extractErrorMessage(error, t("common:toast.operationFailed"))}</Text>
+        <Group>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconRefresh size={14} />}
+            loading={isFetching}
+            onClick={onRetry}
+          >
+            {t("common:actions.retry")}
+          </Button>
+        </Group>
+      </Stack>
+    </Alert>
+  );
 }
 
 interface InventoryNodeRowProps {
@@ -398,7 +445,9 @@ const InventoryNodeRow = memo(function InventoryNodeRow({
     enabled: isOpen && expandable,
   });
 
-  const marker = node.reason ? t(`cleanup.reason.${node.reason}`) : null;
+  const marker = node.reason
+    ? t(`cleanup.reason.${node.reason}`, { defaultValue: node.reason })
+    : null;
   const activate = () => {
     if (expandable) onToggleExpand(node.path);
     else onToggle(node);
@@ -419,6 +468,7 @@ const InventoryNodeRow = memo(function InventoryNodeRow({
             size="sm"
             checked={checked}
             indeterminate={partial}
+            aria-label={node.name}
             onChange={() => onToggle(node)}
           />
         </span>
@@ -492,6 +542,14 @@ const InventoryNodeRow = memo(function InventoryNodeRow({
           {children.isLoading ? (
             <div className={classes.pending} style={depthStyle(depth + 1)}>
               <Loader size="xs" />
+            </div>
+          ) : children.isError ? (
+            <div style={depthStyle(depth + 1)}>
+              <LevelLoadFailed
+                error={children.error}
+                isFetching={children.isFetching}
+                onRetry={() => void children.refetch()}
+              />
             </div>
           ) : (
             <>

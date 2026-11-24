@@ -191,6 +191,8 @@ class OrganizeResult(BaseModel):
     pruned_dirs: int
     unreadable: int = 0
     """索引行指向的文件读不到 (权限 / IO 错误), 这些行被保留, 没有参与本趟整理."""
+    untracked: int = 0
+    """索引行落在库根与三个落点目录之外但文件仍在盘上, 这些行被保留, 没有参与本趟整理."""
     conflicts: list[OrganizeConflict]
     """未处理的条目, 最多 ORGANIZE_CONFLICT_LIMIT 条; 恒为 conflicted 条目的前缀, 差额只留在任务日志里."""
 
@@ -295,7 +297,11 @@ class CleanupPayload(BaseModel):
         default=True, description="删除不被任何 Metadata URL 字段引用的 Resource (含派生裁剪)"
     )
     remove_orphan_metadata: bool = Field(
-        default=True, description="删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)"
+        default=False,
+        description=(
+            "删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目); "
+            "以番号元数据为核心、或文件还在洗版回收站里的部署不应打开"
+        ),
     )
 
 

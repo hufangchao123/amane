@@ -15,6 +15,7 @@ from ..library import (
     landing_roots,
     scan_inventory,
 )
+from ..library.delete import same_path
 from ..parsing import parse_file_info
 from ..utils.path import nfc_path
 from ..utils.threads import disk_probe, path_is_dir
@@ -92,9 +93,13 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
         if payload.scan:
             want_add = ScanMode.add in payload.scan
             want_remove = ScanMode.remove in payload.scan
+            recursive = payload.recursive if payload.recursive is not None else True
+            # 集合差只在「这一趟真的走遍了整库」时成立: 子目录范围的刷新 (path 在库根之下) 或
+            # 非递归扫描都看不到子目录里的行, 拿它的结果做差会把那些行判成消失.
+            covers_library = recursive and library is not None and same_path(scan_dir, Path(library.path))
             # add 与 remove 同时启用: 一次遍历收集 seen, 再做集合差.
-            # 仅 remove: 不对整树 glob, 对库内记录逐条 exists (O(索引) 而非 O(磁盘树)).
-            seen: set[str] | None = set() if want_add and want_remove else None
+            # 仅 remove (或覆盖不全): 不对整树 glob, 对库内记录逐条探 (O(索引) 而非 O(磁盘树)).
+            seen: set[str] | None = set() if want_add and want_remove and covers_library else None
 
             # 扫描磁盘并注册未见过的媒体.
             if want_add:
@@ -106,7 +111,7 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
                     scan_dir,
                     library_id=payload.library_id,
                     library_root=library_root,
-                    recursive=payload.recursive if payload.recursive is not None else True,
+                    recursive=recursive,
                     patterns=payload.patterns or [],
                     scan=scan,
                     collect_media=True,

@@ -6,7 +6,7 @@ import tomllib
 from copy import copy
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 from urllib.parse import urlsplit
 
 import tomli_w
@@ -640,7 +640,7 @@ class NetworkConfig(BaseModel):
 class WorkerConfig(BaseModel):
     concurrency: int = Field(default=10, ge=1, le=64)
     poll_interval: float = Field(default=2.0, ge=0.1, le=10, json_schema_extra={"x-hidden": True})
-    shutdown_timeout: float = Field(default=0, ge=0, le=120.0, json_schema_extra={"x-hidden": True})
+    shutdown_timeout: float = Field(default=10.0, ge=0, le=120.0, json_schema_extra={"x-hidden": True})
 
 
 class WatcherConfig(BaseModel):
@@ -900,6 +900,22 @@ class SubtitleFetchConfig(BaseModel):
 
     generation: SubtitleGenerateConfig = SubtitleGenerateConfig()
     """外部站都取不到时的兜底: 转写音轨再翻译."""
+
+    @field_validator("providers", mode="before")
+    @classmethod
+    def _drop_removed_providers(cls, value: object) -> object:
+        """丢掉已经下线的来源名, 与 ``_drop_removed_sections`` 同一口径.
+
+        ``providers`` 的类型是 ``Literal``, 旧配置里的来源名会让整份热配置校验失败 ——
+        进程起不来、页面打不开, 而用户只是升级了版本. 过滤后为空则回落到默认来源.
+        """
+        if not isinstance(value, list):
+            return value
+        if not value:
+            # 显式清空是一个有意义的选择 (全部来源都不勾), 与「名字都过期」区分开.
+            return []
+        kept = [item for item in value if item in get_args(SubtitleProvider)]
+        return kept or list(DEFAULT_SUBTITLE_PROVIDERS)
 
     @field_validator("languages")
     @classmethod

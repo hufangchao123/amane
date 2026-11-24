@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   Anchor,
   Badge,
   Button,
@@ -15,7 +16,14 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconFilter, IconSearch, IconX } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconFilter,
+  IconRefresh,
+  IconSearch,
+  IconX,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
@@ -99,7 +107,13 @@ function LibraryDetailPage() {
   const id = Number(libraryId);
   const validId = Number.isInteger(id) && id > 0;
 
-  const { data, isLoading } = useQuery({ ...listLibrariesOptions(), enabled: validId });
+  const {
+    data,
+    isLoading,
+    isError: librariesIsError,
+    error: librariesError,
+    refetch: refetchLibraries,
+  } = useQuery({ ...listLibrariesOptions(), enabled: validId });
   const library = data?.items.find((lib) => lib.id === id);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -184,6 +198,36 @@ function LibraryDetailPage() {
     return (
       <Stack align="center" justify="center" mih="40vh" gap="xs">
         <Text fw={600}>{t("invalidId")}</Text>
+        <BackLink />
+      </Stack>
+    );
+  }
+
+  // 列表请求失败时 data 是 undefined: 不能当成「这条库不存在」.
+  if (librariesIsError) {
+    return (
+      <Stack align="center" justify="center" mih="40vh" gap="xs">
+        <Alert
+          color="red"
+          variant="light"
+          icon={<IconAlertTriangle size={16} />}
+          title={t("loadFailed")}
+          maw={560}
+        >
+          <Stack gap="xs" align="flex-start">
+            <Text size="xs">
+              {extractErrorMessage(librariesError, t("common:toast.operationFailed"))}
+            </Text>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              onClick={() => void refetchLibraries()}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </Stack>
+        </Alert>
         <BackLink />
       </Stack>
     );
@@ -319,6 +363,8 @@ function LibraryDetailPage() {
           order={search.order}
           onPageChange={(page) => void routeNavigate({ search: (prev) => ({ ...prev, page }) })}
           onSort={handleSort}
+          error={mediaQuery.isError ? mediaQuery.error : null}
+          onRetry={() => void mediaQuery.refetch()}
           trailing={
             <LibraryActionButtons
               library={library}

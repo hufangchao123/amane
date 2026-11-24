@@ -1,6 +1,7 @@
 {
   "title": "Scheduled Tasks",
   "empty": "No schedules configured yet",
+  "loadFailed": "Failed to load schedules",
   "newSchedule": "New Schedule",
   "editSchedule": "Edit Schedule",
   "fields": {

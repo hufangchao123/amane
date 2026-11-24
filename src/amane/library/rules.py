@@ -99,6 +99,21 @@ def publish_roots(*, path: str, ok_dir: str | None = None) -> list[Path]:
     return roots
 
 
+def delete_roots(*, path: str, ok_dir: str | None = None) -> list[Path]:
+    """删除与清理可以下手的根: 库根, 以及不包含库根的成功目录.
+
+    成品可以落在库根之外, 删除链路必须认下成功目录, 否则转移过的文件在清理面板里列不出来也
+    删不掉. 包含库根的成功目录不算根: 认它等于放开库根之外的整棵目录树.
+    """
+    root = Path(path)
+    return [candidate for candidate in publish_roots(path=path, ok_dir=ok_dir) if not _contains(candidate, root)]
+
+
+def _contains(directory: Path, path: Path) -> bool:
+    """``directory`` 是否包含 ``path`` (相等不算包含)."""
+    return path_is_under(path, directory) and not path_is_under(directory, path)
+
+
 def is_under_any(path: str | Path, roots: Sequence[Path]) -> bool:
     """路径是否为任一目录自身或子孙 (字面比较, 不解析符号链接)."""
     return any(path_is_under(path, root) for root in roots)

@@ -73,7 +73,10 @@ async def test_removes_missing_media_files_and_its_metadata(cleanup_env):
     assert not ghost.exists()
 
     handler = CleanupHandler(repo, store)
-    result = await handler.handle(CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False))
+    # 删空片库条目默认关闭 (以番号元数据为核心的部署不该被清理任务搬走条目), 这里显式打开.
+    result = await handler.handle(
+        CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False, remove_orphan_metadata=True)
+    )
     assert result.success
     assert result.result is not None
     assert result.result.files_removed == 1
@@ -146,7 +149,9 @@ async def test_removes_orphan_metadata(cleanup_env):
     await repo.create_media_file(lib.id, path=str(real), number="KEEP-2", metadata_id=keep.id)
 
     handler = CleanupHandler(repo, store)
-    result = await handler.handle(CleanupPayload(remove_missing_files=False, remove_unreferenced_resources=False))
+    result = await handler.handle(
+        CleanupPayload(remove_missing_files=False, remove_unreferenced_resources=False, remove_orphan_metadata=True)
+    )
     assert result.success
     assert result.result is not None
     assert result.result.metadata_removed == 1
@@ -250,7 +255,10 @@ async def test_unreadable_file_keeps_the_row(cleanup_env, monkeypatch):
     monkeypatch.setattr(Path, "stat", deny)
 
     handler = CleanupHandler(repo, store)
-    result = await handler.handle(CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False))
+    # 删空片库条目默认关闭 (以番号元数据为核心的部署不该被清理任务搬走条目), 这里显式打开.
+    result = await handler.handle(
+        CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False, remove_orphan_metadata=True)
+    )
 
     assert result.success
     assert result.result is not None
@@ -268,7 +276,10 @@ async def test_missing_library_root_skips_the_whole_library(cleanup_env):
     assert media.id is not None
 
     handler = CleanupHandler(repo, store)
-    result = await handler.handle(CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False))
+    # 删空片库条目默认关闭 (以番号元数据为核心的部署不该被清理任务搬走条目), 这里显式打开.
+    result = await handler.handle(
+        CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False, remove_orphan_metadata=True)
+    )
 
     assert result.success
     assert result.result is not None

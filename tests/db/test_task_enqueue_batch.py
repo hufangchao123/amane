@@ -305,3 +305,21 @@ async def test_retry_reuses_active_exclusive_row(repo: Repository) -> None:
     assert [clone.id for clone in clones] == [active.id]
     # 两个失败行仍是终态行, 不因重试而消失.
     assert await repo.count_tasks(task_types=[TaskType.ACTOR_SCRAPE]) == 3
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_followups_skip_payload_already_queued(repo: Repository) -> None:
+    """同一份载荷已在队列里排队时不再建第二条: 一百个文件各自扇出整库刷新只该排一次."""
+    a = await repo.create_task(TaskType.ORGANIZE, {"library_id": 1})
+    b = await repo.create_task(TaskType.ORGANIZE, {"library_id": 1})
+    assert a.id is not None and b.id is not None
+    assert await repo.claim_next_task() is not None
+    assert await repo.claim_next_task() is not None
+    followups: list[tuple[str, TaskType, dict[str, object], int]] = [("refresh:1", TaskType.MEDIA_REFRESH, {}, -1)]
+
+    first = await repo.complete_task_with_followups(a.id, {}, followups)
+    second = await repo.complete_task_with_followups(b.id, {}, followups)
+
+    assert len(first) == 1
+    assert second == []
+    assert await repo.count_tasks(task_types=[TaskType.MEDIA_REFRESH]) == 1

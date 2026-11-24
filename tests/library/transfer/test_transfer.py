@@ -1,6 +1,9 @@
-"""库内文件转移: 同前缀附属文件的收集与搬动, 连同空目录回收与库根保留."""
+"""库内文件转移: 附属文件的归属判定与搬动, 连同空目录回收与库根保留."""
 
+import errno
 from pathlib import Path
+
+import pytest
 
 from amane.library.transfer import collect_sidecars, transfer_scrape_result
 
@@ -90,3 +93,62 @@ def test_transfer_renames_on_collision(tmp_path: Path) -> None:
     assert outcome.video_path == destination / "ABC-123 (2).mp4"
     assert (destination / "ABC-123.mp4").stat().st_size == 99
     assert outcome.video_path.stat().st_size == 3
+
+
+def test_collect_sidecars_keeps_other_version_subtitle(tmp_path: Path) -> None:
+    """同番号的中字版是另一份文件: 它的字幕不能跟着原版走."""
+    video = _touch(tmp_path / "in" / "ABC-123.mp4")
+    own = _touch(video.parent / "ABC-123.srt")
+    other_video = _touch(video.parent / "ABC-123-C.mp4")
+    other_subtitle = _touch(video.parent / "ABC-123-C.srt")
+
+    collected = collect_sidecars(video, [".srt"])
+
+    assert collected == [own]
+    assert other_video.exists()
+    assert other_subtitle.exists()
+
+
+def test_collect_sidecars_takes_same_number_nfo_and_images(tmp_path: Path) -> None:
+    """番号相同的 NFO 与图片照旧跟着走: 它们的名字可能带分辨率等后缀."""
+    video = _touch(tmp_path / "in" / "ABC-123.mp4")
+    siblings = [
+        _touch(video.parent / "ABC-123.nfo"),
+        _touch(video.parent / "ABC-123-thumb.jpg"),
+        _touch(video.parent / "ABC-123.srt"),
+    ]
+    _touch(video.parent / "ABC-124.nfo")
+
+    collected = collect_sidecars(video, [".srt"])
+
+    assert collected == sorted(siblings, key=lambda path: path.name)
+
+
+def test_transfer_across_filesystems_uses_temporary_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """跨文件系统时先复制到临时名再替换: 直写最终名, 中断会留下一份看起来完整的半截成品."""
+    video = _touch(tmp_path / "in" / "ABC-123.mp4", size=6)
+    destination = tmp_path / "done"
+    rename = Path.replace
+
+    def replace(self: Path, target: Path) -> Path:
+        if self == video:
+            raise OSError(errno.EXDEV, "Invalid cross-device link", str(self))
+        return rename(self, target)
+
+    monkeypatch.setattr(Path, "replace", replace)
+
+    outcome = transfer_scrape_result.sync(video, destination, [".srt"])
+
+    assert outcome.failed == []
+    assert outcome.video_path.read_bytes() == b"x" * 6
+    assert [path.name for path in destination.iterdir()] == ["ABC-123.mp4"]
+
+
+def test_transfer_leaves_no_partial_file(tmp_path: Path) -> None:
+    """搬完目的目录里只剩成品: 占位与临时名都要收掉."""
+    video = _touch(tmp_path / "in" / "ABC-123.mp4", size=4)
+    destination = tmp_path / "done"
+
+    transfer_scrape_result.sync(video, destination, [".srt"])
+
+    assert [path.name for path in destination.iterdir()] == ["ABC-123.mp4"]

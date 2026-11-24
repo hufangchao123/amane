@@ -8,6 +8,7 @@ import structlog
 from ..enums import ActorGender
 from ..net.connectivity import ConnectivityOutcome
 from ..plugins.models import SourceCapability, SourceDescriptor, SourceTrait
+from ..utils.urls import redact_url
 from .http import HttpClient
 
 if TYPE_CHECKING:
@@ -103,12 +104,12 @@ class Crawler(ABC):
         if not url:
             self.logger.warning("search miss", number=number, language=lang)
             return None
-        self.logger.info("search hit", number=number, url=url, language=lang)
+        self.logger.info("search hit", number=number, url=redact_url(url), language=lang)
 
         result = await self._scrape(url, options)
         elapsed = round(time.monotonic() - t0, 2)
         if result is None:
-            self.logger.warning("scrape failed", number=number, url=url, duration_s=elapsed)
+            self.logger.warning("scrape failed", number=number, url=redact_url(url), duration_s=elapsed)
         else:
             self.logger.info("scrape ok", number=number, title=result.title, duration_s=elapsed)
         return result

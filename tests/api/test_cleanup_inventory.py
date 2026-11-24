@@ -446,6 +446,35 @@ async def test_selection_expansion_previews_then_deletes(
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_selection_lists_ok_dir_products(
+    client: AsyncClient, app: FastAPI, safe_path: Path, stop_worker: None
+) -> None:
+    """成品落在成功目录 (库根之外): 面板要列得出来, 否则这些文件既看不到也删不掉."""
+    root, done = safe_path / "lib", safe_path / "done"
+    library_id = await _library(client, root, scrape_transfer=True, scrape_ok_dir=str(done))
+    work = done / "Studio" / "NSFS-039"
+    work.mkdir(parents=True)
+    video = work / "NSFS-039.mp4"
+    video.write_bytes(b"v" * 100)
+    media = await app.state.runtime.repo.create_media_file(library_id, path=str(video), number="NSFS-039")
+    assert media.id is not None
+
+    preview = await client.post(
+        f"libraries/{library_id}/cleanup/selection",
+        json={"media_file_ids": [media.id], "include_work_dir": False},
+    )
+
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["notices"] == []
+
+    page = await _nodes(client, library_id, inventory_id=body["inventory_id"])
+
+    assert page["entry_count"] == 1
+    assert [node["path"] for node in page["items"]] == [video.as_posix()]
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_selection_notice_carries_code_and_relative_path(
     client: AsyncClient, app: FastAPI, safe_path: Path
 ) -> None:

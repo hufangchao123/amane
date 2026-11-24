@@ -1,6 +1,7 @@
 {
   "title": "定时任务",
   "empty": "暂无定时任务",
+  "loadFailed": "定时任务加载失败",
   "newSchedule": "新建定时任务",
   "editSchedule": "编辑定时任务",
   "fields": {

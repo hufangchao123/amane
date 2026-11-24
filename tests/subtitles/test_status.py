@@ -64,6 +64,16 @@ class TestSummary:
         assert summary.multi_disc == 0
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_buckets_do_not_overlap(self, repo: Repository, tmp_path: Path):
+        """既是分卷又是 .strm 的文件只算一类: 两个桶各记一次会让 ``missing`` 变成负数."""
+        _, _ = await seed_media(repo, tmp_path / "lib" / "CD1", number="AD-5", suffix=".strm")
+
+        fetcher = SubtitleFetcher(repo, SubtitleFetchConfig(enabled=True, providers=["subtitlecat"]))
+        summary = await fetcher.summary()
+
+        assert (summary.missing, summary.multi_disc, summary.pointer) == (0, 1, 0)
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_counts_queued_tasks(self, repo: Repository):
         await repo.create_task(TaskType.SUBTITLE_FETCH, {})
         await repo.create_task(TaskType.SUBTITLE_FETCH, {"library_id": 1})

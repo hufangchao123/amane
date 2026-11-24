@@ -36,7 +36,7 @@
     "created": "创建时间",
     "started": "开始时间",
     "duration": "耗时",
-    "retries": "重试次数",
+    "retries": "失败次数",
     "id": "ID",
     "root": "根任务",
     "linkKey": "子任务",
@@ -140,7 +140,8 @@
         "target_exists": "目标路径已有其它文件",
         "subtitle_target_exists": "字幕目标路径已有其它文件"
       },
-      "conflictsTruncated": "另有 {{count}} 条未列出, 见任务日志"
+      "conflictsTruncated": "另有 {{count}} 条未列出, 见任务日志",
+      "untracked": "库外索引保留 {{count}}"
     },
     "detailTruncated": "已截断",
     "loadFailed": "详情加载失败",

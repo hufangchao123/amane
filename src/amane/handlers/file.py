@@ -554,6 +554,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
         )
         live: list[MediaFile] = []
         unreadable = 0
+        untracked = 0
         prune_total = len(indexed)
         if prune_total:
             await self.report_progress(0, prune_total, "prune")
@@ -564,7 +565,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                     missing = probe.path is None
                     # 刮削后转移会把记录指到库根之外 (输入/成功/失败目录), 这些仍属于本库.
                     tracked = is_under_any(mf_path, tracked_roots)
-                    if not tracked or is_in_trash(mf_path):
+                    if is_in_trash(mf_path):
                         await self._repo.delete_media_file(mf.id)
                     elif missing and probe.unreadable:
                         # 权限 / IO 错误不等于文件消失: 保留索引行, 下一趟再判.
@@ -572,6 +573,11 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                         logger.warning("indexed file unreadable, row kept", path=str(mf_path))
                     elif missing:
                         await self._repo.delete_media_file(mf.id)
+                    elif not tracked:
+                        # 落点在三个落点之外, 文件却还在盘上: 删行会抹掉仍在的文件, 而监控只覆盖
+                        # 输入目录, 没有其它入口能把它重新登记, 因此保留并单独计数.
+                        untracked += 1
+                        logger.warning("indexed file outside tracked roots, row kept", path=str(mf_path))
                     else:
                         kind = await _classify_indexed(mf_path, scan)
                         if kind is LibraryFileKind.UNWANTED or kind is LibraryFileKind.SKIP:
@@ -690,6 +696,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
             failed=failed,
             pruned_dirs=pruned_dirs,
             unreadable=unreadable,
+            untracked=untracked,
         )
 
         return TaskResult(
@@ -701,6 +708,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                 failed=failed,
                 pruned_dirs=pruned_dirs,
                 unreadable=unreadable,
+                untracked=untracked,
                 conflicts=conflicts,
             ),
             followups=self._media_server_followups(library, organized),

@@ -22,6 +22,14 @@ def hot_slice_for_task(hot_dump: dict[str, Any], task_type: str) -> dict[str, An
     return {k: deepcopy(v) for k, v in hot_dump.items() if k not in drop}
 
 
+def _proxy_has_userinfo(value: object) -> bool:
+    """代理地址是否带 ``user:pass@``; 只有这种才需要旁路保存明文."""
+    if not value:
+        return False
+    after_scheme = str(value).split("://", 1)[-1]
+    return "@" in after_scheme.split("/", 1)[0]
+
+
 def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     """默认 r18 密码不算需旁路保存的明文密钥."""
     scraping = hot_dump.get("scraping")
@@ -31,7 +39,7 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
             for site_cfg in site_config.values():
                 if not isinstance(site_cfg, dict):
                     continue
-                if site_cfg.get("cookie") or site_cfg.get("api_token"):
+                if site_cfg.get("cookie") or site_cfg.get("api_token") or _proxy_has_userinfo(site_cfg.get("proxy")):
                     return True
     llm = hot_dump.get("llm")
     if isinstance(llm, dict) and llm.get("api_key"):
@@ -48,12 +56,8 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
         if isinstance(generation, dict) and generation.get("api_key"):
             return True
     network = hot_dump.get("network")
-    if isinstance(network, dict) and network.get("proxy"):
-        proxy = str(network["proxy"])
-        # userinfo@host
-        after_scheme = proxy.split("://", 1)[-1]
-        if "@" in after_scheme.split("/", 1)[0]:
-            return True
+    if isinstance(network, dict) and _proxy_has_userinfo(network.get("proxy")):
+        return True
     r18 = hot_dump.get("r18")
     if isinstance(r18, dict) and r18.get("dsn"):
         return True
@@ -86,6 +90,9 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
                     site_cfg["cookie"] = dict.fromkeys(cookie, REDACTION_PLACEHOLDER)
                 if site_cfg.get("api_token"):
                     site_cfg["api_token"] = REDACTION_PLACEHOLDER
+                # 站点专用代理由用户填写, 允许 http://user:pass@host:port; 与 network.proxy 同口径.
+                if site_cfg.get("proxy"):
+                    site_cfg["proxy"] = redact_proxy(str(site_cfg["proxy"]))
 
     llm = out.get("llm")
     if isinstance(llm, dict) and llm.get("api_key"):

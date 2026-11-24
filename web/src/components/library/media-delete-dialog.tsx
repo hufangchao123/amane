@@ -1,10 +1,11 @@
-import { Alert, Group, Loader, Modal, Stack, Text } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { Alert, Button, Group, Loader, Modal, Stack, Text } from "@mantine/core";
+import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { expandCleanupSelection } from "@/client/sdk.gen";
 import { InventoryTree } from "@/components/library/inventory-tree";
 import { TruncationNotice } from "@/components/library/cleanup-panel";
+import { extractErrorMessage } from "@/lib/api-error";
 
 interface MediaDeleteDialogProps {
   libraryId: number;
@@ -47,6 +48,29 @@ export function MediaDeleteDialog({
         <Group justify="center" p="lg">
           <Loader size="sm" />
         </Group>
+      ) : preview.isError ? (
+        <Stack gap="sm" align="flex-start">
+          <Alert
+            color="red"
+            variant="light"
+            icon={<IconAlertTriangle size={16} />}
+            title={t("cleanup.previewLoadFailed")}
+            w="100%"
+          >
+            <Text size="xs">
+              {extractErrorMessage(preview.error, t("common:toast.operationFailed"))}
+            </Text>
+          </Alert>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconRefresh size={14} />}
+            loading={preview.isFetching}
+            onClick={() => void preview.refetch()}
+          >
+            {t("common:actions.retry")}
+          </Button>
+        </Stack>
       ) : !preview.data?.exists ? (
         <Text size="sm" c="dimmed">
           {t("cleanup.empty")}
@@ -66,6 +90,7 @@ export function MediaDeleteDialog({
                   path: notice.path,
                   count: notice.count,
                   detail: notice.detail,
+                  defaultValue: notice.kind,
                 })}
               </Text>
             </Alert>

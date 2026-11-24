@@ -76,6 +76,8 @@ Feed 失败记在源的 `last_error`, 不写入站点 outcome 表.
 
 默认脱敏 (`manifest.redacted=true`), 占位符 `***`; HTTP 索引不收录 Cookie / Authorization; 无密钥时不写 `.secrets.hot.json`.
 
+`.secrets.hot.json` 是整份热配置的明文副本, 因此写入时把权限收紧到 `0600` (其余文件 0644): 任务目录会随任务积累而长期留存, 目录里一份密钥副本的可读范围必须与 `config.toml` 一致. 站点级 `proxy` 与 `network.proxy` 同口径脱敏 —— 两者都允许写 `user:pass@host`, 漏了站点那一处等于把凭据留在导出物里.
+
 ### 回放 CLI
 
 经 `just repro` (或 `python -m amane.observability`) 回放: 有 `http/` 且未 `--online` 时使用 Offline 模式 (`ReplayWebClient` + `ScrapeHandler`), 否则 Online. v1 仅 `type=scrape`, 只读取 `http/` 与 `task.json`, 不依赖站点结果结构化字段.

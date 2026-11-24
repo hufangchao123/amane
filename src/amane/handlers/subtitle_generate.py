@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -15,12 +16,14 @@ from typing import TYPE_CHECKING
 
 import httpx2
 import structlog
+from aiolimiter import AsyncLimiter
 
 from ..db.models import MediaFileStatus
 from ..library.rules import has_companion_subtitle, is_pointer_media, is_video_media
 from ..llm.model import build_model
+from ..llm.translator import build_model_http_client
 from ..subtitles.targets import is_multi_disc
-from ..subtitles.translate import TranslationError, translate_lines
+from ..subtitles.translate import TranslationError, TranslationOutcome, translate_lines
 from ..subtitles.transport import staging_dir
 from ..subtitles.whisper import (
     WhisperError,
@@ -207,14 +210,8 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             segments = split_long_segments(segments)
             translated = False
             if generate.translate:
-                model = build_model(
-                    self._hot.llm.api_type,
-                    base_url=self._hot.llm.base_url,
-                    api_key=self._hot.llm.api_key,
-                    model=self._hot.llm.model,
-                )
                 try:
-                    outcome = await translate_lines(model, srt_lines(segments))
+                    outcome = await self._translate(srt_lines(segments))
                 except TranslationError as exc:
                     return _TargetOutcome(_Outcome.FAILED, str(exc))
                 if outcome.nothing_translated:
@@ -234,6 +231,22 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
         finally:
             await asyncio.to_thread(shutil.rmtree, work, ignore_errors=True)
 
+    async def _translate(self, lines: Sequence[str]) -> TranslationOutcome:
+        """转写字幕的翻译: 与字段翻译共用 llm 段, 因此也要走同一个带 proxy 的客户端与同一条限速."""
+        hot = self._hot
+        if not hot.llm.enabled or not hot.llm.api_key:
+            raise TranslationError("要求翻译, 但大模型未启用或缺 api_key")
+        rate_limit = max(hot.llm.rate_limit, 0.1)
+        async with build_model_http_client(hot.network.proxy) as http_client:
+            model = build_model(
+                hot.llm.api_type,
+                base_url=hot.llm.base_url,
+                api_key=hot.llm.api_key,
+                model=hot.llm.model,
+                http_client=http_client,
+            )
+            return await translate_lines(model, lines, limiter=AsyncLimiter(1, 1 / rate_limit))
+
     async def _write(
         self,
         media: MediaFile,
@@ -250,7 +263,7 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             fresh = await self._repo.get_media_file(media.id) if media.id is not None else None
             current = fresh or media
             video = Path(current.path)
-            target = video.with_suffix("").with_suffix(f".{language_tag}.srt")
+            target = video.with_suffix("").with_name(f"{video.stem}.{language_tag}.srt")
             if await asyncio.to_thread(target.exists):
                 return _TargetOutcome(_Outcome.SKIPPED, "目标字幕已存在")
             marker = f"1\n{format_timestamp(0.0)} --> {format_timestamp(2.0)}\n{MACHINE_MARK} (Whisper)\n\n"

@@ -29,7 +29,8 @@
     "size": "Size",
     "metadata": "Film",
     "updated": "Updated",
-    "actions": "Actions"
+    "actions": "Actions",
+    "selectAll": "Select all rows on this page"
   },
   "actions": {
     "scrape": "Scrape",
@@ -74,6 +75,8 @@
     "skip": "Skip"
   },
   "empty": "No media files found",
+  "loadFailed": "Failed to load libraries",
+  "mediaLoadFailed": "Failed to load media files",
   "configureLibrary": "Configure library",
   "backToList": "Back to list",
   "notFound": "Library not found",
@@ -230,6 +233,7 @@
     "skipped": "{{dirs}} folders and {{files}} files were not covered",
     "selected": "{{count}} selected, about {{size}}",
     "empty": "Nothing to clean",
+    "loadFailed": "Failed to load the cleanup list",
     "expandAll": "Expand all",
     "collapseAll": "Collapse all",
     "willBeEmpty": "Will be emptied",
@@ -263,6 +267,7 @@
     "tabRules": "Cleanable items",
     "tabTrash": "Trash",
     "previewTitle": "Confirm what will be deleted",
+    "previewLoadFailed": "Failed to load what will be deleted",
     "deleteMenu": "Delete",
     "deleteRecord": "Record only",
     "deleteFiles": "Delete files",
@@ -307,6 +312,7 @@
     "uploadNameLabel": "Custom file name (optional)",
     "uploadNameHint": "Leave empty to name it <video>.<language>.srt; pick a different name to keep two copies",
     "uploadNamePlaceholder": "e.g. AD-1.reviewed.srt",
+    "noExtensions": "This library has no subtitle extensions configured, so uploading is disabled",
     "action": "Subtitles",
     "uploadAction": "Upload"
   }

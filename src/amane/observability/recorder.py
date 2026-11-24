@@ -133,6 +133,10 @@ class _LogOnly:
         return None
 
 
+_FILE_MODE = 0o600
+_DEFAULT_FILE_MODE = 0o644
+
+
 class Recorder:
     """叙事方法经 structlog, 由本实例安装的 FileHandler 写入 task.log."""
 
@@ -401,6 +405,9 @@ class Recorder:
     @staticmethod
     def _write_json(path: Path, data: Any) -> None:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
+        # 记录目录会随任务积累, 其中明文密钥的副本必须只有属主可读:
+        # 目录里没有密钥时不收紧权限, 免得导出任务记录时读不到.
+        path.chmod(_FILE_MODE if path.name == SECRETS_HOT_FILENAME else _DEFAULT_FILE_MODE)
 
 
 def load_http_index(http_dir: Path) -> list[tuple[HttpExchangeMeta, bytes | None]]:
