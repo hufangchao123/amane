@@ -20,6 +20,7 @@ from amane.db.models import Task, TaskType
 from amane.db.repository import Repository
 from amane.handlers.models import RefreshPayload, RefreshResult
 from amane.handlers.protocol import TaskHandler, TaskResult
+from amane.net.http import WebClient
 from amane.scheduler.worker import CANCEL_ERROR
 from tests.helpers import LOAD_TOLERANT_TIMEOUT
 
@@ -317,3 +318,64 @@ async def test_r18_handle_released_after_retire(
 
     await asyncio.gather(*list(runtime._retire_tasks), return_exceptions=True)
     assert handle_a.closed is True
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_rebuild_closes_the_previous_web_client(
+    swap_client: tuple[AsyncClient, BlockingRefresh, AppRuntime], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """配置变更换掉 WebClient 后, 旧客户端在旧 worker 排空时关闭.
+
+    重建每次都造新客户端, 旧的不关就会一直占着连接池. 客户端底层是 curl 会话, 没有公开的关闭标记,
+    因此记录 ``close`` 的调用来说同一件事.
+    """
+    client, _blocker, runtime = swap_client
+    closed: list[WebClient] = []
+    real_close = WebClient.close
+
+    async def recording_close(self: WebClient) -> None:
+        closed.append(self)
+        await real_close(self)
+
+    monkeypatch.setattr(WebClient, "close", recording_close)
+    previous = runtime.web_client
+
+    resp = await client.patch("config", json={"watermark": {"enabled": True}})
+    assert resp.status_code == 200
+    assert runtime.web_client is not previous, "重建没有换掉 WebClient: 本用例失去鉴别力"
+
+    # 旧资源的释放挂在退役任务的排空之后, 等这批任务结束才有结论.
+    while runtime._retire_tasks:
+        await asyncio.wait_for(
+            asyncio.gather(*list(runtime._retire_tasks), return_exceptions=True), timeout=LOAD_TOLERANT_TIMEOUT
+        )
+
+    assert closed == [previous], "旧客户端没有被关闭, 或当前客户端被一起关掉"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_rebuild_restarts_watcher(
+    swap_client: tuple[AsyncClient, BlockingRefresh, AppRuntime], safe_path: Path
+) -> None:
+    """改监控相关配置后观察器按新参数重建, 旧观察器停掉, 原先的库仍在监控.
+
+    观察器在构造时取轮询开关与防抖时长, 之后不再读配置: 不重建就一直在用旧参数.
+    """
+    client, _blocker, runtime = swap_client
+    watcher = runtime.watcher_service
+    assert watcher is not None
+    library_id = await _create_library(client, safe_path)
+
+    previous = watcher._watcher
+    assert previous is not None
+    assert previous.is_running
+
+    resp = await client.patch("config", json={"watcher": {"settle_seconds": 1.0}})
+    assert resp.status_code == 200
+
+    current = watcher._watcher
+    assert current is not previous, "观察器没有重建: 防抖与轮询参数仍是旧的"
+    assert not previous.is_running, "旧观察器没有停掉"
+    assert current is not None
+    assert current.is_running
+    assert library_id in {handler.library_id for handler in current._handlers}

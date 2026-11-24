@@ -7,7 +7,7 @@ import asyncio
 import random
 import time
 from typing import TYPE_CHECKING, Any, cast
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import aiofiles
 import httpx2 as httpx
@@ -215,8 +215,34 @@ def _with_same_origin_referer(
     return {**(headers or {}), "Referer": f"https://{host}/"}
 
 
+_CREDENTIAL_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization"})
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url: str) -> tuple[str, str, int | None]:
+    """重定向判定用的来源三元组: 协议 + 主机 + 端口, 缺省端口按协议补齐."""
+    parsed = urlsplit(url)
+    scheme = parsed.scheme.lower()
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    return scheme, (parsed.hostname or "").casefold(), port or _DEFAULT_PORTS.get(scheme)
+
+
+def _strip_credentials(headers: dict[str, str] | None) -> dict[str, str] | None:
+    """去掉随请求发出的凭据头. 跨源重定向之后不得继续携带."""
+    if headers is None:
+        return None
+    return {name: value for name, value in headers.items() if name.casefold() not in _CREDENTIAL_HEADERS}
+
+
 class WebClient:
-    """出站 HTTP 通道. 代理按 host 解析 (站点级覆盖全局), 指纹按 host 选用, 被拦后换下一个."""
+    """出站 HTTP 通道. 代理按 host 解析 (站点级覆盖全局), 指纹按 host 选用, 被拦后换下一个.
+
+    TLS 证书默认校验: 站点证书无效时请求失败, 不再静默放行 (``verify_tls`` 只供测试替身关闭).
+    """
 
     def __init__(
         self,
@@ -231,6 +257,7 @@ class WebClient:
         chunked_threshold: int = 2 * 1024**2,
         chunk_size: int = 1 * 1024**2,
         download_concurrency: int = 10,
+        verify_tls: bool = True,
     ):
         self._proxy = proxy
         self._proxy_overrides = dict(proxy_overrides or {})
@@ -244,7 +271,7 @@ class WebClient:
         self._fingerprints = _FingerprintPicker(_IMPERSONATE_OPTIONS)
         self._session = AsyncSession(
             max_clients=max_clients,
-            verify=False,
+            verify=verify_tls,
             max_redirects=20,
             timeout=timeout,
             impersonate=self._fingerprints.default,
@@ -315,9 +342,14 @@ class WebClient:
 
         current_method: HttpMethod = method
         current_url = url
+        origin = _origin(url)
         for _ in range(egress.max_redirects + 1):
             # 逐跳复查: curl 自带的跟随只看首跳, 一个公网 URL 可以 302 到内网.
             await egress.ensure_allowed(current_url)
+            if _origin(current_url) != origin:
+                # 凭据只发给首跳来源: 否则第三方站点挂一次 302 就能收走 Authorization 与 Cookie.
+                headers = _strip_credentials(headers)
+                cookies = None
             resp = await self._send(
                 current_method,
                 current_url,

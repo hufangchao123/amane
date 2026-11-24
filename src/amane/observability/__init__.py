@@ -23,7 +23,15 @@ from .recorder import (
     remove_task_dir,
     task_dir_for,
 )
-from .redact import hot_slice_for_task, needs_secrets_file, redact_dsn, redact_hot, redact_proxy
+from .redact import (
+    hot_slice_for_task,
+    needs_secrets_file,
+    redact_dsn,
+    redact_hot,
+    redact_plugin_config,
+    redact_proxy,
+    restore_redacted_placeholders,
+)
 from .source import invoke_source
 from .task_log import read_task_log
 
@@ -53,8 +61,10 @@ __all__ = [
     "read_task_log",
     "redact_dsn",
     "redact_hot",
+    "redact_plugin_config",
     "redact_proxy",
     "remove_task_dir",
+    "restore_redacted_placeholders",
     "setup_logging",
     "task_dir_for",
 ]

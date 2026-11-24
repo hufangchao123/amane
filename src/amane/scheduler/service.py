@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-from collections.abc import Coroutine, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -27,6 +27,10 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 _CHECK_INTERVAL = 1.0
+
+#: 取库锁器: 与整理 / 洗版 / 删除共用同一张锁表, 由 ``AppRuntime`` 接到本服务上.
+#: 库号未知时传 ``None``, 由锁表给一把专用锁.
+type LockGetter = Callable[[int | None], Awaitable[asyncio.Lock]]
 
 
 def _same_path(left: Path, right: Path) -> bool:
@@ -68,6 +72,7 @@ class WatcherService:
         settle_seconds: float = 0.0,
         check_interval: float = _CHECK_INTERVAL,
         observer_timeout: float = 1.0,
+        lock_for: LockGetter | None = None,
     ):
         self._repo = repo
         self._event_bus = event_bus
@@ -77,10 +82,50 @@ class WatcherService:
         self._settle_seconds = settle_seconds
         self._check_interval = check_interval
         self._observer_timeout = observer_timeout
+        self._lock_for = lock_for
         self._watcher: FileWatcher | None = None
         self._debounce_task: asyncio.Task | None = None
         self._cloud_routes: dict[int, CloudDriveRoute] = {}
         self._running = False
+
+    def set_lock_getter(self, lock_for: LockGetter | None) -> None:
+        """接入整理 / 洗版 / 删除共用的库锁表.
+
+        回调读到的路径在等锁期间可能已被别的任务搬走, 因此登记、改路径、删行都要在锁内重读一次.
+        未接入时按无锁执行 (精简构造与单元测试), 生产由 ``AppRuntime`` 在构造后立刻接入.
+        """
+        self._lock_for = lock_for
+
+    async def restart(
+        self,
+        *,
+        use_polling: bool,
+        media_extensions: list[str] | None,
+        debounce_seconds: float,
+        settle_seconds: float,
+    ) -> None:
+        """按新的热配置重建观察器.
+
+        只改字段不重建会继续沿用旧的轮询开关与防抖时长: 观察器在构造时取这些参数, 之后不再读取.
+        因此先停服务 (取消防抖循环并停观察器), 换参数, 再按库里当前配置重新挂监控点.
+        """
+        self._use_polling = use_polling
+        self._media_extensions = media_extensions
+        self._debounce_seconds = debounce_seconds
+        self._settle_seconds = settle_seconds
+        was_running = self._running
+        await self.stop()
+        if was_running:
+            await self.start()
+
+    @contextlib.asynccontextmanager
+    async def _library_lock(self, library_id: int | None) -> AsyncGenerator[None]:
+        """持库锁执行库内路径的读写; 未接锁表或库未知时按无锁执行."""
+        if self._lock_for is None or library_id is None:
+            yield
+            return
+        async with await self._lock_for(library_id):
+            yield
 
     @property
     def is_running(self) -> bool:
@@ -437,24 +482,36 @@ class WatcherService:
     ) -> None:
         src_root = local_for(src_route, source_file)
         dest_root = local_for(dest_route, destination_file)
-        files = await self._repo.list_media_files(library_id=src_route.library_id, limit=None)
-        for media in files:
-            if media.id is None or not path_is_under(media.path, src_root):
-                continue
-            rel = Path(media.path).relative_to(src_root)
-            dest = dest_root / rel
-            if src_route.library_id == dest_route.library_id:
+        # 删除与发现都要再取一次库锁, 因此先把动作记下来, 出锁后逐条执行, 避免同库锁重入.
+        removed: list[Path] = []
+        discovered: list[Path] = []
+        async with self._library_lock(src_route.library_id):
+            files = await self._repo.list_media_files(library_id=src_route.library_id, limit=None)
+            for media in files:
+                if media.id is None or not path_is_under(media.path, src_root):
+                    continue
+                rel = Path(media.path).relative_to(src_root)
+                dest = dest_root / rel
+                if src_route.library_id == dest_route.library_id:
+                    if self._accept_cloud_file(dest_route, dest):
+                        # 锁内重读: 等锁期间这一行可能已被整理任务改写或删除.
+                        fresh = await self._repo.get_media_file(media.id)
+                        if fresh is None:
+                            continue
+                        library = await self._repo.get_library(dest_route.library_id)
+                        updated = await self._repo.update_media_file(media.id, path=str(dest))
+                        if updated is not None and library is not None:
+                            await refresh_external_subtitle(self._repo, updated, library)
+                    else:
+                        removed.append(Path(media.path))
+                    continue
+                removed.append(Path(media.path))
                 if self._accept_cloud_file(dest_route, dest):
-                    library = await self._repo.get_library(dest_route.library_id)
-                    updated = await self._repo.update_media_file(media.id, path=str(dest))
-                    if updated is not None and library is not None:
-                        await refresh_external_subtitle(self._repo, updated, library)
-                else:
-                    await self._on_file_deleted(Path(media.path))
-                continue
-            await self._on_file_deleted(Path(media.path))
-            if self._accept_cloud_file(dest_route, dest):
-                await self._on_file_found(dest, dest_route.library_id)
+                    discovered.append(dest)
+        for path in removed:
+            await self._on_file_deleted(path)
+        for dest in discovered:
+            await self._on_file_found(dest, dest_route.library_id)
 
     def _on_file_found_sync(self, path: Path, library_id: int) -> None:
         self._schedule_async(self._on_file_found(path, library_id))
@@ -478,42 +535,47 @@ class WatcherService:
     async def _on_file_found(self, path: Path, library_id: int) -> None:
         path_str = str(path)
 
-        existing = await self._repo.get_media_file_by_path(path_str)
-        if existing is not None:
-            logger.debug("file already tracked", path=path_str)
-            return
-
-        library = await self._repo.get_library(library_id)
-        try:
-            media = await register_media_file(self._repo, library_id, path, library=library)
-        except IntegrityError:
-            # path 有唯一约束: 刷新 / 洗版 / 另一条发现回调同时登记了同一个文件.
-            media = await self._repo.get_media_file_by_path(path_str)
-            if media is None:
-                logger.warning("file registration conflict without winner", path=path_str, library_id=library_id)
+        # 库锁内登记: 整理 / 洗版会改写同一批行, 锁外写入会与它们的改写交错.
+        async with self._library_lock(library_id):
+            library = await self._repo.get_library(library_id)
+            existing = await self._repo.get_media_file_by_path(path_str)
+            if existing is not None:
+                logger.debug("file already tracked", path=path_str)
                 return
-            logger.debug("file registered concurrently", path=path_str, media_file_id=media.id)
-        assert media.id is not None
-        logger.info("file discovered", path=path_str, media_file_id=media.id, library_id=library_id)
 
-        try:
-            parsed = parse_file_info(path_str)
-        except Exception:
-            logger.debug("cannot parse number", path=path_str)
-            parsed = None
+            try:
+                media = await register_media_file(self._repo, library_id, path, library=library)
+            except IntegrityError:
+                # path 有唯一约束: 刷新 / 洗版 / 另一条发现回调同时登记了同一个文件.
+                media = await self._repo.get_media_file_by_path(path_str)
+                if media is None:
+                    logger.warning("file registration conflict without winner", path=path_str, library_id=library_id)
+                    return
+                logger.debug("file registered concurrently", path=path_str, media_file_id=media.id)
+            if media.id is None:
+                logger.warning("registered file has no id", path=path_str, library_id=library_id)
+                return
+            media_id = media.id
+            logger.info("file discovered", path=path_str, media_file_id=media_id, library_id=library_id)
 
-        if parsed is not None and parsed.number is not None:
-            await self._repo.update_media_file(media.id, number=parsed.number)
-            if library is not None and library.automation == LibraryAutomation.SCRAPE:
-                task = await self._repo.create_task(
-                    task_type=TaskType.SCRAPE,
-                    payload=ScrapePayload(
-                        media_file_id=media.id, number=parsed.number, content_type=parsed.content_type
-                    ),
-                )
-                logger.info("scrape task submitted", task_id=task.id, number=parsed.number, path=path_str)
+            try:
+                parsed = parse_file_info(path_str)
+            except Exception:
+                logger.debug("cannot parse number", path=path_str)
+                parsed = None
 
-        await self._event_bus.emit(EventType.FILE_DISCOVERED, {"path": path_str, "media_file_id": media.id})
+            if parsed is not None and parsed.number is not None:
+                await self._repo.update_media_file(media_id, number=parsed.number)
+                if library is not None and library.automation == LibraryAutomation.SCRAPE:
+                    task = await self._repo.create_task(
+                        task_type=TaskType.SCRAPE,
+                        payload=ScrapePayload(
+                            media_file_id=media_id, number=parsed.number, content_type=parsed.content_type
+                        ),
+                    )
+                    logger.info("scrape task submitted", task_id=task.id, number=parsed.number, path=path_str)
+
+        await self._event_bus.emit(EventType.FILE_DISCOVERED, {"path": path_str, "media_file_id": media_id})
 
     async def _on_file_deleted(self, path: Path) -> None:
         path_str = str(path)
@@ -521,11 +583,16 @@ class WatcherService:
         if media is None:
             return
 
-        assert media.id is not None
-        await self._repo.delete_media_file(media.id)
-        logger.info("file removed from db", path=path_str, media_file_id=media.id)
+        async with self._library_lock(media.library_id):
+            # 锁内重读: 等锁期间这一行可能已被整理任务改指新路径, 按锁外的快照删会删错行.
+            fresh = await self._repo.get_media_file_by_path(path_str)
+            if fresh is None or fresh.id is None:
+                return
+            await self._repo.delete_media_file(fresh.id)
+            media_id = fresh.id
+            logger.info("file removed from db", path=path_str, media_file_id=media_id)
 
-        await self._event_bus.emit(EventType.FILE_REMOVED, {"path": path_str, "media_file_id": media.id})
+        await self._event_bus.emit(EventType.FILE_REMOVED, {"path": path_str, "media_file_id": media_id})
 
     async def _on_file_moved(self, src: Path, dest: Path, library_id: int) -> None:
         src_str = str(src)
@@ -536,15 +603,32 @@ class WatcherService:
             await self._on_file_found(dest, library_id)
             return
 
-        assert media.id is not None
-        library = await self._repo.get_library(library_id)
-        updated = await self._repo.update_media_file(media.id, path=dest_str)
-        if updated is not None and library is not None:
-            await refresh_external_subtitle(self._repo, updated, library)
-        logger.info("file path updated", src=src_str, dest=dest_str, media_file_id=media.id)
+        missing = False
+        async with self._library_lock(media.library_id):
+            # 锁内重读: 另一条回调可能已把这一行删掉或改指别处, 那时按目标路径重新登记.
+            fresh = await self._repo.get_media_file_by_path(src_str)
+            if fresh is None or fresh.id is None:
+                missing = True
+            else:
+                library = await self._repo.get_library(library_id)
+                updated = await self._repo.update_media_file(fresh.id, path=dest_str)
+                if updated is not None and library is not None:
+                    await refresh_external_subtitle(self._repo, updated, library)
+                logger.info("file path updated", src=src_str, dest=dest_str, media_file_id=fresh.id)
+        if missing:
+            await self._on_file_found(dest, library_id)
 
     async def _debounce_loop(self) -> None:
+        """按固定节奏把防抖到期的路径交给注册流程.
+
+        单轮异常只记日志: 这个循环是目录监控的唯一驱动, 一旦因一次异常退出, 监控就永久静默失效,
+        而 ``_running`` 仍是 True, 从外面看不出区别.
+        """
         while self._running:
             await asyncio.sleep(self._check_interval)
-            if self._watcher:
+            if not self._watcher:
+                continue
+            try:
                 self._watcher.check_debounced()
+            except Exception:
+                logger.exception("watcher debounce round failed")

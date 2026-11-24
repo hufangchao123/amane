@@ -12,6 +12,7 @@ from amane.config import HotSettings, ScrapingConfig, SrConfig
 from amane.enums import DownloadableResource
 from amane.media import CropRotation, ResourceStore, manual_crop_image, materialize_images
 from amane.media import pipeline as pipeline_mod
+from amane.net.http import RateLimiters, WebClient
 from amane.parsing import ContentType
 from tests.helpers import LOAD_TOLERANT_TIMEOUT, await_for
 
@@ -449,6 +450,44 @@ async def test_manual_crop_image_external_source(resource_store: ResourceStore, 
     record, path = got
     assert record.meta == {"op": "crop", "src": "https://s/a.jpg", "args": "box:0,0,400,538"}
     assert Image.open(path).size == (400, 538)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "http://127.0.0.1/a.jpg",
+        "http://192.168.1.5/a.jpg",
+        "http://[::1]/a.jpg",
+        # 数值写法: 与 ``getaddrinfo`` 的解释不同, 不能只靠解析结果判定
+        "http://2130706433/a.jpg",
+    ],
+)
+async def test_manual_crop_image_rejects_internal_source(
+    resource_store: ResourceStore,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_url: str,
+):
+    """源地址指向内网时在发出请求之前拒绝, 不把服务器当作探内网的工具."""
+    client = WebClient(limiters=RateLimiters(default_rate=100))
+
+    class _NeverCalled:
+        async def request(self, *_args: object, **_kwargs: object) -> None:
+            raise AssertionError("内网地址不得发出请求")
+
+    monkeypatch.setattr(client, "_session", _NeverCalled())
+
+    with pytest.raises(ValueError, match="无法获取头像"):
+        await manual_crop_image(
+            source_url,
+            (0, 0, 10, 10),
+            resource_store,
+            client,
+            HotSettings(),
+            tmp_path,
+            subject="头像",
+        )
 
 
 @pytest.mark.asyncio

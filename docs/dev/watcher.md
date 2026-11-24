@@ -26,6 +26,12 @@ Webhook 的 `source_file` / `destination_file` 是 CloudDrive **虚拟路径** (
 
 native Observer 启动失败 (如 inotify 配额) 只停掉 FileWatcher, 已登记的 cloud 路由与 webhook 接收仍保留; `add_library` 热启动失败同样清掉未启动的实例, 不把 `_watcher` 留成半开状态.
 
+## 库锁与配置变更
+
+两条通道的登记与索引改写都在 `LibraryTaskLocks` 内完成 (`AppRuntime` 经 `WatcherService.set_lock_getter` 接入, 未接入时无锁执行): 锁外读到的路径在等锁期间可能已被整理任务搬走, 因此每条回调都在锁内重读一次记录, 搬迁 / 发现类动作放在出锁之后, 避免同库锁重入. 不做「文件是否仍在磁盘上」的判定 — 登记不探测磁盘, 失效索引由 REFRESH 与清理处置.
+
+`watcher.*` 变化时 `AppRuntime._refresh_watcher` 用新参数重建观察器 (`WatcherService.restart`), 重建失败只记 warning 且保留旧观察器, 不让配置更新失败.
+
 ## Webhook 载荷
 
 端点在 `/api` 下, 鉴权与其它接口相同 (CloudDrive 模板把 `Authorization` 设为 `Bearer <AMANE_TOKEN>`). `data[]` 可批量, `action` 为 `create` / `delete` / `rename` (大小写不敏感), `is_dir` 可为 JSON 布尔或字符串 `"true"` / `"false"`, 未知顶层字段忽略. 处理在后台任务中执行, HTTP 立即 204, 避免 FUSE 子树扫描堵住 CloudDrive.

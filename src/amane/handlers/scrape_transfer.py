@@ -121,6 +121,9 @@ class ScrapeTransferHandler(TaskHandler[ScrapeTransferPayload, ScrapeTransferRes
         )
         if outcome.video_path != video:
             await self._repo.update_media_file(fresh.id, path=str(outcome.video_path))
+            # 内存里的旧路径要跟着改: 角标是按 ``media.path`` 去磁盘上找字幕的, 用旧路径会得出
+            # 「搬到新位置后没有外挂字幕」这个错误结论.
+            fresh.path = str(outcome.video_path)
             # 字幕跟着搬过去了, 角标要按新目录重算; 清单里的旧路径也已失效.
             await refresh_external_subtitle(self._repo, fresh, library)
             if self._inventory_store is not None and library.id is not None:

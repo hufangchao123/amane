@@ -1,5 +1,6 @@
 """字幕补全的状态读取; 抓取是 ``SUBTITLE_FETCH`` 任务, 转写生成是 ``SUBTITLE_GENERATE``."""
 
+import asyncio
 import io
 import time
 import wave
@@ -23,6 +24,7 @@ from ..models.subtitles import (
     SubtitleStatusResponse,
     SubtitleUploadResponse,
 )
+from ..support.uploads import read_limited
 
 logger = structlog.get_logger()
 
@@ -30,6 +32,31 @@ router = APIRouter(prefix="/subtitles", tags=["subtitles"])
 
 
 _MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+async def _require_same_dir(target: Path, video: Path) -> None:
+    """字幕只能与视频同目录: 允许别处的路径会让删除越过库的边界."""
+    same_dir = await asyncio.to_thread(lambda: target.parent.resolve() == video.parent.resolve())
+    if not same_dir:
+        raise HTTPException(status_code=422, detail="只能删除与该视频同目录的字幕")
+
+
+async def _write_atomic(target: Path, payload: bytes) -> None:
+    """先写临时文件再原子替换: 写一半失败时播放器不会读到半份字幕."""
+
+    def _write() -> None:
+        temporary = target.with_name(f".{target.name}.upload-tmp")
+        try:
+            temporary.write_bytes(payload)
+            temporary.replace(target)
+        except OSError:
+            temporary.unlink(missing_ok=True)
+            raise
+
+    try:
+        await asyncio.to_thread(_write)
+    except OSError as error:
+        raise HTTPException(status_code=422, detail=f"写字幕失败: {error.strerror or error}") from error
 
 
 def _subtitle_target(video: Path, language: str, suffix: str) -> Path:
@@ -50,18 +77,13 @@ def _clean_language(language: str) -> str:
 
 
 async def _read_limited(file: UploadFile) -> bytes:
-    """按上限读, 读到超限即停: 先整块读进内存再判大小会让 20 MB 的上限形同虚设."""
-    chunks: list[bytes] = []
-    total = 0
-    while chunk := await file.read(1024 * 1024):
-        total += len(chunk)
-        if total > _MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="字幕文件超过 20 MB")
-        chunks.append(chunk)
-    payload = b"".join(chunks)
-    if not payload:
-        raise HTTPException(status_code=422, detail="上传的文件是空的")
-    return payload
+    """按 20 MB 上限读字幕文件."""
+    return await read_limited(
+        file,
+        limit=_MAX_UPLOAD_BYTES,
+        too_large="字幕文件超过 20 MB",
+        empty="上传的文件是空的",
+    )
 
 
 def _language_of_name(video: Path, name: str) -> str | None:
@@ -146,21 +168,22 @@ async def delete_subtitle_file(
     取库锁再动手: 整理与洗版可能正把这份视频搬去别处, 锁外删会删到刚被搬走的旧路径上.
     """
     media, library = await _media_and_library(repo, media_file_id)
-    video = Path(media.path)
     target = Path(path)
-    if target.parent.resolve() != video.parent.resolve():
-        raise HTTPException(status_code=422, detail="只能删除与该视频同目录的字幕")
     if target.suffix.lower() not in _allowed_extensions(library):
         raise HTTPException(status_code=422, detail=f"不是字幕文件: {target.name}")
     async with await runtime.library_locks.get(library.id):
+        # 锁内重读: 等锁期间整理 / 洗版可能已把这份视频搬去别处, 按锁外的视频路径判同目录会判错.
+        fresh = await repo.get_media_file(media_file_id)
+        current = fresh or media
+        await _require_same_dir(target, Path(current.path))
+        # 删盘放到线程里: 网络盘上的 unlink 会阻塞事件循环, 卡住同时进行的任务与请求.
         try:
-            target.unlink()
+            await asyncio.to_thread(target.unlink)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="字幕文件已不存在") from None
         except OSError as error:
             raise HTTPException(status_code=422, detail=f"删除失败: {error.strerror or error}") from error
-        fresh = await repo.get_media_file(media_file_id)
-        await refresh_external_subtitle(repo, fresh or media, library)
+        await refresh_external_subtitle(repo, current, library)
         await _refresh_media_server(runtime, repo, library, reason="subtitles", changed=1)
     logger.info("subtitle deleted", media_id=media_file_id, path=str(target))
     return await list_subtitle_files(repo, media_file_id)
@@ -192,7 +215,7 @@ async def upload_subtitle(
         wanted = ", ".join(sorted(allowed)) or "未配置"
         raise HTTPException(status_code=422, detail=f"字幕格式不支持: {suffix or '无扩展名'} (库接受 {wanted})")
     video = Path(media.path)
-    if not video.parent.is_dir():
+    if not await asyncio.to_thread(video.parent.is_dir):
         raise HTTPException(status_code=422, detail=f"视频所在目录不存在: {video.parent}")
     language = _clean_language(language)
     custom = filename.strip()
@@ -201,20 +224,17 @@ async def upload_subtitle(
             raise HTTPException(status_code=422, detail="文件名里不能带路径分隔符")
         if Path(custom).suffix.lower() != suffix:
             raise HTTPException(status_code=422, detail=f"自定义文件名的扩展名要和上传的文件一致: {suffix}")
-        target = video.parent / custom
-    else:
-        target = _subtitle_target(video, language, suffix)
     payload = await _read_limited(file)
     async with await runtime.library_locks.get(library.id):
-        temporary = target.with_name(f".{target.name}.upload-tmp")
-        try:
-            temporary.write_bytes(payload)
-            temporary.replace(target)
-        except OSError as error:
-            temporary.unlink(missing_ok=True)
-            raise HTTPException(status_code=422, detail=f"写字幕失败: {error.strerror or error}") from error
+        # 锁内重读并重算目标名: 等锁期间视频可能已被整理任务改名或搬走, 锁外算出的名字会落在旧目录.
         fresh = await repo.get_media_file(media_file_id)
-        await refresh_external_subtitle(repo, fresh or media, library)
+        current = fresh or media
+        video = Path(current.path)
+        target = video.parent / custom if custom else _subtitle_target(video, language, suffix)
+        if not await asyncio.to_thread(video.parent.is_dir):
+            raise HTTPException(status_code=422, detail=f"视频所在目录不存在: {video.parent}")
+        await _write_atomic(target, payload)
+        await refresh_external_subtitle(repo, current, library)
         await _refresh_media_server(runtime, repo, library, reason="subtitles", changed=1)
     logger.info("subtitle uploaded", media_id=media_file_id, path=str(target), bytes=len(payload))
     return SubtitleUploadResponse(path=str(target), bytes_written=len(payload), language=language)

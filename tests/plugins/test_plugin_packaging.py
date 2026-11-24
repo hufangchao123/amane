@@ -13,6 +13,7 @@ import pytest
 from amane.plugins.manager import PluginManager
 from amane.plugins.packaging import (
     EXT_MODULE_PREFIX,
+    MAX_UNCOMPRESSED_BYTES,
     MAX_ZIP_BYTES,
     PLUGIN_ENTRY,
     install_plugin_path,
@@ -31,6 +32,13 @@ def _zip_bytes(entries: dict[str, str]) -> bytes:
         for name, content in entries.items():
             archive.writestr(name, content)
     return buf.getvalue()
+
+
+def _hidden_entries(root: Path) -> list[str]:
+    """安装目录里的中间产物: 正常结束后一个都不该留下."""
+    if not root.exists():
+        return []
+    return [path.name for path in root.iterdir() if path.name.startswith(".")]
 
 
 def test_install_zip_at_root(tmp_path: Path) -> None:
@@ -132,7 +140,7 @@ def test_install_rejects_invalid_plugin_and_keeps_installed_version(
     with pytest.raises(ValueError, match=message):
         install_plugin_zip(tmp_path, payload)
     assert (sources_root(tmp_path) / "acme.fake" / PLUGIN_ENTRY).read_text(encoding="utf-8") == _WORKING
-    assert not (sources_root(tmp_path) / ".staging").exists()
+    assert _hidden_entries(sources_root(tmp_path)) == []
     manager = PluginManager.discover(tmp_path)
     assert manager.has_film_plugin("acme.fake")
     assert manager.failures == ()
@@ -176,6 +184,51 @@ def test_install_path_rejects_dir_without_entry(tmp_path: Path) -> None:
     source.mkdir()
     with pytest.raises(ValueError, match=PLUGIN_ENTRY):
         install_plugin_path(tmp_path, source)
+
+
+def test_install_path_rejects_symlink_inside_dir(tmp_path: Path) -> None:
+    """目录源里的链接一律拒绝: 跟随复制会把链接目标的内容装进插件目录."""
+    source = tmp_path / "incoming" / "acme.fake"
+    source.mkdir(parents=True)
+    (source / PLUGIN_ENTRY).write_text(plugin_source("acme.fake"), encoding="utf-8")
+    secret = tmp_path / "secret.txt"
+    secret.write_text("secret", encoding="utf-8")
+    (source / "payload.txt").symlink_to(secret)
+
+    with pytest.raises(ValueError, match="符号链接"):
+        install_plugin_path(tmp_path, source)
+
+    assert not (sources_root(tmp_path) / "acme.fake").exists()
+    assert _hidden_entries(sources_root(tmp_path)) == []
+
+
+def test_install_zip_caps_actual_extracted_bytes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """条目头里的声明大小可以伪造: 按实际解压出的字节数封顶."""
+    payload = _zip_bytes({PLUGIN_ENTRY: "x" * 8})
+
+    class _FloodEntry:
+        """声明很小, 解开后却源源不断给出内容的条目替身."""
+
+        def __init__(self) -> None:
+            self._left = MAX_UNCOMPRESSED_BYTES + 1
+
+        def __enter__(self) -> _FloodEntry:
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+        def read(self, size: int) -> bytes:
+            chunk = b"x" * min(size, self._left)
+            self._left -= len(chunk)
+            return chunk
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", lambda _self, _info, *_args, **_kwargs: _FloodEntry())
+
+    with pytest.raises(ValueError, match="zip 解压后过大"):
+        install_plugin_zip(tmp_path, payload)
+
+    assert _hidden_entries(sources_root(tmp_path)) == []
 
 
 def test_uninstall_removes_sources_keeps_runtime_data(tmp_path: Path) -> None:

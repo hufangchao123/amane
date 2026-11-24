@@ -56,8 +56,13 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
         if isinstance(generation, dict) and generation.get("api_key"):
             return True
     network = hot_dump.get("network")
-    if isinstance(network, dict) and _proxy_has_userinfo(network.get("proxy")):
-        return True
+    if isinstance(network, dict):
+        if _proxy_has_userinfo(network.get("proxy")):
+            return True
+        # 浏览器解题服务地址与 proxy 同口径: 都可能写成 http://user:pass@host:8191.
+        browser = network.get("browser")
+        if isinstance(browser, dict) and _proxy_has_userinfo(browser.get("solver_url")):
+            return True
     r18 = hot_dump.get("r18")
     if isinstance(r18, dict) and r18.get("dsn"):
         return True
@@ -140,6 +145,83 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
             generation["api_key"] = REDACTION_PLACEHOLDER
 
     return out
+
+
+_SECRET_KEY_PARTS = ("api_key", "apikey", "token", "secret", "password", "cookie", "credential", "dsn")
+
+
+def _is_secret_key(key: object) -> bool:
+    normalized = str(key).lower().replace("-", "_")
+    return any(part in normalized for part in _SECRET_KEY_PARTS)
+
+
+def _has_secret_value(value: object, *, key: object | None = None) -> bool:
+    if key is not None and _is_secret_key(key):
+        return bool(value)
+    if isinstance(value, dict):
+        return any(_has_secret_value(v, key=k) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_has_secret_value(v) for v in value)
+    return False
+
+
+def _redact_secret_values(value: object, *, key: object | None = None) -> object:
+    if key is not None and _is_secret_key(key):
+        return REDACTION_PLACEHOLDER if value else value
+    if isinstance(value, dict):
+        return {key: _redact_secret_values(item, key=key) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_secret_values(item) for item in value]
+    return value
+
+
+def redact_plugin_config(config: dict[str, Any]) -> dict[str, Any]:
+    """插件配置的脱敏副本: 按字段名判据替换, 与任务记录导出走同一套规则."""
+    redacted = _redact_secret_values(config)
+    return redacted if isinstance(redacted, dict) else {}
+
+
+_OMIT = object()
+
+
+def _is_redacted_form(patch: Any, current: Any) -> bool:
+    """补丁值是否是当前值的脱敏形式: 占位符本身, 或剥掉 userinfo 的地址.
+
+    代理串的脱敏保留 host 与 port, 只去掉 userinfo; 前端回写这一份时若不还原, 代理口令会被
+    悄悄丢掉. 想去掉口令时清空后再填新值, 不要只删 userinfo.
+    """
+    if not isinstance(patch, str) or not isinstance(current, str):
+        return False
+    if patch == current:
+        return False
+    return patch == REDACTION_PLACEHOLDER or redact_proxy(current) == patch
+
+
+def _restore_placeholder(patch: Any, current: Any) -> Any:
+    """单值还原: 脱敏形式换成当前值, 当前值也没有时丢弃该键."""
+    if patch == REDACTION_PLACEHOLDER or _is_redacted_form(patch, current):
+        if current is None or current == REDACTION_PLACEHOLDER:
+            return _OMIT
+        return deepcopy(current)
+    if isinstance(patch, dict):
+        base = current if isinstance(current, dict) else {}
+        restored: dict[str, Any] = {}
+        for key, value in patch.items():
+            item = _restore_placeholder(value, base.get(key))
+            if item is not _OMIT:
+                restored[key] = item
+        return restored
+    return patch
+
+
+def restore_redacted_placeholders(patch: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    """把补丁里的脱敏占位符还原成当前值.
+
+    配置接口返回的密钥字段是 ``***``; 前端原样回写时若照抄占位符, 热配置会被覆盖成占位符而
+    丢失密钥, 因此合并前先按当前配置还原. 当前值本身也没有密钥时丢弃该键, 不写入占位符.
+    """
+    restored = _restore_placeholder(patch, current)
+    return restored if isinstance(restored, dict) else patch
 
 
 _SECRET_KEY_PARTS = ("api_key", "apikey", "token", "secret", "password", "cookie", "credential", "dsn")

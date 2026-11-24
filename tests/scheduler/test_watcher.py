@@ -843,3 +843,55 @@ class TestFileWatcherTmpFiles:
             )
         finally:
             watcher.stop()
+
+
+class TestDirectoryMoveAndModify:
+    """整体移动进来的目录与覆盖写: 两种事件过去都被忽略, 文件永远进不了库."""
+
+    def _collect(self) -> tuple[list[Path], FileWatcher]:
+        found: list[Path] = []
+
+        def on_found(path: Path, _library_id: int) -> None:
+            found.append(path)
+
+        watcher = FileWatcher(on_file_found=on_found, debounce_seconds=0.05, settle_seconds=0)
+        watcher.watch(str(Path("/tmp/watch-root")), library_id=1, patterns=None, skip_patterns=None)
+        return found, watcher
+
+    def test_directory_moved_in_expands_to_files(self, tmp_path: Path) -> None:
+        root = tmp_path / "root"
+        root.mkdir()
+        target = root / "ABC-123"
+        target.mkdir()
+        (target / "ABC-123.mp4").write_bytes(b"x" * 64)
+        (target / "ABC-123.srt").write_bytes(b"s")
+
+        found: list[Path] = []
+        watcher = FileWatcher(
+            on_file_found=lambda path, _id: found.append(path), debounce_seconds=0.0, settle_seconds=0
+        )
+        watcher.watch(str(root), library_id=1, patterns=None, skip_patterns=None)
+
+        handler = watcher._handlers[0]
+        handler.on_moved(DirMovedEvent(src_path=str(tmp_path / "staging" / "ABC-123"), dest_path=str(target)))
+        watcher.check_debounced()
+
+        assert [path.name for path in found] == ["ABC-123.mp4"]
+
+    def test_modified_file_enters_the_queue(self, tmp_path: Path) -> None:
+        """``cp -f`` 落盘只有 modified 事件, 不接它就等于这个文件从未出现."""
+        root = tmp_path / "root2"
+        root.mkdir()
+        video = root / "ABC-124.mp4"
+        video.write_bytes(b"x" * 64)
+
+        found: list[Path] = []
+        watcher = FileWatcher(
+            on_file_found=lambda path, _id: found.append(path), debounce_seconds=0.0, settle_seconds=0
+        )
+        watcher.watch(str(root), library_id=1, patterns=None, skip_patterns=None)
+
+        watcher._handlers[0].on_modified(FileMovedEvent(src_path=str(video), dest_path=str(video)))
+        watcher.check_debounced()
+
+        assert found == [video]

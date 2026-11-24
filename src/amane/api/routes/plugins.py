@@ -4,12 +4,22 @@ from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 from pydantic import ValidationError
 
 from ...config import ConfigManager, PluginConfig
+from ...observability.redact import redact_plugin_config
 from ...plugins.manager import PluginManager
 from ..deps import ConfigDep, PluginManagerDep, RuntimeDep
 from ..models.plugins import PluginConfigUpdate, PluginListResponse, PluginResponse
 from ..support.path_validation import validate_plugin_install_path
+from ..support.uploads import read_limited
 
 router = APIRouter(prefix="/plugins", tags=["plugins"])
+
+
+def _redacted_plugin_config(config: PluginConfig) -> PluginConfig:
+    """插件配置的脱敏副本: 密钥类字段换成占位符, 其余字段原样.
+
+    插件自己声明的配置项不受 Amane 管辖, 只能按字段名判据脱敏, 与任务记录导出的规则一致.
+    """
+    return config.model_copy(update={"config": redact_plugin_config(config.config)})
 
 
 def _plugin_response(manager: PluginManager, config: PluginConfig, plugin_id: str) -> PluginResponse:
@@ -19,7 +29,7 @@ def _plugin_response(manager: PluginManager, config: PluginConfig, plugin_id: st
         raise HTTPException(status_code=404, detail="插件不存在")
     return PluginResponse(
         descriptor=descriptor,
-        config=config,
+        config=_redacted_plugin_config(config),
         config_schema=manager.plugin_config_schema(plugin_id),
         path=origin.path if origin is not None else None,
     )
@@ -36,6 +46,10 @@ def _plugin_list(manager: PluginManager, config: ConfigManager) -> PluginListRes
 @router.get("", response_model=PluginListResponse)
 async def list_plugins(config: ConfigDep, manager: PluginManagerDep) -> PluginListResponse:
     return _plugin_list(manager, config)
+
+
+_MAX_PLUGIN_BYTES = 20 * 1024 * 1024
+"""插件包上限, 与解压后的 50 MiB 上限配合."""
 
 
 @router.post("", response_model=PluginListResponse, status_code=201)
@@ -56,7 +70,7 @@ async def install_plugin(
         else:
             if file is None or not filename.lower().endswith(".zip"):
                 raise HTTPException(status_code=422, detail="只接受 zip 文件")
-            payload = await file.read()
+            payload = await read_limited(file, limit=_MAX_PLUGIN_BYTES, too_large="插件包超过 20 MB")
             manager = await runtime.install_plugin_archive(payload)
     except HTTPException:
         raise

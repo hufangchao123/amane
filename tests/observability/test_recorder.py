@@ -1,6 +1,7 @@
 """任务可观测会话 / 导出 表测试."""
 
 import json
+import os
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -293,3 +294,46 @@ def test_site_outcomes_include_unqueried(tmp_path: Path, task: Task):
 def test_site_outcomes_without_recorder_is_empty():
     """无 begin 时 (回放等) 的空壳没有站点结果."""
     assert _LogOnly(structlog.get_logger()).site_outcomes() == []
+
+
+@pytest.mark.parametrize(
+    ("name", "existing_mode", "expected_mode"),
+    [
+        pytest.param(SECRETS_HOT_FILENAME, None, 0o600, id="secret-created-tight"),
+        pytest.param(SECRETS_HOT_FILENAME, 0o644, 0o600, id="secret-overwrites-loose-file"),
+        pytest.param("config.hot.json", None, 0o644, id="redacted-created-default"),
+        pytest.param("config.hot.json", 0o600, 0o644, id="redacted-overwrites-tight-file"),
+    ],
+)
+def test_write_json_mode_matches_content_sensitivity(
+    tmp_path: Path, name: str, existing_mode: int | None, expected_mode: int
+):
+    """明文密钥的副本只有属主可读, 其余记录文件保持默认可读."""
+    path = tmp_path / name
+    if existing_mode is not None:
+        path.write_text("{}\n", encoding="utf-8")
+        path.chmod(existing_mode)
+
+    Recorder._write_json(path, {"cookie": "secret"})
+
+    assert json.loads(path.read_text(encoding="utf-8")) == {"cookie": "secret"}
+    assert path.stat().st_mode & 0o777 == expected_mode
+
+
+def test_write_json_creates_secret_file_tight_before_writing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """新建的密钥文件在写入内容之前就已是 0600.
+
+    先以默认权限建文件再 chmod 的写法, 中间那段时间同组用户能读到明文.
+    """
+    seen: list[int] = []
+    real_open = os.open
+
+    def spy(path: str | os.PathLike[str], flags: int, mode: int = 0o777) -> int:
+        fd = real_open(path, flags, mode)
+        seen.append(os.fstat(fd).st_mode & 0o777)
+        return fd
+
+    monkeypatch.setattr(os, "open", spy)
+    Recorder._write_json(tmp_path / SECRETS_HOT_FILENAME, {"cookie": "secret"})
+
+    assert seen == [0o600]

@@ -101,6 +101,18 @@ def browser_source_allowed(headers: Headers, configured_origins: Sequence[str]) 
     return _origin_allowed(origin, headers.get("host"), configured_origins)
 
 
+def _is_https(request: Request) -> bool:
+    """判断浏览器这一侧是不是 HTTPS.
+
+    反向代理后面 ``request.url.scheme`` 是 ``http`` (到应用这一段), 真实协议由
+    ``X-Forwarded-Proto`` 传递; 只认前者会让 Cookie 缺 ``Secure``, 明文链路上也可能回传.
+    """
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    if forwarded:
+        return forwarded == "https"
+    return request.url.scheme == "https"
+
+
 def _token_matches(presented: str | None, expected: str) -> bool:
     """常量时间比较. ``compare_digest`` 对非 ASCII 的 ``str`` 抛出 ``TypeError``, 故先按 UTF-8 编码."""
     return presented is not None and hmac.compare_digest(presented.encode(), expected.encode())
@@ -232,7 +244,7 @@ class TokenAuthMiddleware(BaseHTTPMiddleware):
                     path="/api",
                     httponly=True,
                     samesite="lax",
-                    secure=request.url.scheme == "https",
+                    secure=_is_https(request),
                 )
             return response
         if _token_matches(request.cookies.get(API_TOKEN_COOKIE), token):

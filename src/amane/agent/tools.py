@@ -14,10 +14,16 @@ from ..db.repository import Repository
 from .bridge import AgentRuntimeBridge
 from .cache import CachedResult
 from .executor import QueryExecutor, extract_entity_ids
-from .sql import SqlNeedsApproval, SqlResult, SqlSandboxError, SqlTimeoutError, as_id_subquery_sql
+from .sql import SqlNeedsApproval, SqlResult, SqlSandboxError, SqlTimeoutError
 
 TOOL_OK = "OK"
 """成功回执: 模型下一步不需要任何观测的写操作只回它. 见 docs/dev/agent.md 返回值契约."""
+
+ApprovalReason = Literal["allow_slow", "destructive"]
+"""审批原因: ``allow_slow`` 只是请求放宽超时, ``destructive`` 是不可逆的删除或覆盖.
+
+前端只用 metadata 的 ``sql`` 字段作确认文案, 原因字段留给接入方判断是否值得批.
+"""
 
 
 def unknown_field_error(unknown: Iterable[str], allowed: Iterable[str]) -> dict[str, Any]:
@@ -69,7 +75,19 @@ class AgentDeps:
     """None = 外部派发: 交付的查询预设与会话解耦, 直接进入预设列表."""
     sql_timeout_ms: int
     sample_limit: int = 20
+    wash_auto_execute: bool | None = None
+    """热配置 ``wash.auto_execute`` 的当前值; ``None`` 表示运行时没有接线, 按已打开处理."""
     bridge: AgentRuntimeBridge = field(default_factory=AgentRuntimeBridge)
+
+
+def wash_cascade_armed(deps: AgentDeps) -> bool:
+    """洗版扫描的结果是否会级联成真正的洗版 (即删除源文件).
+
+    ``wash_scan`` 本身只读, 但热配置打开时它的后继任务会自动执行 ``wash_apply``. 助理因此
+    不能把「扫描」当只读操作: 是否级联决定它要不要过人这一关, 而拿不到配置时按已打开处理 —
+    多问一次只是麻烦, 猜错一次是不可逆的删除.
+    """
+    return deps.wash_auto_execute is not False
 
 
 def require_approval(
@@ -77,12 +95,16 @@ def require_approval(
     *,
     sql: str,
     tool: str,
+    reason: ApprovalReason = "destructive",
     entity: SavedQueryEntity | None = None,
     name: str | None = None,
     create_view: bool = False,
     extra: dict[str, Any] | None = None,
 ) -> None:
-    """未批准时 raise ApprovalRequired. metadata 供 UI 确认文案; approval 键为 tool_call_id."""
+    """未批准时 raise ApprovalRequired. metadata 供 UI 确认文案; approval 键为 tool_call_id.
+
+    默认按 ``destructive`` 处理: 调用点绝大多数是删除/合并, 只有放宽超时这个例外显式传参.
+    """
     if ctx.tool_call_approved:
         return
     tool_call_id = ctx.tool_call_id or ""
@@ -95,7 +117,7 @@ def require_approval(
         "name": name,
         "create_view": create_view,
         "extra": dict(extra or {}),
-        "reason": "allow_slow",
+        "reason": reason,
     }
     raise ApprovalRequired(metadata=meta)
 
@@ -170,6 +192,7 @@ def build_explore_toolset() -> FunctionToolset[AgentDeps]:
                 ctx,
                 sql=sql,
                 tool="sql_explore",
+                reason="allow_slow",
                 name=name,
                 create_view=create_view,
             )
@@ -229,7 +252,7 @@ def build_explore_toolset() -> FunctionToolset[AgentDeps]:
                 approved=ctx.tool_call_approved,
             )
         except SqlNeedsApproval:
-            require_approval(ctx, sql=sql, tool="sql_deliver", entity=entity, name=name)
+            require_approval(ctx, sql=sql, tool="sql_deliver", reason="allow_slow", entity=entity, name=name)
             raise  # pragma: no cover
         except (SqlSandboxError, SqlTimeoutError) as exc:
             return {"error": str(exc)}
@@ -291,6 +314,7 @@ def build_explore_toolset() -> FunctionToolset[AgentDeps]:
                     ctx,
                     sql=sql,
                     tool="semantic_search",
+                    reason="allow_slow",
                     extra={"query": text, "limit": limit, "kind": kind},
                 )
                 raise  # pragma: no cover - require_approval 必 raise
@@ -306,7 +330,29 @@ def build_explore_toolset() -> FunctionToolset[AgentDeps]:
                 return {"error": f"saved_query {saved_query_id} 不存在"}
             if saved.entity is not SavedQueryEntity.METADATA:
                 return {"error": f"查询预设实体为 {saved.entity}, 需要 metadata"}
-            allowed_ids = await ctx.deps.repo.list_metadata_ids(id_subquery_sql=as_id_subquery_sql(saved.sql))
+            # 预置查询的 SQL 由人编写, 不能只把它拼进主库的 WHERE 子查询: 那条路径走可写会话,
+            # 既没有只读连接的解析层授权, 也没有超时与进度中断. 改为在沙箱里求 id 集合,
+            # 主库不再执行用户 SQL. 结果里不存在的 id 由语义索引的位图与列表查询各自滤掉.
+            try:
+                ids_result = await ctx.deps.executor.run_sql(
+                    saved.sql,
+                    timeout_ms=ctx.deps.sql_timeout_ms,
+                    approved=ctx.tool_call_approved,
+                )
+                allowed_ids = extract_entity_ids(ids_result.columns, ids_result.rows)
+            except SqlNeedsApproval:
+                require_approval(
+                    ctx,
+                    sql=saved.sql,
+                    tool="semantic_search",
+                    reason="allow_slow",
+                    extra={"query": text, "limit": limit, "kind": kind, "saved_query_id": saved_query_id},
+                )
+                raise  # pragma: no cover - require_approval 必 raise
+            except (SqlSandboxError, SqlTimeoutError) as exc:
+                return {"error": str(exc)}
+            except ValueError as exc:
+                return {"error": str(exc)}
 
         hits = await search(
             text,

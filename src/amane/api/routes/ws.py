@@ -24,7 +24,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     # None = 关闭校验. token 不出现在 URL / 访问日志.
     token = runtime.api_token
     if token is not None:
-        if not hmac.compare_digest(ws.cookies.get(API_TOKEN_COOKIE, ""), token):
+        # 两侧都转成 bytes: 浏览器的 Cookie 取出是 str, 直接与 str 比较会让 compare_digest 抛 TypeError.
+        if not hmac.compare_digest(ws.cookies.get(API_TOKEN_COOKIE, "").encode("utf-8"), token.encode("utf-8")):
             await ws.close(code=1008)  # policy violation
             return
         # 握手同样按来源检查, 跨站页面不得借 cookie 接入

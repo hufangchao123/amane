@@ -7,6 +7,7 @@ import importlib.util
 import io
 import shutil
 import sys
+import tempfile
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,7 @@ SOURCES_DIRNAME = "sources"
 EXT_MODULE_PREFIX = "amane_ext_"
 MAX_ZIP_BYTES = 20 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
+_EXTRACT_CHUNK = 1 * 1024 * 1024
 _SKIP_EXTRACT_DIRS = frozenset({"__macosx", ".ds_store"})
 
 
@@ -118,10 +120,8 @@ def install_plugin_zip(data_dir: Path, payload: bytes) -> str:
         raise ValueError("zip 过大")
     root = sources_root(data_dir)
     root.mkdir(parents=True, exist_ok=True)
-    staging = root / ".staging"
-    if staging.exists():
-        shutil.rmtree(staging)
-    staging.mkdir(parents=True)
+    # 每次安装用独立暂存目录: 固定名字会让并发安装互相删掉对方正在解压的树.
+    staging = Path(tempfile.mkdtemp(dir=root, prefix=".staging-"))
     try:
         _extract_zip(payload, staging)
         plugin_dir = _plugin_dir_from_extract(staging)
@@ -129,8 +129,7 @@ def install_plugin_zip(data_dir: Path, payload: bytes) -> str:
         _commit_plugin_dir(root, plugin_dir, plugin_id)
         return plugin_id
     finally:
-        if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 def install_plugin_path(data_dir: Path, source: Path) -> str:
@@ -151,6 +150,13 @@ def install_plugin_path(data_dir: Path, source: Path) -> str:
     return plugin_id
 
 
+def _require_no_symlinks(tree: Path) -> None:
+    """拒绝含符号链接的目录树. 复制时跟随链接会把链接目标的内容一起装进插件目录."""
+    for path in tree.rglob("*"):
+        if path.is_symlink():
+            raise ValueError(f"插件目录包含符号链接: {path.relative_to(tree)}")
+
+
 def _commit_plugin_dir(root: Path, plugin_dir: Path, plugin_id: str) -> None:
     dest = root / plugin_id
     resolved_src = plugin_dir.resolve()
@@ -159,18 +165,19 @@ def _commit_plugin_dir(root: Path, plugin_dir: Path, plugin_id: str) -> None:
         return
     if dest.exists() and resolved_dest.is_relative_to(resolved_src):
         raise ValueError("不能从包含安装目标的目录安装")
-    incoming = root / f".{plugin_id}.new"
-    if incoming.exists():
-        shutil.rmtree(incoming)
-    shutil.copytree(plugin_dir, incoming)
-    old = root / f".{plugin_id}.old"
-    if old.exists():
-        shutil.rmtree(old)
-    if dest.exists():
-        dest.rename(old)
-    incoming.rename(dest)
-    if old.exists():
-        shutil.rmtree(old)
+    _require_no_symlinks(plugin_dir)
+    # 中间目录名带随机后缀: 并发安装同一 id 时各自持有自己的副本, 不会互删.
+    incoming = Path(tempfile.mkdtemp(dir=root, prefix=f".{plugin_id}-", suffix=".new"))
+    old = Path(tempfile.mkdtemp(dir=root, prefix=f".{plugin_id}-", suffix=".old"))
+    old.rmdir()
+    try:
+        shutil.copytree(plugin_dir, incoming, symlinks=True, dirs_exist_ok=True)
+        if dest.exists():
+            dest.rename(old)
+        incoming.rename(dest)
+    finally:
+        shutil.rmtree(incoming, ignore_errors=True)
+        shutil.rmtree(old, ignore_errors=True)
 
 
 def uninstall_plugin_tree(data_dir: Path, plugin_id: str) -> None:
@@ -236,7 +243,12 @@ def _extract_zip(payload: bytes, dest: Path) -> None:
                 raise ValueError("zip 含有非法路径")
             if info.is_dir():
                 continue
-            total += info.file_size
-            if total > MAX_UNCOMPRESSED_BYTES:
-                raise ValueError("zip 解压后过大")
-        archive.extractall(dest)
+            target = dest / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # 条目头里的 file_size 可以伪造, 因此按实际解压出的字节数累计封顶.
+            with archive.open(info) as src, target.open("wb") as out:
+                while chunk := src.read(_EXTRACT_CHUNK):
+                    total += len(chunk)
+                    if total > MAX_UNCOMPRESSED_BYTES:
+                        raise ValueError("zip 解压后过大")
+                    out.write(chunk)

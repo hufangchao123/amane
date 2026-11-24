@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 from datetime import UTC, datetime, timedelta
@@ -411,3 +412,58 @@ async def test_purge_advances_only_cleared_records(wash_lib: WashLibrary) -> Non
     assert bad.id is not None
     states = {record.id: record.state for record in await wash_lib.repo.get_wash_records([good.id, bad.id])}
     assert states == {good.id: WashRecordState.PURGED, bad.id: WashRecordState.TRASHED}
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_restore_skips_a_record_restored_while_waiting(
+    wash_lib: WashLibrary,
+    locks: LibraryTaskLocks,
+) -> None:
+    """等锁期间别处已还原了这条记录: 快照里的 trashed 不能当成现在的状态.
+
+    再搬一次等于把文件从原位又挪回库里, 原位就多出一份重复文件.
+    """
+    await seed_two_groups(wash_lib)
+    await wash_groups(wash_lib.repo, await groups_for(wash_lib), keep_days=7, lock_for=locks.get)
+    local = next(record for record in await all_records(wash_lib) if record.kind is LOCAL)
+    assert local.id is not None
+    await wash_lib.repo.set_wash_record_state([local.id], WashRecordState.RESTORED)
+
+    report = await restore_records(wash_lib.repo, [local], lock_for=locks.get)
+
+    assert (report.done, report.skipped) == (0, 1)
+    assert not (wash_lib.root / "2024/ABC-123/ABC-123-720p.mp4").exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_skips_a_record_purged_while_waiting(
+    wash_lib: WashLibrary,
+    locks: LibraryTaskLocks,
+) -> None:
+    """等锁期间别处已清掉这条记录: 重复删除会报出莫名其妙的失败."""
+    record = await make_record(wash_lib, expires_in=timedelta(days=-1))
+    assert record.id is not None
+    await wash_lib.repo.set_wash_record_state([record.id], WashRecordState.PURGED)
+
+    report = await purge_records(wash_lib.repo, [record], lock_for=locks.get)
+
+    assert (report.done, report.skipped) == (0, 1)
+    assert Path(record.removed_path).exists()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_purge_locks_records_whose_library_is_unknown(wash_lib: WashLibrary) -> None:
+    """分组键解不出库的记录也要进锁, 按 ``None`` 取那把专用锁."""
+    record = await make_record(wash_lib, expires_in=timedelta(days=-1))
+    tampered = record.model_copy(update={"group_key": "broken"})
+    taken: list[int | None] = []
+
+    async def lock_for(library_id: int | None) -> asyncio.Lock:
+        taken.append(library_id)
+        return asyncio.Lock()
+
+    report = await purge_records(wash_lib.repo, [tampered], lock_for=lock_for)
+
+    assert taken == [None]
+    assert report.done == 1
+    assert not Path(record.removed_path).exists()

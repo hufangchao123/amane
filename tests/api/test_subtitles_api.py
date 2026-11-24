@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+from tests.helpers import LOAD_TOLERANT_TIMEOUT
 
 if TYPE_CHECKING:
     from httpx2 import AsyncClient
@@ -287,3 +290,109 @@ class TestSubtitleFiles:
 
         assert separator.status_code == 422
         assert mismatch.status_code == 422
+
+
+class _GatedLock:
+    """把进入时刻与放行分开的锁替身.
+
+    路由拿到库锁后会先做完锁外那半段工作再进锁; 让 ``__aenter__`` 先报信再等待, 测试就能确定
+    "锁外读已经发生", 接着改库里的路径, 从而分辨目标是按旧路径还是按锁内重读的路径算出来的.
+    """
+
+    def __init__(self) -> None:
+        self.entered = asyncio.Event()
+        self.resumed = asyncio.Event()
+
+    async def __aenter__(self) -> _GatedLock:
+        self.entered.set()
+        await self.resumed.wait()
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+
+class _GatedLocks:
+    """替掉 ``runtime.library_locks``: 无论按哪个库号取锁, 都返回同一把闸门锁."""
+
+    def __init__(self) -> None:
+        self.lock = _GatedLock()
+
+    async def get(self, library_id: int | None) -> _GatedLock:
+        return self.lock
+
+
+class TestLockedReread:
+    """等锁期间视频被搬走: 目标名必须按锁内重读到的路径算."""
+
+    async def _seed(self, repo: Repository, root: Path) -> MediaFile:
+        root.mkdir(parents=True, exist_ok=True)
+        library = await repo.create_library(
+            name="搬运库", path=str(root), subtitle_extensions=[".srt"], write_nfo=False
+        )
+        video = root / "AD-1.mp4"
+        video.write_bytes(b"x")
+        media = await repo.create_media_file(library_id=library.id, path=str(video), number="AD-1")
+        assert media is not None
+        return media
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_upload_follows_a_video_moved_while_waiting(
+        self, app, client: AsyncClient, repo: Repository, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        media = await self._seed(repo, tmp_path / "lib")
+        gated = _GatedLocks()
+        monkeypatch.setattr(app.state.runtime, "library_locks", gated)
+        destination = tmp_path / "lib" / "已整理"
+
+        request = asyncio.create_task(
+            client.post(
+                "subtitles/upload",
+                data={"media_file_id": str(media.id), "language": "zh"},
+                files={"file": ("AD-1.srt", b"1\n", "text/plain")},
+            )
+        )
+        await asyncio.wait_for(gated.lock.entered.wait(), timeout=LOAD_TOLERANT_TIMEOUT)
+
+        # 整理任务在这段时间里搬走了视频并改写了库里的路径.
+        destination.mkdir()
+        (tmp_path / "lib" / "AD-1.mp4").rename(destination / "AD-1.mp4")
+        await repo.update_media_file(media.id, path=str(destination / "AD-1.mp4"))
+        gated.lock.resumed.set()
+
+        response = await request
+        assert response.status_code == 200, response.text
+        assert Path(response.json()["path"]) == destination / "AD-1.zh.srt"
+        assert (destination / "AD-1.zh.srt").is_file()
+        assert not (tmp_path / "lib" / "AD-1.zh.srt").exists()
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_delete_refuses_the_stale_directory(
+        self, app, client: AsyncClient, repo: Repository, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """视频搬走后, 客户端给的旧目录不再与被重读的视频路径同目录, 因此拒绝删除."""
+        media = await self._seed(repo, tmp_path / "lib")
+        subtitle = tmp_path / "lib" / "AD-1.zh.srt"
+        subtitle.write_text("1\n")
+        gated = _GatedLocks()
+        monkeypatch.setattr(app.state.runtime, "library_locks", gated)
+        destination = tmp_path / "lib" / "已整理"
+
+        request = asyncio.create_task(
+            client.post(
+                "subtitles/delete",
+                data={"media_file_id": str(media.id), "path": str(subtitle)},
+            )
+        )
+        await asyncio.wait_for(gated.lock.entered.wait(), timeout=LOAD_TOLERANT_TIMEOUT)
+
+        destination.mkdir()
+        (tmp_path / "lib" / "AD-1.mp4").rename(destination / "AD-1.mp4")
+        subtitle.rename(destination / "AD-1.zh.srt")
+        await repo.update_media_file(media.id, path=str(destination / "AD-1.mp4"))
+        gated.lock.resumed.set()
+
+        response = await request
+        assert response.status_code == 422
+        assert "同目录" in response.json()["detail"]
+        assert (destination / "AD-1.zh.srt").is_file()

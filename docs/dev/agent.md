@@ -18,7 +18,7 @@
 | `sql_explore` | 中间推理; 默认只回样例. `create_view=true` 物化会话内 SavedQuery 供 `inspect_result` 翻页 — 视图是**纯行数组**, 无 entity / `id` 列要求, **不**纳入交付结果 |
 | `sql_deliver` | 面向用户的结果 → `saved_query` + 内存结果缓存. `entity=metadata\|actor` 交付须含主键列 `id`, 可作片库 / 演员筛选并深链; 省略 entity (或 `data`) 交付任意只读结果, 只进入数据页 |
 | `inspect_result` | 按 `saved_query_id` 取行 (交付或探查视图) |
-| `semantic_search` | 单次整句语义检索; 可传 `saved_query_id` 或返回 `id` 列的只读 SQL, 只在该候选集内排名 |
+| `semantic_search` | 单次整句语义检索; 可传 `saved_query_id` 或返回 `id` 列的只读 SQL, 只在该候选集内排名. 候选集在只读沙箱内求出, 主库不执行这段 SQL |
 
 写操作工具按域分组为 `Capability`, 清单在 `src/amane/agent/capabilities.py`, 内置助理与外部派发共用同一份 (两侧必须一致, 只登记一处才不会漂移). **不做延迟载入**: 每个请求都声明全部工具. 兼容端点 (DeepSeek 等) 没有「声明了但不开放」的通道, 逐次载入只能通过修改 `tools` 实现, 而工具定义渲染在 system 之后、对话之前, 每载入一次即重读整段对话前缀; 全量声明的固定前缀恒定不变, 首轮即命中缓存. 不经由 HTTP 自调用. `AgentDeps.bridge` 提供库路径边界 / watcher / 取消运行中任务 / 语义检索回调.
 
@@ -33,10 +33,10 @@
 | `library-ops` | 库 CRUD、REFRESH 入队 |
 | `feed-ops` | 源 CRUD、立即拉取、FeedItem 历史批量操作 |
 | `schedule-ops` | CLEANUP / UPSCALE / R18_IMPORT / RESCRAPE 定时 CRUD 与触发 |
-| `task-ops` | 统一提交 / 取消 / 重试 (入队, 不代为运行); 提交面覆盖 `POST /api/tasks` 的全部媒体运维类型 |
+| `task-ops` | 统一提交 / 取消 / 重试 (入队, 不代为运行); 提交面覆盖 `POST /api/tasks` 的全部媒体运维类型; 重试只对只读或可重入类型开放 |
 | `saved-query-ops` | 预设改名 / 删除 |
 
-提交面与 `POST /api/tasks` 保持同一份准入: 媒体运维的任务类型 (`subtitle_fetch` / `subtitle_audit` / `wash_scan` / `wash_apply` / `nfo_patch` / `notify` / `avatar_check` / `media_refresh` / `scrape_transfer`) 与例行类型都在成员表里, 新增类型时必须同时扩 `payload_schema.py` 的两张表与两个 `Literal` —— 漏了助理就看不见这个功能, 而 HTTP 入口照常可用. 例外是面板专用入口 (删除) 与语义索引类, 保持不开放. `wash_apply` 属不可逆 (带 `purge_ids` 时真删文件), 提交前走批准流. 库工具 (`create_library` / `update_library`) 与页面共用 `library/scrape_paths.py::check_scrape_dirs` 校验转移目录, 也共用 `scheduler/watcher.py::WATCH_FIELDS` 决定是否重建观察点.
+提交面与 `POST /api/tasks` 保持同一份准入: 媒体运维的任务类型 (`subtitle_fetch` / `subtitle_audit` / `wash_scan` / `wash_apply` / `nfo_patch` / `notify` / `avatar_check` / `media_refresh` / `scrape_transfer`) 与例行类型都在成员表里, 新增类型时必须同时扩 `payload_schema.py` 的两张表与两个 `Literal` —— 漏了助理就看不见这个功能, 而 HTTP 入口照常可用. 例外是面板专用入口 (删除) 与语义索引类, 保持不开放. `wash_apply` 属不可逆 (带 `purge_ids` 时真删文件), 提交前走批准流. 洗版扫描与回收站清理要按级联计: `wash_auto_execute` 打开 (或取不到该配置) 时 `wash_scan` 的后继就是 `wash_apply`, 于是提交、重跑、建例行任务、启用与触发都要批准; `wash_purge` (回收站真删) 同理. 重跑只对只读与可重入类型开放, 搬移 (`organize` / `scrape_transfer`)、清理 (`cleanup`) 与销毁类一律拒绝 —— 重跑绕开了提交面的审批. 库工具 (`create_library` / `update_library`) 与页面共用 `library/scrape_paths.py::check_scrape_dirs` 校验转移目录, 也共用 `scheduler/watcher.py::WATCH_FIELDS` 决定是否重建观察点.
 
 任务与定时任务的入参 (即 `submit_task` / `create_schedule` 的 `submission`) **不随工具签名内联**: 联合体大小远大于其余工具定义, 改为 `get_task_submission_schema` / `get_routine_submission_schema` 按需返回, 与提交时的校验共用同一个 `TypeAdapter`; 校验失败返回出错字段 (最多三条)、可用类型与该类型的字段定义, 模型无需再次试探形状.
 
@@ -64,9 +64,9 @@ MANUAL 写入会把所改字段并入锁集合 (见 [data-model.md](data-model.m
 
 `feed-ops` 只通过 `FeedService.poll_one` 触发远程拉取; 新条目是否入队 SCRAPE 由 Feed 的 `auto_enqueue` 决定, Agent 不在工具内解析 RSS 或直接运行刮削. 删除源或删除条目历史须批准. 条目 `scrape` 沿用该 Feed 当前配置, 语义见 [feeds.md](feeds.md).
 
-`schedule-ops` 创建时只接受 `RoutineSubmission`; 更新只允许 `name` / `cron` / `enabled`, 任务类型或 payload 变化须删除后重建. `trigger_schedule` 只把 `next_run` 设为当前时间, 实际 Task 由 `CronScheduler` 下一次 tick 创建, 不是同步执行.
+`schedule-ops` 创建时只接受 `RoutineSubmission`; 更新只允许 `name` / `cron` / `enabled`, 任务类型或 payload 变化须删除后重建. `trigger_schedule` 只把 `next_run` 设为当前时间, 实际 Task 由 `CronScheduler` 下一次 tick 创建, 不是同步执行. 创建、把暂停的例行任务重新启用、触发销毁类或会级联成销毁的例行任务须批准; 改名与改表达式不新增删除能力, 不要求批准.
 
-**批准流**: SQL 非法或 SQLite 运行时错误 → 工具返回 `error` 字符串, **不**升格为回合错误打断整轮. 慢查询 (`allow_slow`) 与破坏性写 (metadata / facet merge·delete·删规则 / 删库 / 删评论 / 删预设) 在工具体内 `raise ApprovalRequired`; 适配器把 `DeferredToolRequests` 映射成 AG-UI 中断 (`RUN_FINISHED.outcome.interrupts`), 中断 `id` 为 `int-{tool_call_id}`, 文案取自工具给的 metadata. 一次 `resume[]` 必须回答**全部**打开的中断, 故前端逐项暂存决定、集齐后整批提交, 批量批准即全部置 approve. 批准 → 工具体再次进入且 `tool_call_approved=True`; 拒绝 → `ToolDenied`. 模型只看见普通 tool return, **无**「用户已批准…」类附加说明; 刷新后用回放行末尾的中断还原待批状态. 
+**批准流**: SQL 非法或 SQLite 运行时错误 → 工具返回 `error` 字符串, **不**升格为回合错误打断整轮. 慢查询 (`allow_slow`) 与破坏性操作 (metadata / facet merge·delete·删规则 / 删库 / 删评论 / 删预设 / 销毁类任务与例行任务) 在工具体内 `raise ApprovalRequired`; metadata 的 `reason` 区分 `allow_slow` (只放宽超时) 与 `destructive` (不可逆删除), 接入方据此判断值不值得批; 适配器把 `DeferredToolRequests` 映射成 AG-UI 中断 (`RUN_FINISHED.outcome.interrupts`), 中断 `id` 为 `int-{tool_call_id}`, 文案取自工具给的 metadata. 一次 `resume[]` 必须回答**全部**打开的中断, 故前端逐项暂存决定、集齐后整批提交, 批量批准即全部置 approve. 批准 → 工具体再次进入且 `tool_call_approved=True`; 拒绝 → `ToolDenied`. 模型只看见普通 tool return, **无**「用户已批准…」类附加说明; 刷新后用回放行末尾的中断还原待批状态. 
 
 ## 会话数据
 
@@ -104,7 +104,7 @@ MANUAL 写入会把所改字段并入锁集合 (见 [data-model.md](data-model.m
 
 ## 运行时
 
-`AgentService` 挂载于 `AppRuntime`: `_rebuild()` 按 `hot.agent` 重建工厂, **不清除** ResultCache; bootstrap 装配 `bridge` (safe_dirs / watcher / 动态 Worker 取消 / `FeedService.poll_one`).
+`AgentService` 挂载于 `AppRuntime`: `_rebuild()` 按 `hot.agent` 重建工厂, **不清除** ResultCache; bootstrap 装配 `bridge` (safe_dirs / watcher / 动态 Worker 取消 / `FeedService.poll_one`). `AgentService.wash_auto_execute` 由调用方传入 `hot.wash.auto_execute`; 未接线时工具层按已打开处理 — 级联判定只影响审批, 猜错一次就是真删.
 
 上游协议由 `hot.agent.api_type` 选择, 模型构造与翻译共用 `llm/model.py::build_model`; `base_url` / `api_key` / `model` 原样交给对应 Provider (Anthropic 需填 Anthropic 端点, 无隐式改写). 身份与规则经 agent `instructions` 注入而**不是** `system_prompt`: Responses 协议把 agent instructions 放在 API 顶层 `instructions` 字段, 服务端插在 `input` 之前; `system_prompt` 会变成 `input` 里的 system 消息, 于是各 capability 的注意事项反而排在身份定位之前. 思考强度: 全局 `hot.agent.thinking` 为默认 (`None` = 不传), 会话覆盖在 `meta.json`; 每回合经由 `model_settings` 注入 thinking 与 `hot.agent.max_tokens`. 运行使用无上限的 `UsageLimits`.
 

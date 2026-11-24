@@ -71,7 +71,7 @@ SCRAPE **没有**「缓存命中即整体跳过爬取」的快速返回 — 完�
 
 ### 进度上报
 
-Worker 在 `handle()` 前注入 `report_progress` 回调, 经 EventBus 发 `task.progress` (`{task_id, current, total, message}`); 前端写 `web/src/stores/progress.ts`. **契约**: `total > 0` 时前端按 `current/total` 显示百分比, 未上报则回退 indeterminate, Handler 不调用时静默忽略.
+Worker 在 `handle()` 前注入 `report_progress` 回调, 经 EventBus 发 `task.progress` (`{task_id, current, total, message}`); 前端写 `web/src/stores/progress.ts`. **契约**: `total > 0` 时前端按 `current/total` 显示百分比, 未上报则回退 indeterminate, Handler 不调用时静默忽略. 回调存在 `handlers/protocol.py::TaskHandler.set_progress_callback` 写入的 ContextVar 里, 不是 handler 实例属性 — 同类 handler 只有一份实例, 实例属性会被后开始的任务覆盖成别人的 `task_id`; worker 在认领到的那个任务里绑定, `asyncio.gather` / `asyncio.to_thread` 派生的子任务复制上下文, 因此子任务的上报仍落在同一个任务上.
 
 ### 站点结果上报
 
@@ -85,7 +85,7 @@ handler 之间复用的阶段逻辑, 不是一条可跳步的总管线:
 | ------ | ------ | -------- | ------ |
 | `LibraryScan` | `library/scan.py` | REFRESH / watcher / ORGANIZE / SCAN_INVALID | 单路径分类 (跳过 / 无效 / 媒体), `unwanted_kind` 给出无效原因; 规则常量与校验在 `library/rules.py` |
 | `scan_library` | `handlers/_common.py` | clouddrive 巡检 | 库目录遍历; `@in_thread` 包装 glob / stat. 入库扫描与清理清单改走 `library/cleanup/inventory.py::scan_inventory` 的显式递归 (能收集读错误并产出目录条目) |
-| `LibraryTaskLocks` | `handlers/_common.py` | ORGANIZE / DELETE | `build_handlers` 构造一份注入两端, 同库执行期串行; 测试里未注入时各 handler 自建, 互不共享 |
+| `LibraryTaskLocks` | `handlers/_common.py` | ORGANIZE / DELETE / 洗版 / 字幕路由 / watcher 回调 | `build_handlers` 构造一份注入各端, 同库执行期串行; 库号未知 (洗版记录的分组键解不出库) 按 `None` 取一把专用锁; 测试里未注入时各 handler 自建, 互不共享 |
 | `finalize_media_file` | `handlers/_common.py` | SCRAPE (缓存 / 主路径) | 标记 SCRAPED + 关联 Metadata |
 | `apply_file_operations` | `handlers/file.py` | ORGANIZE | 读取 MediaFile→读取 Library→渲染路径→执行 file ops; 库路径 I/O 经 `@in_thread` |
 
@@ -160,7 +160,7 @@ handler 之间复用的阶段逻辑, 不是一条可跳步的总管线:
 
 ### 配置变更与退役
 
-配置变更不取消运行中任务. `_apply_rebuild_unlocked()` 构建新 worker 后调用旧 worker 的 `retire()`: 同步置 `is_main=False` 并唤醒轮询, 主循环退出且不再认领; 已认领任务继续运行; 新 worker 立即开始认领. 退役 worker 由后台 `drain()` 处理: 先等主循环退出 (认领结算并登记), 再等活跃任务清零, 顺序不可交换; 清零后释放其持有的 r18 句柄与浏览器池. 连续变更时多个退役 worker 可以并存.
+配置变更不取消运行中任务. `_apply_rebuild_unlocked()` 构建新 worker 后调用旧 worker 的 `retire()`: 同步置 `is_main=False` 并唤醒轮询, 主循环退出且不再认领; 已认领任务继续运行; 新 worker 立即开始认领. 退役 worker 由后台 `drain()` 处理: 先等主循环退出 (认领结算并登记), 再等活跃任务清零, 顺序不可交换; 清零后释放其持有的 r18 句柄、浏览器池、`WebClient` 与旧 `SemanticService` — 在飞任务仍握着它们, 因此 `_rebuild()` 里不提前关闭, 只有仍被任何退役 worker 引用时才留到它的排空之后. 连续变更时多个退役 worker 可以并存. `watcher` 段配置变化由 `AppRuntime._refresh_watcher` 调 `WatcherService.restart` 重建观察器 (轮询开关、防抖与停稳时长都在构造时取, 之后不再读配置).
 
 归属边界是**认领开始时刻**: 变更时尚未结算的那次认领仍属于旧 worker, 每次退役至多带走一个旧配置任务; PATCH 返回后开始的认领属于新 worker. 过渡期总并发为新旧 worker 上限之和; 长期挂起的任务会延迟退役 worker 的资源释放.
 

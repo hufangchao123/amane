@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from ...config import HotSettings
 from ...events import Event, EventType
+from ...observability.redact import redact_hot
 from ..deps import ConfigDep, PluginManagerDep, RuntimeDep
 
 logger = structlog.get_logger()
@@ -13,13 +14,22 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/config", tags=["config"])
 
 
+def _redacted_hot(hot: HotSettings) -> dict[str, Any]:
+    """热配置的脱敏副本: 结构与 ``HotSettings`` 一致, 密钥类字段为占位符.
+
+    响应不声明 ``response_model=HotSettings``: 占位符过不了 ``NotifyConfig.url`` 等字段的校验,
+    用户也拿不到可以回写的明文.
+    """
+    return redact_hot(hot.model_dump(mode="json"))
+
+
 @router.get("")
-async def get_config(config: ConfigDep) -> HotSettings:
-    return config.hot
+async def get_config(config: ConfigDep) -> dict[str, Any]:
+    return _redacted_hot(config.hot)
 
 
 @router.patch("")
-async def update_config(req: dict[str, Any], config: ConfigDep, runtime: RuntimeDep) -> HotSettings:
+async def update_config(req: dict[str, Any], config: ConfigDep, runtime: RuntimeDep) -> dict[str, Any]:
     """先用当前会话的插件目录校验新路由和插件配置, 再持久化."""
     changed_sections = list(req.keys())
     logger.info("config update requested", sections=changed_sections)
@@ -38,7 +48,7 @@ async def update_config(req: dict[str, Any], config: ConfigDep, runtime: Runtime
 
     await runtime.event_bus.broadcast(Event(type=EventType.LOG, data={"type": "config.updated"}))
 
-    return config.hot
+    return _redacted_hot(config.hot)
 
 
 @router.get("/schema")

@@ -248,3 +248,38 @@ async def finish_task(repo: Repository, task_id: int, result: dict[str, object] 
         await session.exec(update(Task).where(col(Task.id) == task_id).values(status=TaskStatus.RUNNING))
         await session.commit()
     assert await repo.complete_task(task_id, result) is True
+
+
+class LogRecorder:
+    """替换模块级 ``logger`` 的记录桩, 用于断言日志里没有明文密钥.
+
+    模块级 ``structlog`` logger 在首次使用时缓存处理器, 断言不能依赖 ``caplog``; 把模块里的
+    ``logger`` 换成这个对象即可拿到结构化字段.
+    """
+
+    def __init__(self) -> None:
+        self.records: list[tuple[str, str, dict[str, object]]] = []
+
+    def text(self) -> str:
+        """全部记录拼成一段文本, 供「不含某个明文」这类断言使用."""
+        return "\n".join(f"{level} {event} {fields}" for level, event, fields in self.records)
+
+    def debug(self, event: str, **fields: object) -> None:
+        """debug 级记录, 调用形状与 structlog 一致."""
+        self.records.append(("debug", event, fields))
+
+    def info(self, event: str, **fields: object) -> None:
+        """info 级记录, 调用形状与 structlog 一致."""
+        self.records.append(("info", event, fields))
+
+    def warning(self, event: str, **fields: object) -> None:
+        """warning 级记录, 调用形状与 structlog 一致."""
+        self.records.append(("warning", event, fields))
+
+    def error(self, event: str, **fields: object) -> None:
+        """error 级记录, 调用形状与 structlog 一致."""
+        self.records.append(("error", event, fields))
+
+    def exception(self, event: str, **fields: object) -> None:
+        """exception 级记录, 调用形状与 structlog 一致."""
+        self.records.append(("exception", event, fields))

@@ -1,15 +1,20 @@
+import os
 import sys
+import threading
 import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import structlog
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserver
 
 from ..library import MEDIA_EXTENSIONS, LibraryFileKind, LibraryScan
 from ..library.rules import is_in_trash
 from ..utils.path import path_is_under, path_key
+
+logger = structlog.get_logger()
 
 #: 改动这些库字段要重建观察点: 库路径、发现通道与刮削后转移的目录都决定观察哪个目录.
 WATCH_FIELDS = frozenset(
@@ -44,6 +49,8 @@ if TYPE_CHECKING:
 
 _DEFAULT_DEBOUNCE_SECONDS = 3.0
 _DEFAULT_OBSERVER_TIMEOUT = 1.0  # 与 watchdog Observer/PollingObserver 构造默认一致
+#: 整体移动进来的目录最多展开多少个文件; 再多请用刷新任务.
+_MAX_DIR_FILES = 2000
 
 # 测试中引用此名称, 保留常量别名.
 DEBOUNCE_SECONDS = _DEFAULT_DEBOUNCE_SECONDS
@@ -72,10 +79,23 @@ class _Handler(FileSystemEventHandler):
         self._pending_moves: dict[str, tuple[str, float]] = {}  # dest -> (src, timestamp)
         # path -> (最后看到的体积, 该体积首次出现的时刻); 体积变了就重新计时.
         self._observed_sizes: dict[str, tuple[int, float]] = {}
+        # 目录被整体移动进来时 (下载器把完成任务从临时目录挪到库目录) watchdog 只发一条目录事件,
+        # 里面的文件不会有自己的创建事件, 因此这里记下目录, 防抖到期后逐个文件补登记.
+        self._pending_dirs: dict[str, float] = {}
+        # watchdog 的回调跑在它自己的 OS 线程上, 待处理队列的另一半读写发生在事件循环里:
+        # 没有这把锁时两边同时改字典会抛 RuntimeError, 而防抖循环一挂, 整个监控就静默失效了.
+        self._lock = threading.Lock()
 
     def on_created(self, event):
         if not event.is_directory:
-            self._handle(str(event.src_path))
+            with self._lock:
+                self._handle(str(event.src_path))
+
+    def on_modified(self, event):
+        # 覆盖写 (cp -f、qB 的最终改名落盘) 只有 modified 事件: 不接的话这类文件永远不进待处理队列.
+        if not event.is_directory:
+            with self._lock:
+                self._handle(str(event.src_path))
 
     def on_deleted(self, event):
         # 库根自身的删除事件不代表库内文件被移除: watchdog 在读取目录失败或停止过程中会合成一条
@@ -84,9 +104,19 @@ class _Handler(FileSystemEventHandler):
             return
         # 前缀含路径自身: 文件删除只命中这一条; 目录删除命中子树.
         # Windows 删除通知不区分文件与目录, 一律按前缀处理.
-        self._record_prefix_delete(str(event.src_path))
+        with self._lock:
+            self._record_prefix_delete(str(event.src_path))
 
     def on_moved(self, event):
+        with self._lock:
+            self._on_moved_locked(event)
+
+    def _on_moved_locked(self, event) -> None:
+        if event.is_directory:
+            dest_str = str(event.dest_path)
+            if self._root_key and path_is_under(path_key(dest_str), self._root_key):
+                self._pending_dirs[dest_str] = time.time()
+            return
         if not event.is_directory:
             src_str = str(event.src_path)
             dest_str = str(event.dest_path)
@@ -136,6 +166,7 @@ class _Handler(FileSystemEventHandler):
         self._pending_dir_deletes = {
             path: ts for path, ts in self._pending_dir_deletes.items() if not path_is_under(path, root)
         }
+        self._pending_dirs = {path: ts for path, ts in self._pending_dirs.items() if not path_is_under(path, root)}
 
     def _handle(self, path_str: str) -> None:
         path = Path(path_str)
@@ -182,58 +213,81 @@ class _Handler(FileSystemEventHandler):
     def _matches(self, path: Path) -> bool:
         return self._scan.classify(path) is LibraryFileKind.MEDIA
 
+    def matches(self, path: Path) -> bool:
+        """文件是否属于本监控点的媒体; 目录展开要按同一判据筛."""
+        with self._lock:
+            return self._matches(path)
+
     def get_ready_files(self) -> list[Path]:
-        now = time.time()
-        ready = []
-        remaining = {}
-        for path_str, timestamp in self._pending.items():
-            if now - timestamp < self._debounce_seconds:
-                remaining[path_str] = timestamp
-                continue
-            if not self._is_settled(path_str):
-                # 还在写: 留在待处理里, 下一轮再判, 时间戳不动.
-                remaining[path_str] = timestamp
-                continue
-            ready.append(Path(path_str))
-            self._observed_sizes.pop(path_str, None)
-        self._pending = remaining
-        return ready
+        with self._lock:
+            now = time.time()
+            ready = []
+            remaining = {}
+            for path_str, timestamp in self._pending.items():
+                if now - timestamp < self._debounce_seconds:
+                    remaining[path_str] = timestamp
+                    continue
+                if not self._is_settled(path_str):
+                    # 还在写: 留在待处理里, 下一轮再判, 时间戳不动.
+                    remaining[path_str] = timestamp
+                    continue
+                ready.append(Path(path_str))
+                self._observed_sizes.pop(path_str, None)
+            self._pending = remaining
+            return ready
 
     def get_ready_deletes(self) -> list[Path]:
-        now = time.time()
-        ready = []
-        remaining = {}
-        for path_str, timestamp in self._pending_deletes.items():
-            if now - timestamp >= self._debounce_seconds:
-                ready.append(Path(path_str))
-            else:
-                remaining[path_str] = timestamp
-        self._pending_deletes = remaining
-        return ready
+        with self._lock:
+            now = time.time()
+            ready = []
+            remaining = {}
+            for path_str, timestamp in self._pending_deletes.items():
+                if now - timestamp >= self._debounce_seconds:
+                    ready.append(Path(path_str))
+                else:
+                    remaining[path_str] = timestamp
+            self._pending_deletes = remaining
+            return ready
 
     def get_ready_dir_deletes(self) -> list[Path]:
-        now = time.time()
-        ready = []
-        remaining = {}
-        for path_str, timestamp in self._pending_dir_deletes.items():
-            if now - timestamp >= self._debounce_seconds:
-                ready.append(Path(path_str))
-            else:
-                remaining[path_str] = timestamp
-        self._pending_dir_deletes = remaining
-        return ready
+        with self._lock:
+            now = time.time()
+            ready = []
+            remaining = {}
+            for path_str, timestamp in self._pending_dir_deletes.items():
+                if now - timestamp >= self._debounce_seconds:
+                    ready.append(Path(path_str))
+                else:
+                    remaining[path_str] = timestamp
+            self._pending_dir_deletes = remaining
+            return ready
+
+    def get_ready_dirs(self) -> list[Path]:
+        """防抖到期的目录移动; 由 ``FileWatcher`` 展开成其中的媒体文件."""
+        with self._lock:
+            now = time.time()
+            ready = []
+            remaining = {}
+            for path_str, timestamp in self._pending_dirs.items():
+                if now - timestamp >= self._debounce_seconds:
+                    ready.append(Path(path_str))
+                else:
+                    remaining[path_str] = timestamp
+            self._pending_dirs = remaining
+            return ready
 
     def get_ready_moves(self) -> list[tuple[Path, Path]]:
-        now = time.time()
-        ready = []
-        remaining = {}
-        for dest_str, (src_str, timestamp) in self._pending_moves.items():
-            if now - timestamp >= self._debounce_seconds:
-                ready.append((Path(src_str), Path(dest_str)))
-            else:
-                remaining[dest_str] = (src_str, timestamp)
-        self._pending_moves = remaining
-        return ready
+        with self._lock:
+            now = time.time()
+            ready = []
+            remaining = {}
+            for dest_str, (src_str, timestamp) in self._pending_moves.items():
+                if now - timestamp >= self._debounce_seconds:
+                    ready.append((Path(src_str), Path(dest_str)))
+                else:
+                    remaining[dest_str] = (src_str, timestamp)
+            self._pending_moves = remaining
+            return ready
 
 
 class FileWatcher:
@@ -339,7 +393,30 @@ class FileWatcher:
             if self._on_file_moved:
                 for src, dest in handler.get_ready_moves():
                     self._on_file_moved(src, dest, handler.library_id)
+            for directory in handler.get_ready_dirs():
+                ready_files.extend(self._emit_dir_files(directory, handler))
             for path in handler.get_ready_files():
                 self._on_file_found(path, handler.library_id)
                 ready_files.append(path)
         return ready_files
+
+    def _emit_dir_files(self, directory: Path, handler: _Handler) -> list[Path]:
+        """把整体移动进来的目录展开成媒体文件, 逐个交给注册回调.
+
+        数量封顶: 一次挪进几千个文件的目录属于「全量导入」, 那种规模应该走刷新任务,
+        在这里同步展开会把事件循环卡住.
+        """
+        emitted: list[Path] = []
+        for root, _dirs, names in os.walk(directory):
+            for name in names:
+                path = Path(root) / name
+                if not handler.matches(path):
+                    continue
+                if len(emitted) >= _MAX_DIR_FILES:
+                    logger.warning(
+                        "moved directory too large, rest skipped", directory=str(directory), limit=_MAX_DIR_FILES
+                    )
+                    return emitted
+                self._on_file_found(path, handler.library_id)
+                emitted.append(path)
+        return emitted

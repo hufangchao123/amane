@@ -84,7 +84,14 @@ def test_looks_like_image_cases() -> None:
     # avif / heic 的 ftyp 盒子不在开头, 少认这一种会把有效链接判成坏图.
     assert looks_like_image(b"\x00\x00\x00\x20ftypavif" + b"\x00" * 8)
     assert looks_like_image(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
+    assert looks_like_image(b"BM\x36\x00\x00\x00\x00\x00\x00\x00\x36\x00\x00\x00")
     assert not looks_like_image(b"<html>not found</html>")
+    # RIFF 容器不只 WebP: wav / avi 与 WebP 共用同一个头, 要按四字码区分.
+    assert looks_like_image(b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 4)
+    assert not looks_like_image(b"RIFF\x24\x00\x00\x00WAVEfmt " + b"\x00" * 4)
+    assert not looks_like_image(b"RIFF\x24\x00\x00\x00AVI LIST" + b"\x00" * 4)
+    # 任意 XML 不是图片: RSS 与站点地图都以 XML 声明开头, 放过去等于把网页当头像.
+    assert not looks_like_image(b'<?xml version="1.0" encoding="utf-8"?><rss></rss>')
 
 
 @pytest.mark.asyncio(loop_scope="function")

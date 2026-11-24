@@ -109,6 +109,10 @@ def place_subtitles(
 def _belongs(video: FileInfo, sub: FileInfo) -> bool:
     if sub.number is not None and (video.number is None or sub.number.casefold() != video.number.casefold()):
         return False
+    if sub.has_subtitle_in_name and not video.has_subtitle_in_name:
+        # 名字里带字幕标记 (``ABC-123-C.srt``) 的是**另一版视频**的字幕, 不是这份视频的;
+        # 搬过去会被播放器当成本片的字幕加载, 时间轴对不上.
+        return False
     return _cd_belongs(video.cd, sub.cd)
 
 

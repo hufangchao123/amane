@@ -127,7 +127,12 @@ async def download_subtitle(
     try:
         target = directory / "payload"
         # egress 交给 WebClient: 给了它就连重定向也逐跳复查; 同时禁掉自动跟随之外的多余放行.
-        ok = await web.download(url, target, egress=EgressPolicy(), max_bytes=MAX_SUBTITLE_BYTES)
+        try:
+            ok = await web.download(url, target, egress=EgressPolicy(), max_bytes=MAX_SUBTITLE_BYTES)
+        except OSError as exc:
+            # 解析不了域名、连接被重置之类算临时故障: 标成 transient 让上层记一笔继续下一份,
+            # 不把整批补全任务打断.
+            raise SubtitleSourceError(f"字幕下载失败: {exc}", transient=True) from exc
         if not ok:
             raise SubtitleSourceError("字幕下载失败或超过大小上限", transient=True)
         payload = await asyncio.to_thread(target.read_bytes)

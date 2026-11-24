@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ..agent import AgentService
-    from ..config import BrowserConfig, ConfigManager, HotSettings
+    from ..config import BrowserConfig, ConfigManager, HotSettings, WatcherConfig
     from ..db.embeddings import EmbeddingStore
     from ..db.repository import Repository
     from ..events import EventBus
@@ -216,11 +216,17 @@ class R18Handle:
 
 @dataclass(eq=False)
 class RetiringWorker:
-    """已退役、正在排空的 worker 及其使用的 r18 句柄与浏览器池."""
+    """已退役、正在排空的 worker 及其独占的资源.
+
+    退役 worker 的在飞任务仍握着重建前的 ``WebClient`` 与 ``SemanticService``: 重建时立刻关掉
+    会让这些任务拿到已关闭的连接与已断开写通知的服务, 所以一律等排空后再释放.
+    """
 
     worker: AsyncWorker
     r18: R18Handle | None
     browser: BrowserPool | None
+    web_client: WebClient
+    semantic: SemanticService | None
 
 
 @dataclass
@@ -257,6 +263,7 @@ class AppRuntime:
     r18_handle: R18Handle | None = None
 
     _r18_config: R18Config | None = field(default=None, repr=False)
+    _watcher_config: WatcherConfig | None = field(default=None, repr=False)
     _browser_key: tuple[BrowserConfig, str | None] | None = field(default=None, repr=False)
     _rebuild_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     _retiring: list[RetiringWorker] = field(default_factory=list, repr=False)
@@ -270,6 +277,10 @@ class AppRuntime:
         if self.r18_handle is None and self.r18_db is not None:
             self.r18_handle = R18Handle(self.r18_db)
         self._browser_key = self._current_browser_key()
+        self._watcher_config = self.config.hot.watcher.model_copy(deep=True)
+        if self.watcher_service is not None:
+            # 文件回调会改库内行, 须与整理 / 洗版 / 删除共用同一张库锁表.
+            self.watcher_service.set_lock_getter(self.library_locks.get)
         if self.semantic is None:
             self.semantic = SemanticService(
                 self.repo, self.resource_store, self.config.cold.data_dir, self.config.hot.semantic
@@ -335,8 +346,8 @@ class AppRuntime:
             self.semantic = SemanticService(self.repo, self.resource_store, self.config.cold.data_dir, hot.semantic)
             if previous is not None:
                 # 配置已变更但模型未变: 交接已装载的索引, 避免下一次检索同步重装整份索引.
+                # 旧服务此刻不能关: 退役 worker 的在飞任务仍在用它, 由排空后的释放流程关闭.
                 self.semantic.handoff(previous)
-                previous.close()
             self.repo.set_media_hook(self.semantic)
             self._bind_semantic_bridge()
 
@@ -368,7 +379,7 @@ class AppRuntime:
         self.worker.set_paused(paused)
 
         if self.agent_service is not None:
-            self.agent_service.rebuild(hot.agent)
+            self.agent_service.rebuild(hot.agent, wash_auto_execute=hot.wash.auto_execute)
 
         previous_playback = self.playback_factory
         # 新的 Factory 构造时丢弃解析结果缓存 (配置改动可能更换凭据); token 表与探测缓存仍在
@@ -440,23 +451,56 @@ class AppRuntime:
         old_worker = self.worker
         old_r18 = self.r18_handle
         old_browser = self.browser
+        old_web_client = self.web_client
+        old_semantic = self.semantic
         self._rebuild()
         old_worker.retire()
         self.worker.start()
-        self._retire_worker(old_worker, old_r18, old_browser)
+        self._retire_worker(old_worker, old_r18, old_browser, old_web_client, old_semantic)
         if self._retiring:
             logger.warning("workers retiring", count=len(self._retiring))
         if old_playback is not None:
             await old_playback.aclose()
+        await self._refresh_watcher()
 
-    def _retire_worker(self, worker: AsyncWorker, r18: R18Handle | None, browser: BrowserPool | None) -> None:
-        entry = RetiringWorker(worker=worker, r18=r18, browser=browser)
+    async def _refresh_watcher(self) -> None:
+        """把监控相关热配置推到观察器上; 观察器在构造时取这些参数, 之后不再读取.
+
+        重建失败只记日志: 配置已经通过校验并生效, 观察器退回旧参数比让整次配置更新失败更容易恢复.
+        """
+        if self.watcher_service is None:
+            return
+        hot = self.config.hot.watcher
+        if hot == self._watcher_config:
+            return
+        try:
+            await self.watcher_service.restart(
+                use_polling=hot.use_polling,
+                media_extensions=list(hot.media_extensions),
+                debounce_seconds=hot.debounce_seconds,
+                settle_seconds=hot.settle_seconds,
+            )
+        except Exception:
+            logger.warning("watcher restart failed", exc_info=True)
+            return
+        self._watcher_config = hot.model_copy(deep=True)
+        logger.info("watcher restarted", use_polling=hot.use_polling)
+
+    def _retire_worker(
+        self,
+        worker: AsyncWorker,
+        r18: R18Handle | None,
+        browser: BrowserPool | None,
+        web_client: WebClient,
+        semantic: SemanticService | None,
+    ) -> None:
+        entry = RetiringWorker(worker=worker, r18=r18, browser=browser, web_client=web_client, semantic=semantic)
         self._retiring.append(entry)
         task = asyncio.create_task(self._drain_and_close(entry))
         self._retire_tasks.add(task)
 
     async def _drain_and_close(self, entry: RetiringWorker) -> None:
-        """等退役 worker 排空后释放其 r18 句柄与浏览器池; 不获取 ``_rebuild_lock``."""
+        """等退役 worker 排空后释放其独占资源; 不获取 ``_rebuild_lock``."""
         try:
             await entry.worker.drain()
             self._retiring.remove(entry)
@@ -464,6 +508,8 @@ class AppRuntime:
                 await self._release_r18(entry.r18)
             if entry.browser is not None:
                 await self._release_browser(entry.browser)
+            self._release_semantic(entry.semantic)
+            await self._release_web_client(entry.web_client)
         except Exception:
             logger.exception("retiring worker cleanup failed")
         finally:
@@ -487,6 +533,25 @@ class AppRuntime:
             return
         await browser.close()
 
+    def _release_semantic(self, semantic: SemanticService | None) -> None:
+        """服务不再被当前或任何退役 worker 使用时关闭.
+
+        判定与关闭都在同一同步段: ``SemanticService.close`` 不 await, 期间没有别的协程插进来.
+        """
+        if semantic is None or semantic is self.semantic:
+            return
+        if any(entry.semantic is semantic for entry in self._retiring):
+            return
+        semantic.close()
+
+    async def _release_web_client(self, web_client: WebClient) -> None:
+        """客户端不再被当前或任何退役 worker 使用时关闭; 复用同一实例时跳过."""
+        if web_client is self.web_client:
+            return
+        if any(entry.web_client is web_client for entry in self._retiring):
+            return
+        await web_client.close()
+
     async def cancel_task(self, task_id: int) -> bool:
         """当前 worker 与退役 worker 都能命中."""
         if await self.worker.cancel_task(task_id):
@@ -504,7 +569,7 @@ class AppRuntime:
             if closing:
                 self._closing = True
             workers = [self.worker, *(entry.worker for entry in self._retiring)]
-            self._retire_worker(self.worker, self.r18_handle, self.browser)
+            self._retire_worker(self.worker, self.r18_handle, self.browser, self.web_client, self.semantic)
             for worker in workers:
                 worker.retire()
             for worker in workers:

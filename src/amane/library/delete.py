@@ -21,7 +21,7 @@ from typing import Literal
 
 import structlog
 
-from ..utils.path import existing_disk_path, path_is_under, resolved_path
+from ..utils.path import disk_probe, path_is_under, resolved_path
 from ..utils.threads import in_thread
 from .rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME, is_under_any
 
@@ -103,7 +103,11 @@ def delete_target(path: Path, *, library_root: Path, bases: Sequence[Path] = ())
     授权范围是库根与调用方给出的 ``bases`` (成功目录: 成品可以落在库根之外), 范围外的一切一律
     拒绝; 这些根自身与 ``.amane_trash`` 自身同样拒绝.
     """
-    disk_path = existing_disk_path(path, follow_symlinks=False)
+    probe = disk_probe(path, follow_symlinks=False)
+    if probe.unreadable:
+        # 挂载抖动 / 权限变更不等于「文件没了」: 报失败让人重试, 不能回「已变更」假装删掉了.
+        return DeleteOutcome(status="failed", error=f"path unreadable: {path}")
+    disk_path = probe.path
     if disk_path is None:
         return DeleteOutcome(status="changed")
 
@@ -237,7 +241,8 @@ def _remove_contents(directory: Path, *, dev: int, files: list[DeletedFile]) -> 
                 path.unlink()
                 continue
             if stat.S_ISDIR(entry_stat.st_mode):
-                if entry.name == TRASH_DIRNAME:
+                if entry.name in (TRASH_DIRNAME, WASH_TRASH_DIRNAME):
+                    # 两个回收站都还能还原, 展开进来就等于「清空回收站」.
                     raise _BoundaryRefusal(f"refuse to delete trash subtree: {path}")
                 if _crosses_boundary(entry_stat, dev=dev):
                     raise _BoundaryRefusal(f"mount boundary crossed: {path}")

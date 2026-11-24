@@ -10,27 +10,107 @@ from typing import Any
 
 import aiosqlite
 
-# 安全边界由数据库层构成, 不需要词法校验 (正则既冗余又会误伤字面量):
+# 安全边界由数据库层构成: 关键词黑名单这类词法校验既冗余又会误伤字面量.
 # - ``mode=ro`` + ``PRAGMA query_only``: SQLite 拒绝主库与临时表的一切写语句;
 # - ``sqlite3.execute`` 硬性单语句, 多语句直接报错;
-# - authorizer (_readonly_authorizer): 解析层拒绝 ATTACH/DETACH 与 PRAGMA.
-#   ``mode=ro`` 只约束 main 库, ATTACH 挂载的库默认以读写打开, VACUUM INTO
-#   内部也经 ATTACH 授权动作 — 这两者是只读连接本身无法拦截的, 必须由
-#   authorizer 拦截.
+# - authorizer (_readonly_authorizer): 解析层拒绝 ATTACH/DETACH、除 ``query_only=ON``
+#   之外的 PRAGMA, 以及敏感表上的读取. ``mode=ro`` 只约束 main 库, ATTACH 挂载的库
+#   默认以读写打开, VACUUM INTO 内部也经 ATTACH 授权动作 — 这两者是只读连接本身无法
+#   拦截的, 必须由 authorizer 拦截.
+# 词法层只做一件不涉安全的事: 剥注释 (``strip_sql_comments``), 因为把语句包成子查询时
+# 末尾的行注释会把右括号一起注释掉.
+
+#: 沙箱拒绝读取的表: 内容是运行状态与凭据, 不是影片数据, 与「用 SQL 看库」这件事无关.
+_SENSITIVE_TABLES = frozenset(
+    {
+        # 订阅地址可能内嵌站点密钥, 且订阅的增删改在 feed-ops 里另有审批走法.
+        "feeds",
+        # 通知载荷含渠道地址与正文, 助理不需要用 SQL 读取已发出的通知.
+        "notify_records",
+        # 留痕表记客户端 IP 与请求路径, 属运维元数据; 可读等于给出窥探访问日志的旁路.
+        "audit_records",
+        # 会话标题与状态, 读取会暴露其他会话在聊什么, 且与影片数据无关.
+        "agent_sessions",
+    }
+)
+"""黑名单按「跨用户可见的运行状态」取, 因此表的取舍理由逐表写下.
+
+与之相对, ``tasks`` / ``schedules`` / ``task_links`` 保持可读: 任务与定时任务的内容本来就由
+``list_schedules`` 这类工具直出, 排查故障时用 SQL 聚合队列状态是正当用途; ``wash_choices`` 只记
+留版标记, 同样是助理看得到的领域数据. 黑名单只约束读取, 写操作由只读连接与 ``query_only`` 兜住.
+"""
 
 
-def _readonly_authorizer(action: int, arg1: str | None, *_rest: object) -> int:
-    """解析层只读授权: 拒绝 ATTACH/DETACH 与除 query_only 外的 PRAGMA.
+def _readonly_authorizer(action: int, arg1: str | None, arg2: str | int | None, *_rest: object) -> int:
+    """解析层只读授权: 拒绝 ATTACH/DETACH、敏感表读取, 以及 ``query_only=ON`` 之外的 PRAGMA.
 
-    ``query_only`` 是沙箱自身建立的连接态, 必须放行; 其余 PRAGMA (含
-    journal_mode / schema_version 等写文件类) 一律拒绝.
+    ``query_only`` 只放行 ``=ON``: 它是沙箱自身建立的连接态, 而 ``PRAGMA query_only=OFF``
+    会把这层写保护关掉, 等于把只读连接换回可写连接. 其余 PRAGMA (含 journal_mode /
+    schema_version 等写文件类) 一律拒绝.
     """
     del _rest  # 回调签名由 sqlite3 C 层固定, 多余位置参数无用
     if action in (sqlite3.SQLITE_ATTACH, sqlite3.SQLITE_DETACH):
         return sqlite3.SQLITE_DENY
-    if action == sqlite3.SQLITE_PRAGMA and arg1 != "query_only":
+    if action == sqlite3.SQLITE_PRAGMA:
+        if arg1 != "query_only" or str(arg2).strip().upper() not in {"ON", "1"}:
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+    if action == sqlite3.SQLITE_READ and (arg1 or "").strip('"`[]').lower() in _SENSITIVE_TABLES:
         return sqlite3.SQLITE_DENY
     return sqlite3.SQLITE_OK
+
+
+#: 引号标识符的收尾字符; 引号内双写表示转义, 与 SQLite 一致.
+_QUOTE_CLOSERS = {"'": "'", '"': '"', "`": "`", "[": "]"}
+
+
+def strip_sql_comments(sql: str) -> str:
+    """剥掉行注释与块注释, 字面量与引号标识符里的原文原样保留.
+
+    注释剥离不承担防注入职责: SQLite 解析器本就跳过注释, 注释后面藏不住表名或写语句.
+    需要它是因为 :func:`as_id_subquery_sql` 用括号把整条语句包成子查询 — 语句末尾的行注释
+    会把右括号一起注释掉, 变成语法错误; 预置查询由人编写, 结尾留一句注释很常见.
+    """
+    out: list[str] = []
+    index = 0
+    length = len(sql)
+    while index < length:
+        char = sql[index]
+        if char == "-" and sql.startswith("--", index):
+            newline = sql.find("\n", index)
+            if newline < 0:
+                break
+            index = newline  # 保留换行: 前后两行不能粘成一行
+            continue
+        if char == "/" and sql.startswith("/*", index):
+            end = sql.find("*/", index + 2)
+            if end < 0:
+                raise SqlSandboxError("SQL 注释未闭合: ``/*`` 缺少 ``*/``")
+            out.append(" ")  # 补空格: a/*x*/b 不能粘成 ab
+            index = end + 2
+            continue
+        closer = _QUOTE_CLOSERS.get(char)
+        if closer is None:
+            out.append(char)
+            index += 1
+            continue
+        start = index
+        index += 1
+        while index < length:
+            if sql[index] == closer:
+                if index + 1 < length and sql[index + 1] == closer:
+                    index += 2  # 双写续跳, 不能当成收尾引号
+                    continue
+                index += 1
+                break
+            index += 1
+        out.append(sql[start:index])  # 字面量整体照抄, 里面出现 -- 或 /* 也不动
+    return "".join(out)
+
+
+def _normalize_sql(sql: str) -> str:
+    """剥注释, 去首尾空白与末尾分号."""
+    return strip_sql_comments(sql).strip().rstrip(";").strip()
 
 
 class SqlSandboxError(Exception):
@@ -64,9 +144,9 @@ def as_id_subquery_sql(sql: str) -> str:
     """把 SQL 包成 ``SELECT id FROM (...) AS _sq``, 供列表 WHERE id IN (子查询).
 
     子查询语法只接受 SELECT/WITH, 非查询语句在语法层即失败 — 包装本身即约束.
+    包装前剥注释: 语句末尾的行注释会把包装用的右括号一并注释掉, 变成语法错误.
     """
-    normalized = sql.strip().rstrip(";").strip()
-    return f"SELECT id FROM ({normalized}) AS _sq"
+    return f"SELECT id FROM ({_normalize_sql(sql)}) AS _sq"
 
 
 _PROGRESS_STEPS = 10_000
@@ -101,7 +181,7 @@ class ReadonlySqlSandbox:
         if allow_slow and not approved:
             raise SqlNeedsApproval(sql)
 
-        normalized = sql.strip().rstrip(";").strip()
+        normalized = _normalize_sql(sql)
         if not normalized:
             raise SqlSandboxError("SQL 为空")
         uri = self._db_path.resolve().as_uri() + "?mode=ro"

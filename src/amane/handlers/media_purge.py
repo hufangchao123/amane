@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ..library.delete import ancestor_dirs, prune_empty_dirs, same_path
-from ..library.rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME, publish_roots
+from ..library.rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME, delete_roots, landing_roots, publish_roots
+from ..utils.path import is_descendant
 from ..utils.threads import disk_probe, in_thread, path_is_dir
 from ._common import LibraryTaskLocks, media_refresh_followups
 from .models import MediaPurgePayload, MediaPurgeResult
@@ -67,12 +68,17 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
         if library.id is None:
             return TaskResult(success=False, error="媒体库尚未落库")
 
-        files = await self._repo.list_media_files(library_id=library.id, metadata_ids=payload.metadata_ids, limit=None)
         result = MediaPurgeResult()
         removed: list[Path] = []
+        blocked: set[int] = set()
+        # 索引行必须在锁内读: 等锁期间整理或转移可能把文件搬走, 按锁外读到的旧路径去 unlink 会落空,
+        # 却照样把索引行删掉, 留下盘上没人认领的文件 (三审 C-4).
         async with await self._library_locks.get(library.id):
+            files = await self._repo.list_media_files(
+                library_id=library.id, metadata_ids=payload.metadata_ids, limit=None
+            )
             for media in files:
-                outcome = await self._purge_file(media, delete_files=payload.delete_files)
+                outcome = await self._purge_file(library, media, delete_files=payload.delete_files)
                 result.files_deleted += outcome.deleted
                 result.indexed += outcome.indexed
                 result.missing += outcome.missing
@@ -81,9 +87,12 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
                 result.freed_bytes += outcome.freed_bytes
                 if outcome.path is not None:
                     removed.append(outcome.path)
-            deleted, _missing_entries = await self._repo.batch_delete_metadata(list(payload.metadata_ids))
+                if (outcome.failed or outcome.refused) and media.metadata_id is not None:
+                    blocked.add(media.metadata_id)
+            deletable = await self._deletable_metadata(library, payload.metadata_ids, blocked=blocked)
+            deleted, _missing_entries = await self._repo.batch_delete_metadata(deletable)
             result.metadata_deleted = deleted
-            if payload.prune_empty_dirs and removed:
+            if payload.prune_empty_dirs and removed and not library.keep_source_dirs:
                 result.pruned_dirs = await self._prune(library, removed)
 
         logger.info(
@@ -101,8 +110,24 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
             followups=self._followups(library, result.files_deleted),
         )
 
-    async def _purge_file(self, media: MediaFile, *, delete_files: bool) -> _FileOutcome:
+    async def _deletable_metadata(self, library: Library, ids: list[int], *, blocked: set[int]) -> list[int]:
+        """筛出可以连同条目一起删的 metadata id.
+
+        两条都不满足就留着条目: 有文件没处理成功 (``blocked``), 或别的媒体库里还有文件引用它
+        —— 级联删除会把那些库的索引行重置成待刮削, 等于替另一个库决定「这片子没了」.
+        """
+        candidates = [metadata_id for metadata_id in dict.fromkeys(ids) if metadata_id not in blocked]
+        if not candidates:
+            return []
+        leftover = await self._repo.list_media_files(metadata_ids=candidates, limit=None)
+        busy = {file.metadata_id for file in leftover if file.library_id != library.id}
+        return [metadata_id for metadata_id in candidates if metadata_id not in busy]
+
+    async def _purge_file(self, library: Library, media: MediaFile, *, delete_files: bool) -> _FileOutcome:
         path = Path(media.path)
+        if not _authorized(path, library):
+            logger.warning("media purge refused", path=str(path), reason="路径不在本库的授权目录内")
+            return _FileOutcome(refused=1)
         if _in_recycle(path):
             logger.warning("media purge refused", path=str(path), reason="路径在回收站里")
             return _FileOutcome(refused=1)
@@ -157,12 +182,29 @@ class MediaPurgeHandler(TaskHandler[MediaPurgePayload, MediaPurgeResult]):
 
 @in_thread
 def _size(path: Path) -> int:
-    return path.stat().st_size
+    # lstat: 符号链接本身也要能删掉, 跟随链接会去 stat 目标 (坏链直接 FileNotFoundError).
+    return path.lstat().st_size
 
 
 @in_thread
 def _unlink(path: Path) -> None:
     path.unlink()
+
+
+def _authorized(path: Path, library: Library) -> bool:
+    """文件是否落在本库允许删除的目录里: 库根、成功目录, 以及三个落点目录.
+
+    符号链接按真实路径比: 库里有指向库外的链接时, 按字面前缀判定会放行到真正的目标.
+    """
+    roots = [
+        *delete_roots(path=library.path, ok_dir=library.scrape_ok_dir),
+        *landing_roots(
+            input_dir=library.scrape_input_dir,
+            ok_dir=library.scrape_ok_dir,
+            fail_dir=library.scrape_fail_dir,
+        ),
+    ]
+    return any(is_descendant(path, root) for root in roots)
 
 
 def _in_recycle(path: Path) -> bool:

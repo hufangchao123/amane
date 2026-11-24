@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Coroutine
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -8,6 +9,14 @@ from pydantic import BaseModel
 from ..db.models import TaskType
 
 type ProgressCallback = Callable[[int, int, str], Coroutine[Any, Any, None]]
+
+_progress_callback: ContextVar[ProgressCallback | None] = ContextVar("amane_progress_callback", default=None)
+"""当前任务的进度回调.
+
+按 asyncio 上下文存放而不是挂在 handler 实例上: 同类任务的 handler 只有一个实例, 实例属性会被后
+开始的任务覆盖, 进度于是上报到别的 ``task_id``. worker 在任务自己的 Task 里绑定, 上下文随任务结束
+一起丢弃, 无需显式清除.
+"""
 
 
 class FollowupTask(BaseModel):
@@ -76,12 +85,16 @@ class TaskHandler[P: BaseModel | dict = dict, R: BaseModel | dict = dict](ABC):
 
     # --- Progress reporting ---
 
-    _progress_callback: ProgressCallback | None = None
-
     def set_progress_callback(self, callback: ProgressCallback | None) -> None:
-        self._progress_callback = callback
+        """把回调绑定到调用方所在的 asyncio 上下文.
+
+        worker 在认领到的任务里调用本方法, 因此每个任务的回调互相隔离. handler 内部经
+        ``asyncio.gather`` / ``asyncio.to_thread`` 派生的子任务在创建时复制上下文, 同样能上报到本任务.
+        """
+        _progress_callback.set(callback)
 
     async def report_progress(self, current: int, total: int, message: str = "") -> None:
         """无回调时静默忽略."""
-        if self._progress_callback:
-            await self._progress_callback(current, total, message)
+        callback = _progress_callback.get()
+        if callback is not None:
+            await callback(current, total, message)

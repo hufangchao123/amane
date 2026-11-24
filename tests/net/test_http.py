@@ -510,6 +510,16 @@ class TestChunkedDownload:
         assert set(attempts.values()) == {1, 3}
 
 
+@pytest.mark.asyncio
+async def test_tls_verification_enabled_by_default() -> None:
+    """默认校验对端证书: 关掉等于让任何中间人可以替换抓取到的内容."""
+    client = WebClient(limiters=RateLimiters(default_rate=100))
+    try:
+        assert client._session.verify is True
+    finally:
+        await client.close()
+
+
 class TestEgressGuard:
     """协议白名单对每次请求生效; 重定向由策略逐跳复查, 不交给 curl 跟随."""
 
@@ -566,6 +576,54 @@ class TestEgressGuard:
             "https://cdn.example/final.jpg",
         ]
         assert all(call["allow_redirects"] is False for call in session.calls)
+
+    @pytest.mark.asyncio
+    async def test_redirect_to_other_origin_drops_credentials(self, monkeypatch: pytest.MonkeyPatch, public_dns: None):
+        """跨源重定向不带凭据: 否则第三方站点挂一次 302 就能收走 Authorization 与 Cookie."""
+        client = WebClient(limiters=RateLimiters(default_rate=100))
+        session = _StubSession(
+            _StubResponse(status=302, headers={"Location": "https://cdn.example/final.jpg"}),
+            _StubResponse(content=b"jpeg-bytes"),
+        )
+        monkeypatch.setattr(client, "_session", session)
+
+        await client.request(
+            "GET",
+            "https://public.example/api/image",
+            headers={"Authorization": "Bearer secret", "Cookie": "sid=1", "Accept": "image/*"},
+            cookies={"sid": "1"},
+            egress=EgressPolicy(),
+        )
+
+        first, second = session.calls
+        assert first["headers"]["Authorization"] == "Bearer secret"
+        assert first["cookies"] == {"sid": "1"}
+        assert second["url"] == "https://cdn.example/final.jpg"
+        assert second["headers"] == {"Accept": "image/*"}
+        assert second["cookies"] is None
+
+    @pytest.mark.asyncio
+    async def test_redirect_within_origin_keeps_credentials(self, monkeypatch: pytest.MonkeyPatch, public_dns: None):
+        """同源跳转照常带凭据: 站点自身的规范化跳转不应导致掉登录态."""
+        client = WebClient(limiters=RateLimiters(default_rate=100))
+        session = _StubSession(
+            _StubResponse(status=307, headers={"Location": "/api/image?id=2"}),
+            _StubResponse(content=b"jpeg-bytes"),
+        )
+        monkeypatch.setattr(client, "_session", session)
+
+        await client.request(
+            "GET",
+            "https://public.example/api/image",
+            headers={"Authorization": "Bearer secret"},
+            cookies={"sid": "1"},
+            egress=EgressPolicy(),
+        )
+
+        second = session.calls[1]
+        assert second["url"] == "https://public.example/api/image?id=2"
+        assert second["headers"]["Authorization"] == "Bearer secret"
+        assert second["cookies"] == {"sid": "1"}
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

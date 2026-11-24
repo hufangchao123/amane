@@ -13,7 +13,7 @@ from ..db.models import RoutineType, Schedule
 from ..db.repo_types import ScheduleUpdates
 from ..utils.model import to_resp
 from .payload_schema import ROUTINE_SUBMISSION, RoutineSubmissionType
-from .tools import TOOL_OK, AgentDeps, require_approval
+from .tools import TOOL_OK, AgentDeps, require_approval, wash_cascade_armed
 
 
 class AgentScheduleUpdate(BaseModel):
@@ -33,6 +33,24 @@ class ScheduleSummary(BaseModel):
     task_type: RoutineType
     enabled: bool
     next_run: datetime | None
+
+
+#: 到点必然删除文件的例行类型: ``wash_purge`` 取回收站里到期的记录并派发洗版, 是真删.
+#: 其余例行类型即便跑起来也不删文件, 所以不在集合里; 例行类型没有 ``wash_apply``.
+_DESTRUCTIVE_ROUTINES = frozenset({RoutineType.WASH_PURGE})
+
+
+def _routine_needs_approval(task_type: RoutineType, deps: AgentDeps) -> bool:
+    """例行任务是否会在到点时删除文件: 销毁类的, 以及会级联成销毁的洗版扫描."""
+    if task_type in _DESTRUCTIVE_ROUTINES:
+        return True
+    return task_type is RoutineType.WASH_SCAN and wash_cascade_armed(deps)
+
+
+def _routine_detail(action: str, task_type: RoutineType) -> str:
+    if task_type is RoutineType.WASH_SCAN:
+        return f"{action}: wash_scan（洗版自动执行已打开, 到点级联删除源文件）"
+    return f"{action}: {task_type.value}"
 
 
 def _schedule_info(schedule: Schedule) -> ScheduleResponse:
@@ -102,6 +120,15 @@ def build_schedule_ops_capability() -> Capability[AgentDeps]:
             return ROUTINE_SUBMISSION.error(submission, exc)
         next_run = croniter(cron, datetime.now(UTC)).get_next(datetime)
         task_type = RoutineType(routine.type)
+        if _routine_needs_approval(task_type, ctx.deps):
+            # 即使先建一条暂停的也算武装: 启用只是一次 update, 到点就会真删.
+            require_approval(
+                ctx,
+                sql=_routine_detail("创建定时任务", task_type),
+                tool="create_schedule",
+                reason="destructive",
+                extra={"type": task_type.value, "cron": cron},
+            )
         schedule = await ctx.deps.repo.create_schedule(
             name=name,
             cron=cron,
@@ -119,7 +146,8 @@ def build_schedule_ops_capability() -> Capability[AgentDeps]:
         ctx: RunContext[AgentDeps], schedule_id: int, patch: AgentScheduleUpdate
     ) -> str | dict[str, object]:
         """Patch schedule name, cron, or enabled state."""
-        if await ctx.deps.repo.get_schedule(schedule_id) is None:
+        schedule = await ctx.deps.repo.get_schedule(schedule_id)
+        if schedule is None:
             return {"error": f"schedule {schedule_id} 不存在"}
         if not patch.model_fields_set:
             return {"error": "patch 为空"}
@@ -139,6 +167,17 @@ def build_schedule_ops_capability() -> Capability[AgentDeps]:
             updates["cron"] = patch.cron
             updates["next_run"] = croniter(patch.cron, datetime.now(UTC)).get_next(datetime)
 
+        # 把暂停中的销毁类例行任务重新启用等于重新武装, 必须走审批; 改名或改表达式不新增删除能力.
+        enabling = updates.get("enabled") is True and not schedule.enabled
+        if enabling and _routine_needs_approval(schedule.task_type, ctx.deps):
+            require_approval(
+                ctx,
+                sql=_routine_detail(f"启用定时任务 id={schedule_id}", schedule.task_type),
+                tool="update_schedule",
+                reason="destructive",
+                extra={"schedule_id": schedule_id, "type": schedule.task_type.value},
+            )
+
         updated = await ctx.deps.repo.update_schedule(schedule_id, **cast(ScheduleUpdates, updates))
         if updated is None:
             return {"error": f"schedule {schedule_id} 不存在"}
@@ -151,6 +190,15 @@ def build_schedule_ops_capability() -> Capability[AgentDeps]:
         if schedule is None:
             return {"error": f"schedule {schedule_id} 不存在"}
         assert schedule.id is not None
+        if _routine_needs_approval(schedule.task_type, ctx.deps):
+            # 立即触发销毁类例行任务与提交一次删除同等代价, 不能借定时任务的壳绕开提交面审批.
+            require_approval(
+                ctx,
+                sql=_routine_detail(f"立即触发定时任务 id={schedule_id}", schedule.task_type),
+                tool="trigger_schedule",
+                reason="destructive",
+                extra={"schedule_id": schedule_id, "type": schedule.task_type.value},
+            )
         updated = await ctx.deps.repo.update_schedule(schedule.id, next_run=datetime.now(UTC))
         if updated is None:
             return {"error": f"schedule {schedule_id} 不存在"}

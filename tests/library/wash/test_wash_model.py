@@ -403,21 +403,65 @@ def group_of(keep: WashEntry, *drops: WashEntry, kind: WashRecordKind = LOCAL) -
 
 UNAMBIGUOUS_CASES = [
     pytest.param(
-        {"definition": "1080p", "size": 2000},
-        {"definition": "720p", "size": 2000},
+        {"definition": "1080p", "size": 2000, "duration": 100.0},
+        {"definition": "720p", "size": 2000, "duration": 100.0},
         True,
         id="higher-definition-wins",
     ),
     pytest.param(
-        {"definition": "720p", "size": 2000},
-        {"definition": "1080p", "size": 2000},
+        {"definition": "720p", "size": 2000, "duration": 100.0},
+        {"definition": "1080p", "size": 2000, "duration": 100.0},
         False,
         id="lower-definition-is-not-automatic",
     ),
-    pytest.param({"size": 1400, "duration": 100.0}, {"size": 1000, "duration": 100.0}, True, id="forty-percent-bigger"),
-    pytest.param({"size": 1100, "duration": 100.0}, {"size": 1000, "duration": 100.0}, False, id="ten-percent-bigger"),
-    pytest.param({"size": 5000, "duration": None}, {"size": 1000, "duration": None}, False, id="duration-unknown"),
-    pytest.param({"size": 5000, "duration": 100.0}, {"size": 1000, "duration": None}, False, id="one-side-duration"),
+    pytest.param(
+        {"definition": "1080p", "size": 1400, "duration": 100.0},
+        {"definition": "1080p", "size": 1000, "duration": 100.0},
+        True,
+        id="forty-percent-bigger",
+    ),
+    pytest.param(
+        {"definition": "1080p", "size": 1100, "duration": 100.0},
+        {"definition": "1080p", "size": 1000, "duration": 100.0},
+        False,
+        id="ten-percent-bigger",
+    ),
+    pytest.param(
+        {"definition": "1080p", "size": 5000, "duration": None},
+        {"definition": "1080p", "size": 1000, "duration": None},
+        False,
+        id="duration-unknown",
+    ),
+    pytest.param(
+        {"definition": "1080p", "size": 5000, "duration": 100.0},
+        {"definition": "1080p", "size": 1000, "duration": None},
+        False,
+        id="one-side-duration",
+    ),
+    pytest.param(
+        {"definition": None, "size": 500, "duration": 100.0},
+        {"definition": None, "size": 12000, "duration": 100.0},
+        False,
+        id="unknown-definition-never-automatic",
+    ),
+    pytest.param(
+        {"definition": "480p", "size": 500, "duration": 100.0},
+        {"definition": None, "size": 12000, "duration": 100.0},
+        False,
+        id="unknown-drop-never-automatic",
+    ),
+    pytest.param(
+        {"definition": "4k", "size": 300, "duration": 5.0},
+        {"definition": "1080p", "size": 4000, "duration": 150.0},
+        False,
+        id="preview-clip-is-not-a-replacement",
+    ),
+    pytest.param(
+        {"definition": "1080p", "size": 4000, "duration": 120.0},
+        {"definition": "1080p", "size": 3000, "duration": 150.0},
+        False,
+        id="different-cut-is-not-a-wash",
+    ),
 ]
 
 

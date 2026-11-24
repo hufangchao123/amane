@@ -154,7 +154,8 @@ class BrowserPool:
                 return CamoufoxBackend(proxy=self._proxy, default_timeout=self._timeout_ms)
             case BrowserBackendName.BSK:
                 if self._proxy:
-                    logger.warning("bsk backend ignores global proxy", proxy=self._proxy)
+                    # 全局代理可能带 userinfo: 与网络栈的脱敏同口径, 日志里只留 scheme/host/port.
+                    logger.warning("bsk backend ignores global proxy", proxy=redact_url(self._proxy))
                 return BskBackend(bsk_path=self._bsk_path, default_timeout=self._timeout_ms)
             case BrowserBackendName.SOLVER:
                 return SolverBackend(

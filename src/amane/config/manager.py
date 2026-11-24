@@ -38,6 +38,7 @@ from ..enums import (
     WatermarkKind,
 )
 from ..net.bsk import resolve_bsk_path
+from ..observability.redact import restore_redacted_placeholders
 from ..parsing import ContentType
 from ..plugins.models import PluginConfig
 from ..sr import SrPreset
@@ -1099,18 +1100,21 @@ class HotSettings(BaseModel):
 
 
 def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
-    """仅两层. patch 中有而 base 中没有的 key 一并纳入."""
-    result = {}
-    for key in base:
-        if key in patch and isinstance(base[key], dict) and isinstance(patch[key], dict):
-            result[key] = {**base[key], **patch[key]}
-        elif key in patch:
-            result[key] = patch[key]
+    """递归合并: 两边都是表时逐层合并, 其余情况以 patch 为准.
+
+    只合并两层时, 局部 PATCH 一段三层嵌套配置 (``scraping.content_routes.censored``) 会把同级的
+    其它键整段丢掉 —— 前端只改一项, 另外几项跟着回到默认值.
+
+    空字典是「清空」而不是「保持」: 传 ``{"field_prompts": {}}`` 的意思是恢复内置提示词,
+    这时候不能把旧键合并回来.
+    """
+    result = dict(base)
+    for key, value in patch.items():
+        current = result.get(key)
+        if isinstance(current, dict) and isinstance(value, dict) and value:
+            result[key] = _deep_merge(current, value)
         else:
-            result[key] = base[key]
-    for key in patch:
-        if key not in result:
-            result[key] = patch[key]
+            result[key] = value
     return result
 
 
@@ -1169,7 +1173,8 @@ class ConfigManager:
         if not patch:
             return self._hot.model_copy(deep=True)
         current = self._hot.model_dump()
-        merged = _deep_merge(current, patch)
+        # 配置接口返回的密钥字段是脱敏占位符; 前端原样回写时按当前值还原, 不把占位符写进配置.
+        merged = _deep_merge(current, restore_redacted_placeholders(patch, current))
         return HotSettings(**merged)
 
     def _persist(self, hot: HotSettings) -> None:

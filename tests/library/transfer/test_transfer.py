@@ -33,13 +33,14 @@ def test_collect_sidecars_takes_prefix_siblings_only(tmp_path: Path) -> None:
 
 
 def test_transfer_moves_video_and_sidecars(tmp_path: Path) -> None:
-    """视频与附属文件进目的目录, 原目录空了就删掉."""
-    source = tmp_path / "in" / "ABC-123"
+    """视频与附属文件进目的目录, 原目录空了就删掉, 但停在配置的输入目录."""
+    input_dir = tmp_path / "in"
+    source = input_dir / "ABC-123"
     video = _touch(source / "ABC-123-1080p.mp4", size=10)
     subtitle = _touch(source / "ABC-123-1080p.srt", size=5)
     destination = tmp_path / "done"
 
-    outcome = transfer_scrape_result.sync(video, destination, [".srt"])
+    outcome = transfer_scrape_result.sync(video, destination, [".srt"], stop_dirs=[input_dir])
 
     assert outcome.failed == []
     assert (outcome.files, outcome.bytes) == (2, 15)
@@ -48,6 +49,27 @@ def test_transfer_moves_video_and_sidecars(tmp_path: Path) -> None:
     assert (destination / subtitle.name).exists()
     assert not video.exists()
     assert not source.exists()
+    assert input_dir.exists()
+    assert outcome.source_dir_removed
+
+
+def test_transfer_does_not_prune_above_the_boundary(tmp_path: Path) -> None:
+    """输入目录经符号链接配置时, 剪枝按真实路径停在边界内, 不越过配置的输入目录.
+
+    三审 C-6: 字面比较在链接场景永远不相等, 会一路 `rmdir` 到边界之上.
+    """
+    real = tmp_path / "real_in"
+    link = tmp_path / "link_in"
+    link.symlink_to(real, target_is_directory=True)
+    source = real / "ABC-123"
+    video = _touch(source / "ABC-123-1080p.mp4", size=10)
+    destination = tmp_path / "done"
+
+    outcome = transfer_scrape_result.sync(video, destination, [".srt"], stop_dirs=[link])
+
+    assert not source.exists()
+    assert real.exists()
+    assert link.exists()
     assert outcome.source_dir_removed
 
 

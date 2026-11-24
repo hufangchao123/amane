@@ -22,6 +22,7 @@ from ...organize.path_templates import resolve_paths
 from ...parsing import parse_file_info
 from ...utils.path import existing_disk_path, is_name_surrogate_dir, path_key
 from ...utils.threads import in_thread
+from ..delete import same_path
 from ..rules import (
     DEFAULT_SUBTITLE_EXTENSIONS,
     TRASH_DIRNAME,
@@ -97,9 +98,11 @@ def build_footprint(
     notices: list[FootprintNotice] = []
     seen: set[str] = set()
     dropped = 0
-    # 整目录删除要数每个目录的索引条数; 逐项扫整份索引在选中项多时是平方, 因此先归并一次.
+    # 整目录删除要数每个目录「子树里」的索引条数; 逐项扫整份索引在选中项多时是平方, 因此先归并一次.
+    # 只数直接父目录是不够的: ActorA/ABC-001.mp4 与 ActorA/ABC-002/ABC-002.mp4 同处 ActorA, 删
+    # ABC-001 时按父目录只数到 1, 会把整个 ActorA 连子目录一起删掉 (三审 C-1).
     indexed_per_dir: Mapping[str, int] = (
-        Counter(path_key(Path(item.path).parent) for item in indexed) if include_work_dir else {}
+        _subtree_counts([Path(item.path) for item in indexed], roots=roots) if include_work_dir else {}
     )
 
     def add(path: Path, *, indexed_file: bool = False) -> None:
@@ -134,12 +137,19 @@ def build_footprint(
 
     for item in items:
         add(Path(item.path), indexed_file=True)
-        _add_products(library, item, metas, add=add, notices=notices)
+        _add_products(
+            library,
+            item,
+            metas,
+            add=add,
+            notices=notices,
+            indexed_per_dir=indexed_per_dir,
+        )
         if not include_work_dir:
             _add_subtitles(library, Path(item.path), add=add)
             continue
         work_dir = Path(item.path).parent
-        refusal = _work_dir_refusal(work_dir, root=root, indexed_per_dir=indexed_per_dir)
+        refusal = _work_dir_refusal(work_dir, roots=roots, indexed_per_dir=indexed_per_dir)
         if refusal is not None:
             notices.append(refusal)
             _add_subtitles(library, Path(item.path), add=add)
@@ -196,6 +206,7 @@ def _add_products(
     *,
     add: _Add,
     notices: list[FootprintNotice],
+    indexed_per_dir: Mapping[str, int],
 ) -> None:
     """按路径模板反解刮削产物: 产物位置由模板决定, 与视频文件名没有对应关系."""
     metadata = metas.get(item.metadata_id) if item.metadata_id is not None else None
@@ -214,7 +225,12 @@ def _add_products(
     except ValueError as exc:
         notices.append(FootprintNotice(FootprintNoticeKind.TEMPLATE_ERROR, path=source, detail=str(exc)))
         return
-    for product in (paths.nfo, paths.thumb, paths.poster, paths.fanart, paths.trailer, paths.extrafanart_dir):
+    # extrafanart 是按目录放的: 同一个作品目录下有多部影片时它被共享, 删其中一部不该清空它.
+    shared_extrafanart = indexed_per_dir.get(path_key(source.parent), 0) > 1
+    products = [paths.nfo, paths.thumb, paths.poster, paths.fanart, paths.trailer]
+    if not shared_extrafanart:
+        products.append(paths.extrafanart_dir)
+    for product in products:
         # 模板产物本来就可能没写过, 只收磁盘上已有的, 缺失不值得提示.
         if existing_disk_path(product, follow_symlinks=False) is not None:
             add(product)
@@ -235,8 +251,31 @@ def _add_subtitles(library: Library, video: Path, *, add: _Add) -> None:
             add(child)
 
 
-def _work_dir_refusal(work_dir: Path, *, root: Path, indexed_per_dir: Mapping[str, int]) -> FootprintNotice | None:
-    if path_key(work_dir) == path_key(root):
+def _subtree_counts(paths: Sequence[Path], *, roots: Sequence[Path]) -> Mapping[str, int]:
+    """每个目录「子树里」的索引条数.
+
+    索引文件自身所在的目录与其全部祖先目录都加一, 遇到授权根即停: 越界的祖先不属于本功能.
+    """
+    counts: Counter[str] = Counter()
+    root_keys = {path_key(root) for root in roots}
+    for path in paths:
+        for parent in path.parents:
+            key = path_key(parent)
+            counts[key] += 1
+            if key in root_keys:
+                break
+    return counts
+
+
+def _work_dir_refusal(
+    work_dir: Path, *, roots: Sequence[Path], indexed_per_dir: Mapping[str, int]
+) -> FootprintNotice | None:
+    """作品目录能不能整目录删: 等于任何授权根, 或子树里不止这一部影片, 都不删.
+
+    只拦库根是不够的: 成功目录 (``scrape_ok_dir``) 同样是授权根, 它下面散落的视频若被当作品目录
+    删掉, 整个成功目录会被清空.
+    """
+    if any(same_path(work_dir, root) for root in roots):
         return FootprintNotice(FootprintNoticeKind.WORK_DIR_IS_ROOT)
     siblings = indexed_per_dir.get(path_key(work_dir), 0)
     if siblings > 1:

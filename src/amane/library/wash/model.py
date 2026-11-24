@@ -196,13 +196,32 @@ def is_unambiguous(group: WashGroup, *, min_gain_percent: int) -> bool:
         # 落选者带着更好的字幕: 「更清晰」不等于「更该留」, 这种取舍交给使用者.
         return False
     keep_rank = definition_rank(keep.definition)
-    if any(definition_rank(drop.definition) != keep_rank for drop in group.drops):
-        return all(keep_rank < definition_rank(drop.definition) for drop in group.drops)
+    if keep_rank >= _UNKNOWN_DEFINITION or any(
+        definition_rank(drop.definition) >= _UNKNOWN_DEFINITION for drop in group.drops
+    ):
+        # 未知档位排在已知档位之后只是排序策略, 不是「更差」的证据: 未探测的原盘会被判成 480p 的下位,
+        # 自动执行就会把 12 GB 原盘洗掉.
+        return False
     if keep.duration is None or keep.duration <= 0:
         return False
     if any(drop.duration is None or drop.duration <= 0 for drop in group.drops):
         return False
+    if any(not _durations_match(keep, drop) for drop in group.drops):
+        # 时长差超过 5% 就是不同版本 (剧场版 / 导演剪辑 / 预览片), 谁更该留不是体积能定的.
+        return False
+    drop_ranks = [definition_rank(drop.definition) for drop in group.drops]
+    if any(rank != keep_rank for rank in drop_ranks):
+        return all(keep_rank < rank for rank in drop_ranks)
     return all(drop.size > 0 and (keep.size - drop.size) * 100 >= drop.size * min_gain_percent for drop in group.drops)
+
+
+def _durations_match(keep: WashEntry, drop: WashEntry) -> bool:
+    """两份文件的时长是否算「同一版」: 相差不超过 5%."""
+    keep_duration = keep.duration
+    drop_duration = drop.duration
+    if keep_duration is None or drop_duration is None or keep_duration <= 0 or drop_duration <= 0:
+        return False
+    return drop_duration * 0.95 <= keep_duration <= drop_duration * 1.05
 
 
 def subtitle_rank_of(path: str | Path, *, has_subtitle_in_name: bool = False, has_external: bool = False) -> int:

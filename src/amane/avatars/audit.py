@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol
 
+from ..media.file_type import is_image_mime, sniff_head
 from ..net.egress import EgressPolicy
 from ..net.errors import EgressRejected, RequestError
 
@@ -28,20 +29,15 @@ VERIFY_TIMEOUT = 12.0
 #: 结果里保留的样本条数.
 SAMPLE_LIMIT = 20
 
-#: 认得出的图片头. WebP 的 RIFF 头还需在第 8 字节看到 WEBP, 这里只按首 4 字节粗判.
-_IMAGE_MAGIC = (
-    b"\xff\xd8\xff",  # jpeg
-    b"\x89PNG\r\n\x1a\n",  # png
-    b"GIF87a",  # gif
-    b"GIF89a",
-    b"RIFF",  # webp
-    b"BM",  # bmp
-    b"<svg",  # svg (文本)
-    b"<?xml",  # svg 声明
-)
+#: WebP 的 RIFF 头还需在第 8 字节看到 WEBP.
+_RIFF_MARK = b"RIFF"
+_WEBP_MARK = b"WEBP"
 
-#: ISO-BMFF 容器 (avif / heic / heif): 第 4 字节起是 `ftyp` 盒子.
-_ISO_BMFF_MARK = b"ftyp"
+#: BMP 没有可用的长魔数: 第 6–9 字节是保留字段, 正常文件里恒为零.
+_BMP_MARK = b"BM"
+
+#: SVG 是文本格式, 正文直接以根元素开始; 带 ``<?xml`` 声明的任何 XML 都不算图片.
+_SVG_MARK = b"<svg"
 
 #: 服务端明确声明资源不在了; 其余 4xx 与 5xx 可能是鉴权、限流或临时故障, 不据此清链接.
 _GONE_STATUSES = frozenset({404, 410})
@@ -85,11 +81,17 @@ class AvatarCheckOutcome:
 
 
 def looks_like_image(head: bytes) -> bool:
-    """按文件头判断; 内容不是图片说明该地址返回的是错误页或占位图."""
-    if any(head.startswith(magic) for magic in _IMAGE_MAGIC):
+    """按文件头判断; 内容不是图片说明该地址返回的是错误页或占位图.
+
+    判定与媒体类型识别同一口径: RIFF 只看 WebP, ISO-BMFF 只看登记过的图片品牌.
+    ``<?xml`` 与裸 ``RIFF`` 不能作数 —— 任何 RSS、字幕或音频文件都能以它们开头.
+    """
+    if is_image_mime(sniff_head(head)):
         return True
-    # avif / heic 的魔数不在开头: 前 4 字节是盒子长度.
-    return head[4:8] == _ISO_BMFF_MARK
+    stripped = head.removeprefix(b"\xef\xbb\xbf").lstrip()
+    if stripped.startswith(_SVG_MARK):
+        return True
+    return head.startswith(_BMP_MARK) and head[6:10] == b"\x00\x00\x00\x00"
 
 
 async def verify_location(
@@ -133,9 +135,20 @@ class WebAvatarSource:
         return await self._web.download(url, dest, egress=self._egress, max_bytes=max_bytes)
 
     async def status(self, url: str) -> int | None:
-        """问一次状态码. 服务器不认 HEAD 或网络故障时返回 ``None``, 由调用方归入未判定."""
+        """问一次状态码. 网络故障时返回 ``None``, 由调用方归入未判定.
+
+        ``ok_statuses`` 必须带上 404 / 410: 不带时这两个状态码会被当成失败抛 ``RequestError``,
+        再被归成「未判定」, 于是死链永远清不掉 —— 而它正是这个任务要处理的那一类.
+        """
         try:
-            response = await self._web.request("HEAD", url, egress=self._egress, timeout=VERIFY_TIMEOUT, max_attempts=1)
+            response = await self._web.request(
+                "HEAD",
+                url,
+                egress=self._egress,
+                timeout=VERIFY_TIMEOUT,
+                max_attempts=1,
+                ok_statuses=_GONE_STATUSES,
+            )
         except RequestError:
             return None
         return response.status_code

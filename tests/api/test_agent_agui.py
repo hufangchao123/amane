@@ -551,7 +551,7 @@ async def test_approval_interrupt_and_resume(app: FastAPI, client: AsyncClient, 
     assert interrupt["toolCallId"] == "call-9"
     assert interrupt["metadata"]["sql"] == "DELETE FROM metadata WHERE id = 1"
     assert interrupt["metadata"]["tool"] == "delete_metadata"
-    assert interrupt["metadata"]["reason"] == "allow_slow"
+    assert interrupt["metadata"]["reason"] == "destructive"
     assert ran == []  # 未批准不执行
     stored = await repo.get_agent_session(session.id)
     assert stored is not None and stored.status is AgentSessionStatus.AWAITING_APPROVAL

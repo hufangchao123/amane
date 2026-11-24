@@ -6,7 +6,11 @@
 
 为什么取锁器是回调而不是 ``LibraryTaskLocks`` 本身: 那个类在 ``handlers`` 里, 反过来 import
 会让 ``handlers`` ↔ ``library`` 循环. 这里只要 ``async def get(library_id) -> asyncio.Lock``,
-``LibraryTaskLocks.get`` 正好是它.
+``LibraryTaskLocks.get`` 正好是它. 库号解析不出的记录按 ``None`` 取锁.
+
+为什么持锁后还要重读一次记录: 传进来的是锁外的快照, 等锁期间状态可能已被真删、还原或人工改动.
+拿锁只保证「同一库的写操作不并发」, 不保证快照仍然新鲜, 因此 ``state`` 与 ``expires_at`` 一律以
+锁内重读的结果为准.
 """
 
 from __future__ import annotations
@@ -38,8 +42,8 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-#: 取锁器: 每个库一把锁, 与整理 / 删除共用.
-LockGetter = Callable[[int], Awaitable[asyncio.Lock]]
+#: 取锁器: 每个库一把锁, 与整理 / 删除共用; 库号未知时传 ``None``, 由锁表给一把专用锁.
+LockGetter = Callable[[int | None], Awaitable[asyncio.Lock]]
 
 #: 进度回调; 形状与 ``handlers.protocol.ProgressCallback`` 一致, 但那边在 ``handlers`` 里,
 #: 由 handler 直接把自己传进来.
@@ -203,39 +207,50 @@ async def restore_records(
         by_library.setdefault(library_id, []).append(record)
 
     for library_id, library_records in sorted(by_library.items()):
-        library = await repo.get_library(library_id)
-        if library is None:
-            report.failed += len(library_records)
-            report.errors.append(f"媒体库 {library_id} 不存在, 无法还原 {len(library_records)} 条")
-            continue
         async with await lock_for(library_id):
+            library = await repo.get_library(library_id)
+            if library is None:
+                report.failed += len(library_records)
+                report.errors.append(f"媒体库 {library_id} 不存在, 无法还原 {len(library_records)} 条")
+                continue
+            # 锁内重读: 传进来的记录是锁外的快照, 等锁期间可能已被真删或已被另一路还原.
+            latest = await _reload(repo, library_records)
             for record in library_records:
-                if record.state is not WashRecordState.TRASHED:
+                current = latest.get(record.id) if record.id is not None else record
+                if current is None or current.state is not WashRecordState.TRASHED:
                     report.skipped += 1
                     continue
                 outcome = await trash.restore_from_trash(
-                    record.removed_path,
+                    current.removed_path,
                     library_root=library.path,
-                    kind=record.kind,
+                    kind=current.kind,
                     bases=publish_roots(path=library.path, ok_dir=library.scrape_ok_dir),
                 )
                 if outcome.status == "occupied":
                     report.skipped += 1
                     continue
                 if outcome.status == "missing":
-                    report.fail(f"回收站里已找不到: {record.removed_path}")
+                    report.fail(f"回收站里已找不到: {current.removed_path}")
                     continue
                 if outcome.status == "failed":
-                    report.fail(f"{record.removed_path}: {outcome.error or '还原失败'}")
+                    report.fail(f"{current.removed_path}: {outcome.error or '还原失败'}")
                     continue
-                assert record.id is not None
-                await repo.set_wash_record_state([record.id], WashRecordState.RESTORED)
+                assert current.id is not None
+                await repo.set_wash_record_state([current.id], WashRecordState.RESTORED)
                 await _restore_index(repo, library, outcome.target)
                 report.done += 1
                 report.bytes += outcome.size
                 done += 1
-                await _report(progress, done, total, Path(record.removed_path).name)
+                await _report(progress, done, total, Path(current.removed_path).name)
     return report
+
+
+async def _reload(repo: Repository, records: Sequence[WashRecord]) -> dict[int, WashRecord]:
+    """按 id 重新读一遍记录, 得到锁内的最新状态; 已被删掉的 id 不在返回表里."""
+    ids = [record.id for record in records if record.id is not None]
+    if not ids:
+        return {}
+    return {record.id: record for record in await repo.get_wash_records(ids) if record.id is not None}
 
 
 async def _restore_index(repo: Repository, library: Library, restored: Path | None) -> None:
@@ -277,6 +292,7 @@ async def purge_records(
 
     这是洗版里唯一允许 ``unlink`` 的路径, 且只在 ``expires_at`` 已过时走. 取库锁 (``lock_for``):
     回收站虽然挂在库根之外, 但同一库的还原会把文件搬回库内, 与真删同一个目录树, 两个动作要互斥.
+    ``lock_for`` 缺省表示调用方已经在锁内 (或无外部写者), 此时不再取锁直接执行.
 
     文件已经不在回收站里的记录同样置 ``purged``: 它已经无法还原, 留在 ``trashed`` 里会让状态卡
     永远显示一份不存在的可还原体积.
@@ -288,31 +304,43 @@ async def purge_records(
     moment = now or datetime.now(UTC)
     expired: list[WashRecord] = []
     for record in records:
-        if record.state is not WashRecordState.TRASHED:
+        if _is_purgeable(record, moment):
+            expired.append(record)
+        else:
             report.skipped += 1
-            continue
-        if not _is_expired(record.expires_at, moment):
-            report.skipped += 1
-            continue
-        expired.append(record)
     if not expired:
         return report
 
-    if lock_for is not None:
-        # 与还原共用同一把锁: 同一条记录不能被"真删"和"还原"同时处理.
-        by_library: dict[int | None, list[WashRecord]] = {}
-        for record in expired:
-            by_library.setdefault(library_id_of(record.group_key), []).append(record)
-        for library_id, group in sorted(by_library.items(), key=lambda item: (item[0] is None, item[0] or 0)):
-            if library_id is None:
-                report.absorb(await purge_records(repo, group, now=now, progress=progress))
-                continue
-            async with await lock_for(library_id):
-                report.absorb(await purge_records(repo, group, now=now, progress=progress))
+    if lock_for is None:
+        report.absorb(await _purge_batch(repo, expired, progress=progress))
         return report
 
-    await _report(progress, 0, len(expired), "purge")
-    outcome = await trash.purge_trash_paths([record.removed_path for record in expired])
+    # 与还原共用同一把锁: 同一条记录不能被"真删"和"还原"同时处理.
+    # 分组键解析不出库时同样要持锁 (锁表给一把专用锁), 无锁真删会与那一路写操作交错.
+    by_library: dict[int | None, list[WashRecord]] = {}
+    for record in expired:
+        by_library.setdefault(library_id_of(record.group_key), []).append(record)
+    for library_id, group in sorted(by_library.items(), key=lambda item: (item[0] is None, item[0] or 0)):
+        async with await lock_for(library_id):
+            # 锁内重读: 等锁期间记录可能已被还原、被人工处理, 或过期时间被改过.
+            latest = await _reload(repo, group)
+            live: list[WashRecord] = []
+            for record in group:
+                current = latest.get(record.id) if record.id is not None else record
+                if current is None or not _is_purgeable(current, moment):
+                    report.skipped += 1
+                    continue
+                live.append(current)
+            if live:
+                report.absorb(await _purge_batch(repo, live, progress=progress))
+    return report
+
+
+async def _purge_batch(repo: Repository, records: Sequence[WashRecord], *, progress: ProgressFn | None) -> ApplyReport:
+    """真删一批已确认到期的记录; 调用方负责持锁, 并保证记录状态是锁内重读的结果."""
+    report = ApplyReport()
+    await _report(progress, 0, len(records), "purge")
+    outcome = await trash.purge_trash_paths([record.removed_path for record in records])
     report.done = outcome.purged
     report.bytes = outcome.freed_bytes
     report.failed = outcome.failed
@@ -320,13 +348,18 @@ async def purge_records(
     report.errors.extend(outcome.errors[:_MAX_ERRORS])
     cleared = [
         record.id
-        for record, item in zip(expired, outcome.outcomes, strict=True)
+        for record, item in zip(records, outcome.outcomes, strict=True)
         if item.status != "failed" and record.id is not None
     ]
     if cleared:
         await repo.set_wash_record_state(cleared, WashRecordState.PURGED)
-    await _report(progress, len(expired), len(expired), "done")
+    await _report(progress, len(records), len(records), "done")
     return report
+
+
+def _is_purgeable(record: WashRecord | None, now: datetime) -> bool:
+    """可不可以真删: 仍在回收站里 (``trashed``) 且已过保留期."""
+    return record is not None and record.state is WashRecordState.TRASHED and _is_expired(record.expires_at, now)
 
 
 def _is_expired(expires_at: datetime | None, now: datetime) -> bool:

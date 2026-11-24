@@ -33,6 +33,11 @@ class AgentService:
     repo: Repository
     cache: ResultCache
     config: AgentConfig
+    wash_auto_execute: bool | None = None
+    """热配置 ``wash.auto_execute`` 的当前值; ``None`` 表示调用方没有接线, 工具层按已打开处理.
+
+    工具层据此判断洗版扫描会不会级联成删除, 只影响审批, 不影响其它行为.
+    """
     sandbox: ReadonlySqlSandbox = field(init=False)
     executor: QueryExecutor = field(init=False)
     agent: Agent[AgentDeps, str | DeferredToolRequests] | None = field(init=False, default=None)
@@ -51,8 +56,10 @@ class AgentService:
         self.tool_registry = build_registry()
         self.rebuild(self.config)
 
-    def rebuild(self, config: AgentConfig) -> None:
+    def rebuild(self, config: AgentConfig, *, wash_auto_execute: bool | None = None) -> None:
+        """换配置. ``wash_auto_execute`` 是洗版自动执行开关的当前值, 供审批判定使用."""
         self.config = config
+        self.wash_auto_execute = wash_auto_execute
         self.cache.configure(ttl_s=config.result_cache_ttl_s, max_entries=config.result_cache_max_entries)
         self.agent = build_agent(config)
         self.naming_model = build_model(config) if config.api_key else None
@@ -161,6 +168,7 @@ class AgentService:
             executor=self.executor,
             session_id=session_id,
             sql_timeout_ms=self.config.sql_timeout_ms,
+            wash_auto_execute=self.wash_auto_execute,
             bridge=self.bridge,
         )
 

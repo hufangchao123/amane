@@ -56,10 +56,12 @@ def _first_archive_entry(payload: bytes, preferred_suffixes: Sequence[str] = ())
             # 库认得的扩展名优先, 同优先级保持包内顺序 (确定性, 便于复现).
             entries.sort(key=lambda pair: 0 if pair[1] in preferred else 1)
             for info, suffix in entries:
-                # 先看条目头里的声明大小, 避免解压炸弹把内存吃干净.
-                if info.file_size > MAX_SUBTITLE_BYTES:
+                # 条目头里的声明大小可以伪造, 因此按实际读出的字节数封顶: 最多多读一个字节用于判定超限.
+                with archive.open(info) as entry:
+                    data = entry.read(MAX_SUBTITLE_BYTES + 1)
+                if len(data) > MAX_SUBTITLE_BYTES:
                     raise SubtitleSourceError(f"压缩包内字幕超过大小上限 {MAX_SUBTITLE_BYTES} 字节", transient=False)
-                return archive.read(info), suffix
+                return data, suffix
     except zipfile.BadZipFile as exc:
         raise SubtitleSourceError("下载内容不是有效的压缩包", transient=False) from exc
     raise SubtitleSourceError("压缩包内没有字幕文件", transient=False)

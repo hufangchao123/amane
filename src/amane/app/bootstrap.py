@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,6 +41,15 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
 
 logger = structlog.get_logger()
+
+
+def _token_log_fields(token: str) -> dict[str, object]:
+    """token 的日志字段: 只给长度与指纹, 够核对是否同一枚 token, 不足以还原.
+
+    明文 token 落在 ``data_dir`` 下的 token 文件 (0600), 需要时读该文件, 不要写进日志.
+    """
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()[:8]
+    return {"token_enabled": True, "token_length": len(token), "token_fingerprint": digest}
 
 
 def build_safe_dirs(cold: ColdSettings, repo_watch_paths: list[str]) -> list[Path] | None:
@@ -164,6 +174,8 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
         repo=repo,
         cache=ResultCache(ttl_s=hot.agent.result_cache_ttl_s, max_entries=hot.agent.result_cache_max_entries),
         config=hot.agent,
+        # 助理据此判断「洗版扫描会不会级联成删除」, 只影响审批, 不影响其它行为.
+        wash_auto_execute=hot.wash.auto_execute,
     )
 
     # 信任边界: 安全目录 + API token
@@ -176,9 +188,9 @@ async def start_app(config: ConfigManager | None = None) -> AppSession:
     # 校验关闭时资源端点免鉴权, 图片 token 无意义.
     image_token = resolve_image_token(cold.image_token, cold.data_dir) if api_token is not None else None
     if api_token is not None:
-        logger.info("api token auth enabled", token=api_token)
+        logger.info("api token auth enabled", **_token_log_fields(api_token))
     if image_token is not None:
-        logger.info("image token auth enabled", token=image_token)
+        logger.info("image token auth enabled", **_token_log_fields(image_token))
 
     library_locks = LibraryTaskLocks()
     inventory_store = InventoryStore()

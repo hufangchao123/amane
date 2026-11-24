@@ -187,11 +187,16 @@ class WashRepoMixin(RepositoryMixinBase):
             await session.commit()
             return True
 
-    async def drop_stale_wash_choices(self, valid_keys: set[str]) -> int:
-        """清掉分组已经不存在的决定; 文件被洗掉或删掉后这些键不会再出现."""
+    async def drop_stale_wash_choices(self, valid_keys: set[str], *, prefixes: tuple[str, ...] | None = None) -> int:
+        """清掉分组已经不存在的决定; 文件被洗掉或删掉后这些键不会再出现.
+
+        ``prefixes`` 限定清理范围: 局部扫描 (只扫一个库) 只能清该库的决定, 否则扫一次库 1
+        就会把库 2 的「都留着」与「钉住」一起删掉, 那些文件随后会被自动执行洗走.
+        """
         async with self._session() as session:
             rows = (await session.exec(select(WashChoice))).all()
-            stale = [choice for choice in rows if choice.group_key not in valid_keys]
+            scoped = [choice for choice in rows if prefixes is None or str(choice.group_key).startswith(prefixes)]
+            stale = [choice for choice in scoped if choice.group_key not in valid_keys]
             for choice in stale:
                 await session.delete(choice)
             if stale:

@@ -34,11 +34,17 @@ class WashScanHandler(TaskHandler[WashScanPayload, WashScanResult]):
             return TaskResult(success=False, error=f"媒体库 {payload.library_id} 不存在")
 
         await self.report_progress(0, 1, "scan")
-        every = await service.groups(kind=parse_kind(payload.kind), library_id=payload.library_id)
+        kind = parse_kind(payload.kind)
+        every = await service.groups(kind=kind, library_id=payload.library_id)
         # 分组已经不存在的决定留着不会有害, 但会让人在设置里看到一条对不上任何组的记录.
-        dropped = await self._repo.drop_stale_wash_choices({group.group_key for group in every})
-        if dropped:
-            current().info("wash choices dropped", count=dropped)
+        # 清理范围必须跟着这次扫描的范围走: 只扫一个库、或只扫一侧 (local/strm) 时, 范围之外的
+        # 决定根本不是「过期」, 清了会让那些文件失去「都留着」的保护. 分组键里没有实体类型,
+        # 所以只扫一侧时干脆不清.
+        if kind is None:
+            prefixes = (f"lib{payload.library_id}:",) if payload.library_id is not None else None
+            dropped = await self._repo.drop_stale_wash_choices({group.group_key for group in every}, prefixes=prefixes)
+            if dropped:
+                current().info("wash choices dropped", count=dropped)
         # 「都留着」的组不进统计也不给自动执行: 使用者已经表态不洗这两份.
         groups = [group for group in every if not group.ignored]
         await self.report_progress(1, 1, "done")
@@ -187,7 +193,11 @@ class WashApplyHandler(TaskHandler[WashApplyPayload, WashApplyResult]):
         return None
 
     async def _fetch(self, ids: list[int], report: wash_apply.ApplyReport) -> list[WashRecord]:
-        """按 id 取记录; 不存在的 id 记一条失败, 不抛异常."""
+        """按 id 取记录当候选清单; 不存在的 id 记一条失败, 不抛异常.
+
+        这里读到的是锁外的快照, 只用来拿分组键、提示缺失的 id: ``state`` 与 ``expires_at``
+        由 :mod:`amane.library.wash.apply` 在库锁内重读, 因此等锁期间被还原或真删的记录不会重复处理.
+        """
         records = await self._repo.get_wash_records(ids)
         known = {record.id for record in records}
         missing = len([record_id for record_id in ids if record_id not in known])

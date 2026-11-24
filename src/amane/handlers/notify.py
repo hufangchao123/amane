@@ -123,10 +123,17 @@ class NotifyHandler(TaskHandler[NotifyPayload, NotifyResult]):
 
     async def _failure_lines(self, since: datetime) -> list[str]:
         recent = await self._repo.list_tasks(statuses=[TaskStatus.FAILED], limit=DIGEST_FAILED_SAMPLES, since=since)
-        return [
-            f"失败 #{task.id} {_type_label(task.type)}: {(task.error or '').splitlines()[0][:120] or '无错误文案'}"
-            for task in recent
-        ]
+        return [f"失败 #{task.id} {_type_label(task.type)}: {_first_line(task.error)}" for task in recent]
+
+
+def _first_line(error: str | None) -> str:
+    """错误文案的第一行, 最多 120 字; 为空时给一句占位.
+
+    直接取 ``splitlines()[0]`` 会在 ``error`` 为空串时抛 IndexError, 周报任务因此整份失败.
+    """
+    lines = (error or "").splitlines()
+    first = lines[0].strip() if lines else ""
+    return first[:120] or "无错误文案"
 
 
 def _type_label(task_type: TaskType) -> str:

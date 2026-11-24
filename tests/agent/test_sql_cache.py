@@ -12,7 +12,14 @@ import pytest_asyncio
 
 from amane.agent.cache import CachedResult, ResultCache
 from amane.agent.executor import QueryExecutor
-from amane.agent.sql import ReadonlySqlSandbox, SqlNeedsApproval, SqlSandboxError, SqlTimeoutError, as_id_subquery_sql
+from amane.agent.sql import (
+    ReadonlySqlSandbox,
+    SqlNeedsApproval,
+    SqlSandboxError,
+    SqlTimeoutError,
+    as_id_subquery_sql,
+    strip_sql_comments,
+)
 from amane.db.models import SavedQuery, SavedQueryEntity
 
 
@@ -25,10 +32,36 @@ from amane.db.models import SavedQuery, SavedQueryEntity
             "SELECT id FROM (select id, title from metadata where 1) AS _sq",
         ),
         ("SELECT 1; ", "SELECT id FROM (SELECT 1) AS _sq"),
+        # 末尾的行注释会把包装用的右括号一起注释掉, 剥掉注释才能包成子查询
+        ("SELECT id FROM metadata -- 只取编号\n", "SELECT id FROM (SELECT id FROM metadata) AS _sq"),
+        ("SELECT id FROM metadata /* 只取编号 */", "SELECT id FROM (SELECT id FROM metadata) AS _sq"),
     ],
 )
 def test_as_id_subquery_sql(sql: str, expect: str) -> None:
     assert as_id_subquery_sql(sql) == expect
+
+
+@pytest.mark.parametrize(
+    ("sql", "expect"),
+    [
+        ("SELECT 1 -- 行注释\n", "SELECT 1 \n"),
+        ("SELECT 'it''s' -- 到行尾", "SELECT 'it''s' "),
+        ("SELECT 1 /* 多行\n块注释 */", "SELECT 1  "),
+        # 字面量与引号标识符里的 -- 与 /* 是数据, 不是注释
+        ("SELECT '--x', '[a]', \"b/*c\"", "SELECT '--x', '[a]', \"b/*c\""),
+        ("SELECT '--x' /* 块注释 */", "SELECT '--x'  "),
+        # 注释两侧的记号不能粘成一个
+        ("SELECT 1/*x*/AS n", "SELECT 1 AS n"),
+    ],
+)
+def test_strip_sql_comments(sql: str, expect: str) -> None:
+    assert strip_sql_comments(sql) == expect
+
+
+def test_strip_sql_comments_rejects_unclosed_block() -> None:
+    """未闭合的块注释在 SQLite 里会吞掉后文; 提前报错比让包装后的语句语法错更好定位."""
+    with pytest.raises(SqlSandboxError, match="注释未闭合"):
+        strip_sql_comments("SELECT 1 /* 没有收尾")
 
 
 @pytest_asyncio.fixture
@@ -37,6 +70,9 @@ async def sandbox(tmp_path: Path) -> ReadonlySqlSandbox:
     async with aiosqlite.connect(db) as conn:
         await conn.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)")
         await conn.executemany("INSERT INTO items (name) VALUES (?)", [("a",), ("b",), ("c",)])
+        # 黑名单表与放行表成对建出来: 断言的是表名取舍, 不是「查不到就拒绝」
+        for table in ("feeds", "notify_records", "audit_records", "agent_sessions", "tasks", "wash_choices"):
+            await conn.execute(f"CREATE TABLE {table} (id INTEGER PRIMARY KEY, payload TEXT)")
         await conn.commit()
     return ReadonlySqlSandbox(db)
 
@@ -110,6 +146,35 @@ async def test_execute_sqlite_errors_become_sandbox_errors(sandbox: ReadonlySqlS
     """执行期 SQLite 错误须包装为 SqlSandboxError, 供工具返回 error 而非打断整轮."""
     with pytest.raises(SqlSandboxError, match=r"no such (column|table)"):
         await sandbox.execute(sql, timeout_ms=1000)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("table", ["feeds", "notify_records", "audit_records", "agent_sessions"])
+async def test_execute_rejects_sensitive_tables(sandbox: ReadonlySqlSandbox, table: str) -> None:
+    """运行状态与凭据类表由解析层授权拒绝: 它们在库里可读, 但与「用 SQL 看影片数据」无关."""
+    with pytest.raises(SqlSandboxError, match="prohibited"):
+        await sandbox.execute(f"SELECT * FROM {table}", timeout_ms=1000)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("table", ["tasks", "wash_choices"])
+async def test_execute_allows_operational_tables(sandbox: ReadonlySqlSandbox, table: str) -> None:
+    """队列与留版标记是助理看得到的领域数据, 黑名单不覆盖它们."""
+    result = await sandbox.execute(f"SELECT * FROM {table}", timeout_ms=1000)
+    assert result.columns == ["id", "payload"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql", ["PRAGMA query_only = OFF", "PRAGMA query_only"])
+async def test_execute_rejects_query_only_change(sandbox: ReadonlySqlSandbox, sql: str) -> None:
+    """只放行沙箱自己用的 ``query_only = ON``; OFF 会关掉写保护, 无值查询一并拒绝.
+
+    每条语句各开一条只读连接, 因此拦下 OFF 才是写保护成立的唯一依据.
+    """
+    with pytest.raises(SqlSandboxError, match="not authorized"):
+        await sandbox.execute(sql, timeout_ms=1000)
+    with pytest.raises(SqlSandboxError, match="readonly"):
+        await sandbox.execute("DELETE FROM items", timeout_ms=1000)
 
 
 @pytest.mark.asyncio

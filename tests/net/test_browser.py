@@ -12,6 +12,7 @@ import pytest
 from amane.enums import BrowserBackendName
 from amane.net.browser import BrowserPageResult, BrowserPool, SolverBackend, _Cookie, _is_timeout, _LocalBackend
 from amane.net.errors import FailureKind, FailureReason, RequestError, RequestFailure, classify_request_error
+from tests.helpers import LogRecorder
 
 
 class _Resp:
@@ -734,3 +735,24 @@ async def test_solver_releases_scope_lock_on_session_failure():
     assert failed[1].message == "boom"
     assert recovered == ("<html>ok</html>", None)
     assert [call["cmd"] for call in web.calls] == ["sessions.create", "sessions.create", "request.get"]
+
+
+def test_bsk_backend_proxy_warning_hides_userinfo(monkeypatch: pytest.MonkeyPatch):
+    """BSK 后端忽略全局代理的告警不带代理口令."""
+    recorder = LogRecorder()
+    monkeypatch.setattr("amane.net.browser.logger", recorder)
+    pool = BrowserPool(
+        default_backend=BrowserBackendName.BSK,
+        solver_url="http://solver.test:8191",
+        proxy="http://user:proxy-pass-secret@proxy.test:8080",
+        web_client=_FakeWeb([]),  # type: ignore[arg-type]
+        timeout_ms=1000,
+    )
+
+    assert pool._create(BrowserBackendName.BSK) is not None
+
+    text = recorder.text()
+    assert "proxy-pass-secret" not in text
+    fields = [fields for _level, event, fields in recorder.records if event == "bsk backend ignores global proxy"]
+    assert len(fields) == 1, text
+    assert fields[0]["proxy"] == "http://proxy.test:8080"

@@ -113,6 +113,25 @@ class EgressPolicy:
     allow_private: bool = False
     max_redirects: int = 5
 
+    def ensure_allowed_static(self, url: str) -> None:
+        """不解析主机名的地址判定: 只查协议与 URL 里直接写出的地址.
+
+        同步场景 (播放列表改写等回调) 无法等待 DNS, 用本方法挡掉写成字面量或数值形式的内网目标.
+        主机名解析到内网的情况查不到, 那条路径必须另外调用 ``ensure_allowed``.
+        """
+        ensure_http_scheme(url)
+        if self.allow_private:
+            return
+
+        parsed = _split(url)
+        host = parsed.hostname
+        if not host:
+            raise _rejected(url, "URL 缺少主机名")
+        if _looks_numeric(host) and not _is_canonical_ip(host):
+            raise _rejected(url, f"非规范的数值主机: {host}")
+        if _is_canonical_ip(host) and is_internal_address(host):
+            raise _rejected(url, f"地址指向内网: {host}", detail="不支持内网地址")
+
     async def ensure_allowed(self, url: str) -> None:
         ensure_http_scheme(url)
         if self.allow_private:

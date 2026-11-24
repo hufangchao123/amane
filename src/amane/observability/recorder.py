@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import os
 import shutil
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
@@ -404,10 +405,16 @@ class Recorder:
 
     @staticmethod
     def _write_json(path: Path, data: Any) -> None:
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
+        payload = json.dumps(data, ensure_ascii=False, indent=2, default=str) + "\n"
         # 记录目录会随任务积累, 其中明文密钥的副本必须只有属主可读:
         # 目录里没有密钥时不收紧权限, 免得导出任务记录时读不到.
-        path.chmod(_FILE_MODE if path.name == SECRETS_HOT_FILENAME else _DEFAULT_FILE_MODE)
+        mode = _FILE_MODE if path.name == SECRETS_HOT_FILENAME else _DEFAULT_FILE_MODE
+        # 建文件时即按目标权限打开; 覆盖已有文件时 open 的 mode 不生效, 因此在写入之前补一次
+        # chmod —— 先写内容再改权限的间隔里, 密钥文件对同组用户可读.
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        path.chmod(mode)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(payload)
 
 
 def load_http_index(http_dir: Path) -> list[tuple[HttpExchangeMeta, bytes | None]]:

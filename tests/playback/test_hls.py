@@ -133,6 +133,12 @@ def test_absolute_hls_uri_accepts(base: str, uri: str) -> None:
         ("http://cdn.example/a/index.m3u8", "ftp://cdn.example/seg.ts", "不受支持"),
         ("http://cdn.example/a/index.m3u8", "data:text/plain,x", "不受支持"),
         ("http://cdn.example/a/index.m3u8", "http://[::1", "不受支持"),
+        # 绝对地址放行跨源, 但指向内网的一律拒绝: 清单来自第三方站点, 代理会照单取用
+        ("http://cdn.example/a/index.m3u8", "http://127.0.0.1/seg.ts", "指向内网"),
+        ("http://cdn.example/a/index.m3u8", "http://192.168.1.5/seg.ts", "指向内网"),
+        ("http://cdn.example/a/index.m3u8", "http://169.254.169.254/latest/meta-data/", "指向内网"),
+        ("http://cdn.example/a/index.m3u8", "http://[::1]/seg.ts", "指向内网"),
+        ("http://cdn.example/a/index.m3u8", "http://2130706433/seg.ts", "指向内网"),
     ],
 )
 def test_absolute_hls_uri_rejects(base: str, uri: str, detail: str) -> None:

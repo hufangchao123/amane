@@ -17,13 +17,17 @@ if TYPE_CHECKING:
 
 
 class LibraryTaskLocks:
-    """同库 ORGANIZE 与 DELETE 共用, 执行期串行."""
+    """同库的整理、洗版、删除与文件回调共用, 执行期串行.
+
+    库号未知的调用 (例如回收站记录的目录解析不出库) 用 ``None`` 取一把专用锁:
+    这类写操作同样要串行, 只是无法与具体库的任务对齐.
+    """
 
     def __init__(self) -> None:
-        self._locks: dict[int, asyncio.Lock] = {}
+        self._locks: dict[int | None, asyncio.Lock] = {}
         self._guard = asyncio.Lock()
 
-    async def get(self, library_id: int) -> asyncio.Lock:
+    async def get(self, library_id: int | None) -> asyncio.Lock:
         async with self._guard:
             lock = self._locks.get(library_id)
             if lock is None:

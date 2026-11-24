@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING, Literal
 import structlog
 
 from ...db.models import WashRecordKind
-from ...utils.path import existing_disk_path, path_is_under
+from ...utils.path import disk_probe, existing_disk_path, path_is_under
 from ...utils.threads import in_thread
 
 if TYPE_CHECKING:
@@ -189,7 +189,11 @@ def move_into_trash(
     拒绝源根之外、回收站之内与 ``.amane_trash`` 之内的源; 目标已存在时返回 ``occupied``
     而不是覆盖.
     """
-    src = existing_disk_path(source, follow_symlinks=False)
+    probe = disk_probe(source, follow_symlinks=False)
+    if probe.unreadable:
+        # 读不到 (挂载抖动 / 权限) 与不存在要分开: 当成 missing 会让调用方把索引行删掉.
+        return MoveOutcome(status="failed", error=f"source unreadable: {source}")
+    src = probe.path
     if src is None:
         return MoveOutcome(status="missing")
     roots = [Path(item) for item in (bases or (library_root,))]

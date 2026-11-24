@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ..config import DownloadableResource
+from ..net.egress import EgressPolicy
 from ..parsing import ContentType
 from ..sr import get_preset_meta, run_SR
 from .images import (
@@ -191,6 +192,13 @@ async def materialize_images(
     return out
 
 
+# 手动裁切的源地址由请求方给出, 与图片代理同口径判定: 内网地址不放行.
+_CROP_EGRESS = EgressPolicy()
+
+# 裁切源图的大小上限. 裁切只需要一张图, 超限说明地址指向的不是封面.
+_CROP_MAX_BYTES = 32 * 1024 * 1024
+
+
 async def manual_crop_image(
     source_url: str,
     box: tuple[int, int, int, int],
@@ -207,7 +215,12 @@ async def manual_crop_image(
     先按 EXIF 转正、再顺时针旋转 ``rotation``, 之后按 ``box`` 裁切; 失败抛 ``ValueError``
     (消息可直接作 API detail); ``subject`` 组装提示文案 (如「封面图」「头像」).
     """
-    source = await store.resolve_source(source_url, client)
+    source = await store.resolve_source(
+        source_url,
+        client,
+        egress=_CROP_EGRESS,
+        max_bytes=_CROP_MAX_BYTES,
+    )
     if source is None:
         raise ValueError(f"无法获取{subject}")
 

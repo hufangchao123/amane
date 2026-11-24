@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from ..parsing import parse_file_info
+from ..utils.path import is_descendant, resolved_path
 from ..utils.threads import in_thread
 from .rules import MEDIA_EXTENSIONS
 
@@ -132,6 +133,38 @@ def _free_target(directory: Path, name: str) -> Path | None:
     return None
 
 
+def _move_one(source: Path, directory: Path, name: str, *, attempts: int = 3) -> tuple[Path | None, int]:
+    """搬一份文件, 返回落定路径与字节数; 失败返回 ``(None, 0)``.
+
+    占位成功之后还要复核目标名没被别人写成真文件: 占位只能保证两个 amane 之间不撞,
+    挡不住目的目录里的外部写入.
+    """
+    for _ in range(attempts):
+        target = _free_target(directory, name)
+        if target is None:
+            return None, 0
+        if target.exists():
+            _partial_path(target).unlink(missing_ok=True)
+            name = f"{target.stem} (2){target.suffix}"
+            continue
+        try:
+            size = source.stat().st_size
+            _place(source, target)
+        except OSError:
+            # 占位文件没被成品替换掉: 删掉, 否则目的目录里留下一个 0 字节的占位残片.
+            _partial_path(target).unlink(missing_ok=True)
+            return None, 0
+        return target, size
+    return None, 0
+
+
+def _sidecar_name(name: str, video_stem: str, new_stem: str) -> str:
+    """把附属文件名的视频前缀换成落定后的视频主名."""
+    if video_stem and name.startswith(video_stem):
+        return f"{new_stem}{name[len(video_stem) :]}"
+    return name
+
+
 def _place(source: Path, target: Path) -> None:
     """把源文件写到已占位的目标名上.
 
@@ -187,18 +220,23 @@ def collect_sidecars(
 
 
 def _prune_source_dir(directory: Path, keep_dir: Path | None, stop_dirs: Sequence[Path] = ()) -> bool:
-    """自下而上删空目录, 停在 ``keep_dir`` (库根) 与 ``stop_dirs`` (配置的目录) 之前; 返回是否删掉了至少一层.
+    """自下而上删空目录, 停在最近的授权边界之内; 返回是否删掉了至少一层.
 
     只删一层是不够的: 输入目录常按 `/in/2026/11/ABC-123/` 分层, 删掉最末一层后上面两层永远留着.
     配置的输入/成品/失败目录本身不删: 它们由使用者维护 (下载器要往里写), 消失后下载器可能报错.
+
+    边界按真实路径比, 且每一步都要求当前目录仍严格处于边界之内: 输入目录经符号链接配置时
+    (``/mnt/in -> /vol1/real_in``), 索引里的路径是真实路径, 字面比较永远不相等, 剪枝会一路删到
+    边界之上. 一个边界都匹配不上时直接不剪 —— 源目录不在我们管的目录里, 没有理由动它.
     """
+    boundary = _innermost_boundary(directory, keep_dir, stop_dirs)
+    if boundary is None:
+        return False
+    current = resolved_path(directory)
+    if not is_descendant(current, boundary):
+        return False
     removed = False
-    current = directory
-    while True:
-        if keep_dir is not None and _same_path(current, keep_dir):
-            break
-        if any(_same_path(current, stop) for stop in stop_dirs):
-            break
+    while current != boundary:
         try:
             current.rmdir()
         except OSError:
@@ -209,6 +247,16 @@ def _prune_source_dir(directory: Path, keep_dir: Path | None, stop_dirs: Sequenc
             break
         current = parent
     return removed
+
+
+def _innermost_boundary(directory: Path, keep_dir: Path | None, stop_dirs: Sequence[Path]) -> Path | None:
+    """目录所在的最内层授权边界 (真实路径); 都不包含它时返回 None."""
+    target = resolved_path(directory)
+    candidates = [resolved_path(path) for path in (keep_dir, *stop_dirs) if path is not None]
+    inside = [boundary for boundary in candidates if is_descendant(target, boundary)]
+    if not inside:
+        return None
+    return max(inside, key=lambda boundary: len(str(boundary)))
 
 
 def _same_path(left: Path, right: Path) -> bool:
@@ -242,24 +290,24 @@ def transfer_scrape_result(
     failed: list[str] = []
     new_video = video
     sidecars = collect_sidecars(video, subtitle_suffixes, directory=sidecar_dir)
-    sources = sidecars if sidecars_only else [video, *sidecars]
-    for source in sources:
-        target = _free_target(destination, source.name)
+    if not sidecars_only:
+        target, size = _move_one(video, destination, video.name)
         if target is None:
-            failed.append(source.name)
-            continue
-        try:
-            size = source.stat().st_size
-            _place(source, target)
-        except OSError:
-            # 占位文件没被成品替换掉: 删掉, 否则目的目录里留下一个 0 字节的占位残片.
-            _partial_path(target).unlink(missing_ok=True)
+            failed.append(video.name)
+        else:
+            moved += 1
+            written += size
+            new_video = target
+    # 附属文件跟着视频的新名字走: 视频被加了序号 (`ABC (2).mkv`) 时字幕若自己再抢一次名额,
+    # 会得到 `ABC-1080p (2).srt` 之类与视频对不上的名字, 播放器与巡检都不再认它是对应的字幕.
+    for source in sidecars:
+        name = _sidecar_name(source.name, video.stem, new_video.stem)
+        target, size = _move_one(source, destination, name)
+        if target is None:
             failed.append(source.name)
             continue
         moved += 1
         written += size
-        if source == video:
-            new_video = target
     source_dir = sidecar_dir or video.parent
     vacuumed = sidecars_only or new_video != video
     removable = not keep_source_dirs and vacuumed and (keep_dir is None or not _same_path(source_dir, keep_dir))

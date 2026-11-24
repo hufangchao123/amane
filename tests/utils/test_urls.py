@@ -31,6 +31,28 @@ from amane.utils.urls import redact_url
             id="path-device-key",
         ),
         pytest.param("https://host/api/v1/items", "https://host/api/v1/items", id="path-not-secret"),
+        pytest.param(
+            "https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage",
+            "https://api.telegram.org/***/sendMessage",
+            id="path-telegram-bot-token",
+        ),
+        pytest.param(
+            "https://sctapi.ftqq.com/SCT12345Tabcdefghijklmnop.send",
+            "https://sctapi.ftqq.com/***",
+            id="path-serverchan-sendkey",
+        ),
+        pytest.param(
+            "https://api.telegram.org/bot123456789/getMe",
+            "https://api.telegram.org/bot123456789/getMe",
+            id="path-telegram-method",
+        ),
+        pytest.param(
+            "https://host/files/report.send", "https://host/files/report.send", id="path-send-but-not-sendkey"
+        ),
+        pytest.param(
+            "https://host/media/video:1080p-h264", "https://host/media/video:1080p-h264", id="path-colon-not-bot"
+        ),
+        pytest.param("https://host/v1.2/items.html", "https://host/v1.2/items.html", id="path-dot-not-secret"),
         pytest.param("https://host/a?page=2", "https://host/a?page=2", id="plain-query"),
         pytest.param("https://host/a", "https://host/a", id="no-query"),
         pytest.param(

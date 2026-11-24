@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 REDACTED_QUERY_VALUE = "***"
@@ -46,6 +47,12 @@ _SECRET_QUERY_FRAGMENTS = (
 #: 路径段满足这三条才当密钥: 够长、只有 URL 安全字符、字母与数字都有.
 _MIN_SECRET_SEGMENT = 16
 
+#: 通知渠道把 token 当路径段拼进地址, 形状固定, 按形状判断.
+#: Telegram: ``https://api.telegram.org/bot<id>:<token>/sendMessage``.
+_TELEGRAM_BOT_SEGMENT = re.compile(r"bot\d+:[A-Za-z0-9_-]{20,}")
+#: ServerChan: ``https://sctapi.ftqq.com/<SendKey>.send``, SendKey 形如 ``SCT12345T...``.
+_SERVERCHAN_SEGMENT = re.compile(r"sct[A-Za-z0-9]+t[A-Za-z0-9]{8,}\.send", re.IGNORECASE)
+
 
 def is_secret_query_key(key: str) -> bool:
     """查询参数名是否属密钥类.
@@ -63,7 +70,14 @@ def is_secret_query_key(key: str) -> bool:
 
 
 def is_secret_path_segment(segment: str) -> bool:
-    """路径段是否像密钥 (bark 这类把设备键写在路径里的地址)."""
+    """路径段是否像密钥 (bark 这类把设备键写在路径里的地址).
+
+    Telegram 与 ServerChan 的路径段带 ``:`` 与 ``.``, 过不了字符类别判据, 先按形状判断.
+    """
+    if _TELEGRAM_BOT_SEGMENT.fullmatch(segment) is not None:
+        return True
+    if _SERVERCHAN_SEGMENT.fullmatch(segment) is not None:
+        return True
     if len(segment) < _MIN_SECRET_SEGMENT:
         return False
     if not all(char.isalnum() or char in "-_" for char in segment):

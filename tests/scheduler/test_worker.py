@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from amane.db.models import Task, TaskStatus, TaskType
+from amane.events import EventBus, EventType
 from amane.handlers.protocol import FollowupTask, TaskHandler, TaskResult
 from amane.scheduler import worker as worker_module
 from amane.scheduler.worker import CANCEL_ERROR, SHUTDOWN_ERROR, AsyncWorker
@@ -64,6 +65,53 @@ class BlockingHandler(TaskHandler):
         self.started.set()
         await self.release.wait()
         return TaskResult(success=True, result={"blocked": True})
+
+
+class RecordingBus(EventBus):
+    """把 worker 发出的事件收进列表, 用于断言进度落在哪个任务上."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.events: list[tuple[EventType, dict]] = []
+
+    async def emit(self, event_type: EventType, data: dict | None = None) -> None:
+        self.events.append((event_type, data or {}))
+
+
+class SharedProgressHandler(TaskHandler):
+    """两个并发任务共用的单例 handler: 各自上报自己的进度.
+
+    第二个任务开始时会再次设置进度回调. 回调若存在实例上, 先开始的任务就会被改写成后开始的那个任务;
+    这里用栅栏让两个任务同时在飞, 保证这条路径被真正走到.
+    """
+
+    payload_type = dict
+
+    def __init__(self, barrier: asyncio.Barrier) -> None:
+        self._barrier = barrier
+
+    async def handle(self, payload: dict):
+        marker = str(payload["marker"])
+        await self.report_progress(1, 2, f"{marker}-start")
+        async with asyncio.timeout(LOAD_TOLERANT_TIMEOUT):
+            await self._barrier.wait()
+        await self.report_progress(2, 2, f"{marker}-done")
+        return TaskResult(success=True, result={"marker": marker})
+
+
+class NestedProgressHandler(TaskHandler):
+    """在子任务里上报进度: 子任务创建时复制上下文, 进度仍落在发起它的任务上."""
+
+    def __init__(self) -> None:
+        super().__init__(payload_t=dict, result_t=dict)
+
+    async def handle(self, payload: dict):
+        await asyncio.gather(*(self._report(index) for index in range(3)))
+        return TaskResult(success=True, result={})
+
+    async def _report(self, index: int) -> None:
+        await asyncio.sleep(0)
+        await self.report_progress(index + 1, 3, f"part-{index}")
 
 
 async def recv(worker: AsyncWorker, n: int, timeout: float = LOAD_TOLERANT_TIMEOUT) -> list[int]:
@@ -689,3 +737,64 @@ async def test_crash_enqueues_failure_followups(repo: Repository) -> None:
 
     assert len(done_ids) == 2
     assert tracker.calls == [{"marker": "crash"}]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_concurrent_tasks_report_progress_to_own_task(repo: Repository) -> None:
+    """并发两个任务时, 两条进度各自落在自己的任务上.
+
+    handler 在运行时里只构造一次, 所有任务共用同一个实例: 进度回调若挂在实例上, 后开始的任务会覆盖
+    先开始的那个, 先开始的任务此后就把进度写到别人的任务上.
+    """
+    bus = RecordingBus()
+    worker = AsyncWorker(
+        repo=repo,
+        handlers={TaskType.SCRAPE: SharedProgressHandler(asyncio.Barrier(2))},
+        concurrency=2,
+        poll_interval=0.05,
+        event_bus=bus,
+    )
+    first = await repo.create_task(TaskType.SCRAPE, payload={"marker": "first"})
+    second = await repo.create_task(TaskType.SCRAPE, payload={"marker": "second"})
+    assert first.id is not None
+    assert second.id is not None
+
+    worker.start()
+    try:
+        assert sorted(await recv(worker, 2)) == sorted([first.id, second.id])
+        progress = [
+            (data["task_id"], data["message"]) for event, data in bus.events if event is EventType.TASK_PROGRESS
+        ]
+        assert sorted(progress) == sorted(
+            [
+                (first.id, "first-start"),
+                (first.id, "first-done"),
+                (second.id, "second-start"),
+                (second.id, "second-done"),
+            ]
+        )
+    finally:
+        await stop_worker(worker)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_child_task_progress_reaches_the_claimed_task(repo: Repository) -> None:
+    """子任务里上报的进度落到认领它的那个任务上, 不因 gather 分叉而丢失."""
+    bus = RecordingBus()
+    worker = AsyncWorker(
+        repo=repo,
+        handlers={TaskType.SCRAPE: NestedProgressHandler()},
+        poll_interval=0.05,
+        event_bus=bus,
+    )
+    task = await repo.create_task(TaskType.SCRAPE, payload={})
+    assert task.id is not None
+
+    worker.start()
+    try:
+        assert await recv(worker, 1) == [task.id]
+        progress = [data for event, data in bus.events if event is EventType.TASK_PROGRESS]
+        assert {item["task_id"] for item in progress} == {task.id}
+        assert sorted(item["message"] for item in progress) == ["part-0", "part-1", "part-2"]
+    finally:
+        await stop_worker(worker)

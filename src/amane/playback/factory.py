@@ -11,7 +11,8 @@ import structlog
 from fastapi import Request
 from starlette.responses import Response
 
-from ..net.errors import FailureReason, SourceError
+from ..net.egress import EgressPolicy
+from ..net.errors import EgressRejected, FailureReason, SourceError
 from ..plugins.api import (
     FilePlaybackTarget,
     HlsLocator,
@@ -47,12 +48,16 @@ logger = structlog.get_logger()
 
 SOURCE_ID_MAX_LEN = 128
 
+# 清单内绝对 URI 的地址判定. 清单来自第三方站点, 其中的绝对地址会被代理照单取用.
+_URI_EGRESS = EgressPolicy()
+
 
 def _absolute_hls_uri(base_url: str, uri: str) -> str:
     """把清单内的 URI 解析为绝对地址.
 
     只接受主机可代理的绝对 http(s) 地址. ``urljoin`` / ``urlparse`` 对 ``http://[::1`` 这类
     畸形输入抛 ``ValueError``, 必须转成 ``SourceError``, 否则会作为未处理异常返回 500.
+    绝对 URI 允许跨源 (CDN 是常见形态), 但必须通过内网地址判定.
     """
     try:
         absolute = urljoin(base_url, uri)
@@ -63,6 +68,11 @@ def _absolute_hls_uri(base_url: str, uri: str) -> str:
         raise SourceError(FailureReason.NO_USABLE_METADATA, detail="播放列表 URI 不受支持")
     stripped = uri.strip()
     if stripped.casefold().startswith(("http://", "https://")):
+        # 改写回调是同步的, 只能查清单里直接写出的地址; 主机名解析留给真正取用时.
+        try:
+            _URI_EGRESS.ensure_allowed_static(absolute)
+        except EgressRejected as exc:
+            raise SourceError(FailureReason.NO_USABLE_METADATA, detail="播放列表 URI 指向内网") from exc
         return absolute
     base = urlparse(base_url)
     if (parsed.scheme, parsed.netloc.casefold()) != (base.scheme, base.netloc.casefold()):

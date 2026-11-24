@@ -142,6 +142,53 @@ class TestAddress:
         assert calls == []
 
 
+class TestStaticAddress:
+    """同步判定只认字面地址: 播放列表改写等回调无法等待 DNS, 靠这条路径挡内网字面量."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1/a.jpg",
+            "http://10.1.2.3/a.jpg",
+            "http://192.168.1.1/a.jpg",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://[::1]/a.jpg",
+            "http://[::ffff:127.0.0.1]/a.jpg",
+            "http://2130706433/a.jpg",
+            "http://0177.0.0.1/a.jpg",
+            "http://127.1/a.jpg",
+            "http://0x7f.1/a.jpg",
+        ],
+    )
+    def test_rejects_internal_literal(self, url: str):
+        with pytest.raises(EgressRejected):
+            EgressPolicy().ensure_allowed_static(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        ["http://8.8.8.8/a.jpg", "http://cdn.example/seg.ts", "https://cdn.example:8443/seg.ts"],
+    )
+    def test_allows_public_literal_and_hostname(self, url: str):
+        EgressPolicy().ensure_allowed_static(url)
+
+    @pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://127.0.0.1/a.jpg", "data:text/plain,x", ""])
+    def test_rejects_non_http(self, url: str):
+        with pytest.raises(RequestError):
+            EgressPolicy().ensure_allowed_static(url)
+
+    def test_allow_private_passes_internal(self):
+        EgressPolicy(allow_private=True).ensure_allowed_static("http://127.0.0.1/a.jpg")
+
+    def test_does_not_resolve(self, monkeypatch: pytest.MonkeyPatch):
+        """同步判定不发起解析: 否则改写清单时会阻塞事件循环."""
+
+        async def _resolve(*_args: object, **_kwargs: object) -> set[str]:
+            raise AssertionError("同步判定不得解析主机名")
+
+        monkeypatch.setattr("amane.net.egress.resolve_addresses", _resolve)
+        EgressPolicy().ensure_allowed_static("http://cdn.example/seg.ts")
+
+
 class TestInternalAddress:
     @pytest.mark.parametrize(
         ("address", "expected"),

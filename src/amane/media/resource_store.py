@@ -213,7 +213,7 @@ class ResourceStore:
         # 上游改派占位图时跳过, 不占用 dest 也不写记录.
         final_url = await client.resolve_final_url(url, egress=egress)
         if _is_placeholder_url(final_url):
-            logger.warning("resource is upstream placeholder", url=redact_url(url), final_url=final_url)
+            logger.warning("resource is upstream placeholder", url=redact_url(url), final_url=redact_url(final_url))
             return None
 
         dest = self._compute_path(url)
@@ -255,8 +255,19 @@ class ResourceStore:
 
         return dest
 
-    async def resolve_source(self, url: str, client: WebClient) -> ResolvedSource | None:
-        """处理入口的源解析: 内部 URL 定位既有 Resource, 外部仅接受 http(s), 其余返回 None."""
+    async def resolve_source(
+        self,
+        url: str,
+        client: WebClient,
+        *,
+        egress: EgressPolicy | None = None,
+        max_bytes: int | None = None,
+        image_only: bool = False,
+    ) -> ResolvedSource | None:
+        """处理入口的源解析: 内部 URL 定位既有 Resource, 外部仅接受 http(s), 其余返回 None.
+
+        ``egress`` / ``max_bytes`` / ``image_only`` 只作用于外部下载, 由调用方按来源可信度给出.
+        """
         internal = internal_url_hash(url)
         if internal is not None:
             found = await self.get_by_url_hash(internal)
@@ -266,7 +277,7 @@ class ResourceStore:
 
         if not url.startswith(("http://", "https://")):
             return None
-        path = await self.acquire(url, client)
+        path = await self.acquire(url, client, egress=egress, max_bytes=max_bytes, image_only=image_only)
         if path is None:
             return None
         return ResolvedSource(locator=url, path=path)

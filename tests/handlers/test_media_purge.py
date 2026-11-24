@@ -117,3 +117,72 @@ class TestMediaPurge:
         assert result.result.pruned_dirs >= 2
         assert not nested.exists()
         assert root.exists()
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_refuses_paths_outside_the_library_roots(self, repo: Repository, tmp_path: Path):
+        """索引里的路径落在库根之外 (符号链接解析到别处、库路径被改过) 时拒删, 条目保留."""
+        library, metadata_id, _ = await _seed(repo, tmp_path / "p6", number="AD-6", name="AD-6.mp4")
+        assert library.id is not None
+        outside = tmp_path / "outside" / "AD-6.mp4"
+        outside.parent.mkdir(parents=True)
+        outside.write_bytes(b"x" * 16)
+        media = await repo.list_media_files(library_id=library.id, limit=None)
+        assert media and media[0].id is not None
+        await repo.update_media_file(media[0].id, path=str(outside))
+
+        handler = MediaPurgeHandler(repo, HotSettings())
+        result = await handler.handle(MediaPurgePayload(library_id=library.id, metadata_ids=[metadata_id]))
+
+        assert result.success is False
+        assert result.result is not None
+        assert (result.result.refused, result.result.files_deleted, result.result.metadata_deleted) == (1, 0, 0)
+        assert outside.exists()
+        assert await repo.get_metadata(metadata_id) is not None
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_keeps_entry_when_another_library_references_it(self, repo: Repository, tmp_path: Path):
+        """别的库还有文件引用同一条目时不删条目: 级联删除会把那个库的索引行重置成待刮削."""
+        library, metadata_id, path = await _seed(repo, tmp_path / "p7", number="AD-7", name="AD-7.mp4")
+        assert library.id is not None
+        other = await repo.create_library(name="lib-other", path=str(tmp_path / "p7b"))
+        assert other.id is not None
+        twin = tmp_path / "p7b" / "AD-7.strm"
+        twin.parent.mkdir(parents=True)
+        twin.write_bytes(b"x" * 8)
+        twin_media = await repo.create_media_file(library_id=other.id, path=str(twin))
+        assert twin_media.id is not None
+        await repo.update_media_file(twin_media.id, metadata_id=metadata_id)
+
+        handler = MediaPurgeHandler(repo, HotSettings())
+        result = await handler.handle(MediaPurgePayload(library_id=library.id, metadata_ids=[metadata_id]))
+
+        assert result.success is True
+        assert result.result is not None
+        assert (result.result.files_deleted, result.result.metadata_deleted) == (1, 0)
+        assert not path.exists()
+        assert await repo.get_metadata(metadata_id) is not None
+        survivor = await repo.get_media_file(twin_media.id)
+        assert survivor is not None and survivor.status is not None
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_keeps_source_dirs_when_asked(self, repo: Repository, tmp_path: Path):
+        """``keep_source_dirs`` 打开时不剪空目录."""
+        root = tmp_path / "p8"
+        nested = root / "演员" / "AD-8"
+        nested.mkdir(parents=True)
+        library = await repo.create_library(name="lib-ad8", path=str(root), keep_source_dirs=True)
+        assert library.id is not None
+        path = nested / "AD-8.mp4"
+        path.write_bytes(b"x" * 32)
+        media = await repo.create_media_file(library_id=library.id, path=str(path))
+        assert media.id is not None
+        metadata = await repo.upsert_metadata(number="AD-8", title="示例")
+        assert metadata.id is not None
+        await repo.update_media_file(media.id, metadata_id=metadata.id)
+
+        handler = MediaPurgeHandler(repo, HotSettings())
+        result = await handler.handle(MediaPurgePayload(library_id=library.id, metadata_ids=[metadata.id]))
+
+        assert result.result is not None
+        assert result.result.pruned_dirs == 0
+        assert nested.exists()

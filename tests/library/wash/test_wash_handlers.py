@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.config.manager import HotSettings, WashConfig
-from amane.db.models import MediaFileStatus, TaskType, WashRecordKind, WashRecordState
+from amane.db.models import MediaFileStatus, TaskType, WashChoiceAction, WashRecordKind, WashRecordState
 from amane.handlers._common import LibraryTaskLocks
 from amane.handlers.models import WashApplyPayload, WashScanPayload
 from amane.handlers.wash import WashApplyHandler, WashScanHandler
@@ -276,7 +276,7 @@ async def test_purge_takes_the_library_lock(wash_lib: WashLibrary) -> None:
     records = await washed(wash_lib, LibraryTaskLocks())
     taken: list[int] = []
 
-    async def lock_for(library_id: int) -> asyncio.Lock:
+    async def lock_for(library_id: int | None) -> asyncio.Lock:
         taken.append(library_id)
         return asyncio.Lock()
 
@@ -339,3 +339,41 @@ async def test_scan_leaves_close_sizes_to_the_operator(wash_lib: WashLibrary) ->
     assert result.result is not None
     assert (result.result.groups, result.result.auto_groups) == (1, 0)
     assert result.followups == []
+
+
+class TestChoiceCleanupScope:
+    """扫描只能清自己范围内的显式决定: 局部扫描不能删别的库的「都留着」."""
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_library_scan_keeps_other_libraries_choices(self, repo, wash_lib):
+        await seed_library(wash_lib)
+        await repo.set_wash_choice("lib2:XYZ-999", WashChoiceAction.IGNORE)
+        assert wash_lib.library.id == 1
+
+        handler = WashScanHandler(repo, hot())
+        await handler.handle(WashScanPayload(library_id=wash_lib.library.id))
+
+        choices = await repo.list_wash_choices()
+        assert "lib2:XYZ-999" in choices
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_library_scan_drops_its_own_stale_choices(self, repo, wash_lib):
+        await seed_library(wash_lib)
+        await repo.set_wash_choice("lib1:GONE-001", WashChoiceAction.KEEP)
+
+        handler = WashScanHandler(repo, hot())
+        await handler.handle(WashScanPayload(library_id=wash_lib.library.id))
+
+        assert await repo.list_wash_choices() == {}
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_one_sided_scan_keeps_every_choice(self, repo, wash_lib):
+        """只扫一侧 (local) 时分组键里没有实体类型, 无从判断谁过期, 一律不动."""
+        await seed_library(wash_lib)
+        await repo.set_wash_choice("lib1:GONE-001", WashChoiceAction.KEEP)
+        await repo.set_wash_choice("lib2:XYZ-999", WashChoiceAction.IGNORE)
+
+        handler = WashScanHandler(repo, hot())
+        await handler.handle(WashScanPayload(library_id=wash_lib.library.id, kind="local"))
+
+        assert set(await repo.list_wash_choices()) == {"lib1:GONE-001", "lib2:XYZ-999"}

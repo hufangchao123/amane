@@ -2,11 +2,14 @@
 
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
+from amane.api.middleware import API_TOKEN_COOKIE
 from amane.api.routes.ws import router
 from amane.events import Event, EventBus, EventType
 
@@ -127,6 +130,50 @@ class TestWebSocketEndpoint:
         with client.websocket_connect("/ws"):
             assert event_bus.connection_count == initial_count + 1
         assert event_bus.connection_count == initial_count
+
+
+def _token_app(event_bus: EventBus, token: str) -> FastAPI:
+    """带 API token 的最小应用: 只验证握手期的 cookie 校验."""
+    runtime = SimpleNamespace(
+        api_token=token,
+        config=SimpleNamespace(cold=SimpleNamespace(trusted_origins=[])),
+        event_bus=event_bus,
+    )
+    app = FastAPI()
+    app.include_router(router)
+    app.state.runtime = runtime
+    return app
+
+
+class TestWebSocketToken:
+    """握手用 cookie 里的 token 认证: 浏览器取出的值类型是 str, 比较前必须先编码."""
+
+    @pytest.fixture
+    def event_bus(self) -> EventBus:
+        return EventBus()
+
+    def test_correct_token_connects(self, event_bus):
+        app = _token_app(event_bus, "s3cret")
+        with TestClient(app, cookies={API_TOKEN_COOKIE: "s3cret"}).websocket_connect("/ws"):
+            assert event_bus.connection_count == 1
+        assert event_bus.connection_count == 0
+
+    def test_wrong_token_closes(self, event_bus):
+        app = _token_app(event_bus, "s3cret")
+        with (
+            pytest.raises(WebSocketDisconnect) as excinfo,
+            TestClient(app, cookies={API_TOKEN_COOKIE: "guess"}).websocket_connect("/ws"),
+        ):
+            pass
+        assert excinfo.value.code == 1008
+        assert event_bus.connection_count == 0
+
+    def test_missing_token_closes(self, event_bus):
+        app = _token_app(event_bus, "s3cret")
+        with pytest.raises(WebSocketDisconnect) as excinfo, TestClient(app).websocket_connect("/ws"):
+            pass
+        assert excinfo.value.code == 1008
+        assert event_bus.connection_count == 0
 
 
 class TestWorkerEventBroadcast:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -147,3 +148,134 @@ async def test_delete_schedule_requires_approval(schedule_deps: AgentDeps) -> No
     )
     assert deleted == TOOL_OK
     assert await schedule_deps.repo.get_schedule(schedule.id) is None
+
+
+@pytest.mark.asyncio
+async def test_create_schedule_wash_purge_requires_approval(schedule_deps: AgentDeps) -> None:
+    """回收站真删的例行任务不能由助理直接立: 到点就会删除文件, 与提交一次洗版同等代价."""
+    with pytest.raises(ApprovalRequired) as exc:
+        await _tool_fn("create_schedule")(
+            ToolCallContext(schedule_deps, tool_call_id="tc-purge"),
+            cron="0 4 * * *",
+            submission={"type": "wash_purge"},
+        )
+    meta = exc.value.metadata or {}
+    assert (meta["tool"], meta["reason"]) == ("create_schedule", "destructive")
+    assert meta["extra"] == {"type": "wash_purge", "cron": "0 4 * * *"}
+    assert await schedule_deps.repo.list_schedules() == []
+
+    created = await _tool_fn("create_schedule")(
+        ToolCallContext(schedule_deps, tool_call_id="tc-purge", tool_call_approved=True),
+        cron="0 4 * * *",
+        submission={"type": "wash_purge"},
+    )
+    stored = await schedule_deps.repo.get_schedule(int(created["schedule_id"]))
+    assert stored is not None
+    assert stored.task_type == RoutineType.WASH_PURGE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("armed", "needs_approval"), [(None, True), (True, True), (False, False)])
+async def test_create_schedule_wash_scan_follows_cascade(
+    schedule_deps: AgentDeps, armed: bool | None, needs_approval: bool
+) -> None:
+    """洗版扫描的例行任务在自动执行打开时到点会真删; 关闭时它只是报表."""
+    deps = replace(schedule_deps, wash_auto_execute=armed)
+    if needs_approval:
+        with pytest.raises(ApprovalRequired) as exc:
+            await _tool_fn("create_schedule")(
+                ToolCallContext(deps, tool_call_id="tc-scan"), cron="0 5 * * *", submission={"type": "wash_scan"}
+            )
+        meta = exc.value.metadata or {}
+        assert (meta["tool"], meta["reason"]) == ("create_schedule", "destructive")
+        assert "级联" in meta["sql"]
+
+    created = await _tool_fn("create_schedule")(
+        ToolCallContext(deps, tool_call_id="tc-scan", tool_call_approved=True),
+        cron="0 5 * * *",
+        submission={"type": "wash_scan"},
+    )
+    stored = await deps.repo.get_schedule(int(created["schedule_id"]))
+    assert stored is not None
+    assert stored.task_type == RoutineType.WASH_SCAN
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("routine", [RoutineType.WASH_PURGE, RoutineType.WASH_SCAN])
+async def test_trigger_schedule_destructive_routine_requires_approval(
+    schedule_deps: AgentDeps, routine: RoutineType
+) -> None:
+    """立即触发销毁类例行任务与提交一次删除同等代价, 不能借定时任务的壳绕开提交面审批."""
+    schedule = await schedule_deps.repo.create_schedule(
+        cron="0 4 * * *", task_type=routine, payload={"type": routine.value}
+    )
+    assert schedule.id is not None
+    with pytest.raises(ApprovalRequired) as exc:
+        await _tool_fn("trigger_schedule")(
+            ToolCallContext(schedule_deps, tool_call_id="tc-trigger"), schedule_id=schedule.id
+        )
+    meta = exc.value.metadata or {}
+    assert (meta["tool"], meta["reason"]) == ("trigger_schedule", "destructive")
+    assert meta["extra"] == {"schedule_id": schedule.id, "type": routine.value}
+
+    triggered = await _tool_fn("trigger_schedule")(
+        ToolCallContext(schedule_deps, tool_call_id="tc-trigger", tool_call_approved=True), schedule_id=schedule.id
+    )
+    assert triggered == TOOL_OK
+
+
+@pytest.mark.asyncio
+async def test_trigger_schedule_wash_scan_without_cascade_runs_without_approval(schedule_deps: AgentDeps) -> None:
+    deps = replace(schedule_deps, wash_auto_execute=False)
+    schedule = await schedule_deps.repo.create_schedule(
+        cron="0 5 * * *", task_type=RoutineType.WASH_SCAN, payload={"type": "wash_scan"}
+    )
+    assert schedule.id is not None
+    triggered = await _tool_fn("trigger_schedule")(ToolCallContext(deps), schedule_id=schedule.id)
+    assert triggered == TOOL_OK
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_enabling_wash_purge_requires_approval(schedule_deps: AgentDeps) -> None:
+    """把暂停中的销毁类例行任务重新启用等于重新武装; 改名与改表达式不新增删除能力."""
+    schedule = await schedule_deps.repo.create_schedule(
+        cron="0 4 * * *", task_type=RoutineType.WASH_PURGE, payload={"type": "wash_purge"}, enabled=False
+    )
+    assert schedule.id is not None
+
+    renamed = await _tool_fn("update_schedule")(
+        ToolCallContext(schedule_deps), schedule_id=schedule.id, patch=AgentScheduleUpdate(name="purge")
+    )
+    assert renamed == TOOL_OK
+
+    with pytest.raises(ApprovalRequired) as exc:
+        await _tool_fn("update_schedule")(
+            ToolCallContext(schedule_deps, tool_call_id="tc-enable"),
+            schedule_id=schedule.id,
+            patch=AgentScheduleUpdate(enabled=True),
+        )
+    meta = exc.value.metadata or {}
+    assert (meta["tool"], meta["reason"]) == ("update_schedule", "destructive")
+    assert meta["extra"] == {"schedule_id": schedule.id, "type": "wash_purge"}
+
+    enabled = await _tool_fn("update_schedule")(
+        ToolCallContext(schedule_deps, tool_call_id="tc-enable", tool_call_approved=True),
+        schedule_id=schedule.id,
+        patch=AgentScheduleUpdate(enabled=True),
+    )
+    assert enabled == TOOL_OK
+    stored = await schedule_deps.repo.get_schedule(schedule.id)
+    assert stored is not None and stored.enabled is True
+
+
+@pytest.mark.asyncio
+async def test_update_schedule_enabling_cleanup_needs_no_approval(schedule_deps: AgentDeps) -> None:
+    """不删文件的例行类型照旧免审批启用."""
+    schedule = await schedule_deps.repo.create_schedule(
+        cron="0 3 * * *", task_type=RoutineType.CLEANUP, payload={"type": "cleanup"}, enabled=False
+    )
+    assert schedule.id is not None
+    enabled = await _tool_fn("update_schedule")(
+        ToolCallContext(schedule_deps), schedule_id=schedule.id, patch=AgentScheduleUpdate(enabled=True)
+    )
+    assert enabled == TOOL_OK

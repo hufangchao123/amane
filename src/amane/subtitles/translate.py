@@ -24,6 +24,12 @@ BATCH_SIZE = 40
 
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.MULTILINE)
 
+#: 思维链模型会在正文前吐 ``<think…>…</think…>``, 不剥掉就会当成译文写进字幕.
+#: 三种写法都见过: 正常闭合、缺开头标签的右尖括号、只有开标签没有闭合 —— 逐段清理.
+_THINK_BLOCK = re.compile(r"<think\b[^>]*>.*?</think\s*>", re.DOTALL | re.IGNORECASE)
+_THINK_TAIL = re.compile(r"^.*</think\s*>", re.DOTALL | re.IGNORECASE)
+_THINK_TAG = re.compile(r"</?think\b[^>]*>?", re.IGNORECASE)
+
 _INSTRUCTIONS = """You translate Japanese adult-video subtitles into Simplified Chinese.
 
 Rules:
@@ -65,9 +71,18 @@ class TranslationOutcome:
         return self.total_batches > 0 and self.request_failures == self.total_batches
 
 
+def _strip_thinking(text: str) -> str:
+    """去掉思维链片段, 只留正文."""
+    stripped = _THINK_BLOCK.sub("", text)
+    if _THINK_TAIL.match(stripped):
+        stripped = _THINK_TAIL.sub("", stripped, count=1)
+    return _THINK_TAG.sub("", stripped)
+
+
 def parse_lines(text: str) -> list[str]:
-    """从模型输出里取出行数组; 兼容被包在代码块里的 JSON."""
-    cleaned = _FENCE.sub("", text).strip()
+    """从模型输出里取出行数组; 兼容思维链前缀与被包在代码块里的 JSON."""
+    cleaned = _strip_thinking(text)
+    cleaned = _FENCE.sub("", cleaned).strip()
     try:
         parsed = json.loads(cleaned)
     except ValueError:
@@ -118,9 +133,12 @@ async def translate_lines(
             request_failures += 1
             continue
         if len(got) != len(batch):
+            # 行数对不上时不能按位置硬拼: 模型中途漏一行, 后面每一句都会错位到上一句的时间轴,
+            # 用户看到的是一份「每句都差一句」的字幕. 这一批整体回退原文.
             logger.warning("subtitle translate line count off", expected=len(batch), got=len(got))
             failed += 1
-            got = [*got, *batch[len(got) :]][: len(batch)]
+            translated.extend(batch)
+            continue
         translated.extend(text.strip() or original for text, original in zip(got, batch, strict=True))
     return TranslationOutcome(
         lines=translated,

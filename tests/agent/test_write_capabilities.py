@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -545,3 +546,115 @@ async def test_write_tools_declared_up_front(write_deps: AgentDeps, api_type: Ap
     assert "load_capability" not in names
     assert _write_tool_names() <= names
     assert {"sql_explore", "sql_deliver", "inspect_result"} <= names
+
+
+async def _failed_task(deps: AgentDeps, task_type: TaskType) -> int:
+    """造一条已失败的任务: 重跑只对失败任务开放, 否则测的是另一条分支."""
+    task = await deps.repo.create_task(task_type=task_type, payload={})
+    assert task.id is not None
+    assert await deps.repo.fail_queued_tasks(error="boom", task_ids=[task.id]) == 1
+    return task.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "task_type",
+    [
+        TaskType.DELETE,
+        TaskType.MEDIA_PURGE,
+        TaskType.WASH_APPLY,
+        TaskType.ORGANIZE,
+        TaskType.SCRAPE_TRANSFER,
+        TaskType.CLEANUP,
+        # 提交面之外的类型也不该借重跑进来
+        TaskType.SEMANTIC_INDEX,
+        TaskType.ACTOR_PUSH,
+        TaskType.SUBTITLE_GENERATE,
+    ],
+)
+async def test_task_retry_rejects_file_moving_types(write_deps: AgentDeps, task_type: TaskType) -> None:
+    """重跑绕开了提交面的审批, 会移动或删除文件的类型因此不在重跑白名单里."""
+    task_id = await _failed_task(write_deps, task_type)
+    out = await tool_fn(build_task_ops_capability(), "retry_task")(ToolCallContext(write_deps), task_id=task_id)
+    assert "不可重跑" in out["error"]
+    # 拒绝时不留下新任务
+    assert [task.id for task in await write_deps.repo.list_tasks(task_types=[task_type])] == [task_id]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "task_type",
+    [
+        TaskType.REFRESH,
+        TaskType.MEDIA_REFRESH,
+        TaskType.SCAN_INVALID,
+        TaskType.SCRAPE,
+        TaskType.RESCRAPE,
+        TaskType.ACTOR_SCRAPE,
+        TaskType.SUBTITLE_AUDIT,
+        TaskType.AVATAR_CHECK,
+    ],
+)
+async def test_task_retry_accepts_readonly_and_rerunnable_types(write_deps: AgentDeps, task_type: TaskType) -> None:
+    """只读与可重入的类型照旧免审批重跑."""
+    task_id = await _failed_task(write_deps, task_type)
+    out = await tool_fn(build_task_ops_capability(), "retry_task")(ToolCallContext(write_deps), task_id=task_id)
+    retried = await write_deps.repo.get_task(int(out["task_id"]))
+    assert retried is not None
+    assert retried.type is task_type
+    assert retried.status == TaskStatus.QUEUED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("armed", [None, True])
+async def test_task_retry_wash_scan_needs_approval_when_cascade_may_fire(
+    write_deps: AgentDeps, armed: bool | None
+) -> None:
+    """洗版扫描在自动执行打开时会级联成真删; 拿不到配置时按已打开处理."""
+    deps = replace(write_deps, wash_auto_execute=armed)
+    task_id = await _failed_task(write_deps, TaskType.WASH_SCAN)
+    with pytest.raises(ApprovalRequired) as exc:
+        await tool_fn(build_task_ops_capability(), "retry_task")(
+            ToolCallContext(deps, tool_call_id="tc-retry"), task_id=task_id
+        )
+    meta = exc.value.metadata or {}
+    assert (meta["tool"], meta["reason"]) == ("retry_task", "destructive")
+    assert meta["extra"] == {"task_id": task_id, "type": "wash_scan"}
+
+    approved = await tool_fn(build_task_ops_capability(), "retry_task")(
+        ToolCallContext(deps, tool_call_id="tc-retry", tool_call_approved=True), task_id=task_id
+    )
+    retried = await write_deps.repo.get_task(int(approved["task_id"]))
+    assert retried is not None
+    assert retried.type is TaskType.WASH_SCAN
+
+
+@pytest.mark.asyncio
+async def test_task_retry_wash_scan_without_cascade_runs_without_approval(write_deps: AgentDeps) -> None:
+    """自动执行关闭时扫描确实只读, 不给审批也是安全的."""
+    deps = replace(write_deps, wash_auto_execute=False)
+    task_id = await _failed_task(write_deps, TaskType.WASH_SCAN)
+    out = await tool_fn(build_task_ops_capability(), "retry_task")(ToolCallContext(deps), task_id=task_id)
+    assert out["task_id"] > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("armed", "needs_approval"), [(None, True), (True, True), (False, False)])
+async def test_submit_wash_scan_needs_approval_when_cascade_may_fire(
+    write_deps: AgentDeps, armed: bool | None, needs_approval: bool
+) -> None:
+    """提交扫描等于间接取得销毁能力只因为级联; 自动执行关闭时扫描只是统计."""
+    deps = replace(write_deps, wash_auto_execute=armed)
+    if needs_approval:
+        with pytest.raises(ApprovalRequired) as exc:
+            await tool_fn(build_task_ops_capability(), "submit_task")(
+                ToolCallContext(deps, tool_call_id="tc-scan"), submission={"type": "wash_scan"}
+            )
+        meta = exc.value.metadata or {}
+        assert (meta["tool"], meta["reason"]) == ("submit_task", "destructive")
+        assert "级联" in meta["sql"]
+
+    submitted = await tool_fn(build_task_ops_capability(), "submit_task")(
+        ToolCallContext(deps, tool_call_id="tc-scan", tool_call_approved=True), submission={"type": "wash_scan"}
+    )
+    assert submitted["task_id"] > 0

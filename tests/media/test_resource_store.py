@@ -10,6 +10,7 @@ from amane.media import ResourceStore, UpscaleOutcome, derived_locator
 from amane.media.resource_store import RESOURCE_URL_PREFIX, _is_placeholder_url, internal_url_hash
 from amane.net.egress import EgressPolicy
 from amane.net.http import RateLimiters, WebClient
+from tests.helpers import LogRecorder
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -385,6 +386,26 @@ class TestResolveSource:
         assert session.methods[0] == "HEAD"
 
     @pytest.mark.asyncio
+    async def test_external_forwards_egress(self, resource_store: ResourceStore, monkeypatch: pytest.MonkeyPatch):
+        """外部源解析把策略与上限带到下载通道: 裁切入口只经这一个方法, 漏传等于限制失效."""
+        policy = EgressPolicy()
+        seen: dict[str, object] = {}
+
+        async def _download(_url: str, _dest: Path, **kwargs: object) -> bool:
+            seen.update(kwargs)
+            return False
+
+        client = AsyncMock()
+        client.resolve_final_url = AsyncMock(return_value=_REQUEST)
+        client.download = AsyncMock(side_effect=_download)
+
+        assert await resource_store.resolve_source(_REQUEST, client, egress=policy, max_bytes=1024) is None
+
+        client.resolve_final_url.assert_awaited_once_with(_REQUEST, egress=policy)
+        assert seen["egress"] is policy
+        assert seen["max_bytes"] == 1024
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("url", ["data:image/png;base64,AAAA", "ftp://host/img.jpg", "img.jpg", ""])
     async def test_rejects_other_schemes_without_request(
         self, resource_store: ResourceStore, monkeypatch: pytest.MonkeyPatch, url: str
@@ -556,6 +577,27 @@ class TestPlaceholderRedirect:
         assert await resource_store.acquire(_REQUEST, client) is None
         assert session.methods == ["HEAD"]  # 只探测, 不下载
         assert await resource_store.get_by_url(_REQUEST) is None
+
+    @pytest.mark.asyncio
+    async def test_placeholder_warning_hides_signed_query(
+        self, resource_store: ResourceStore, monkeypatch: pytest.MonkeyPatch
+    ):
+        """占位图告警要能定位站点, 但不能带回上游签名参数."""
+        recorder = LogRecorder()
+        monkeypatch.setattr("amane.media.resource_store.logger", recorder)
+        final_url = "https://imgsrc.dmm.com/pics/mono/movie/n/now_printing/now_printing.jpg?token=SIGNED-SECRET"
+        client, _session = _stub_client(monkeypatch, final_url=final_url, content=b"placeholder-bytes")
+
+        assert await resource_store.acquire(_REQUEST, client) is None
+
+        text = recorder.text()
+        assert "SIGNED-SECRET" not in text
+        fields = [fields for _level, event, fields in recorder.records if event == "resource is upstream placeholder"]
+        assert len(fields) == 1, text
+        assert (
+            fields[0]["final_url"] == "https://imgsrc.dmm.com/pics/mono/movie/n/now_printing/now_printing.jpg?token=***"
+        )
+        assert fields[0]["url"] == _REQUEST
 
     @pytest.mark.asyncio
     async def test_acquire_records_downloaded_size(

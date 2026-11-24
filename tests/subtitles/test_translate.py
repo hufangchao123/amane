@@ -59,13 +59,23 @@ class TestTranslateLines:
         assert outcome.complete is True
 
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_missing_lines_fall_back_to_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """模型少回一行时按原文补齐, 不让整片字幕错位."""
+    async def test_missing_lines_drop_whole_batch(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """模型少回一行时整批回退原文: 按位置补齐会让后面每一句都错位到上一句的时间轴."""
         _patch(monkeypatch, [json.dumps(["你好"], ensure_ascii=False)])
 
         outcome = await translate_lines(_FakeModel(), ["こんにちは", "さようなら"])
-        assert outcome.lines == ["你好", "さようなら"]
+        assert outcome.lines == ["こんにちは", "さようなら"]
         assert outcome.failed_batches == 1
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_thinking_block_is_stripped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """思维链模型的 ``<think…>`` 前缀不能当成译文写进字幕."""
+        answer = "<think\n先看句子语气\n</think\n>" + json.dumps(["你好"], ensure_ascii=False)
+        _patch(monkeypatch, [answer])
+
+        outcome = await translate_lines(_FakeModel(), ["こんにちは"])
+        assert outcome.lines == ["你好"]
+        assert outcome.complete is True
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_model_error_keeps_source(self, monkeypatch: pytest.MonkeyPatch) -> None:

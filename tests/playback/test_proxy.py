@@ -21,6 +21,7 @@ from amane.playback.proxy import (
     GLOBAL_CONCURRENCY,
     HLS_PART_CACHE_CONTROL,
     HLS_TEXT_CACHE_CONTROL,
+    PLAYLIST_MAX_BYTES,
     ProxyAllow,
     StreamClient,
     _filter_response_headers,
@@ -33,7 +34,7 @@ from amane.playback.proxy import (
     neutralized_hls_part_type,
 )
 from amane.plugins.api import UpstreamPlaybackTarget
-from tests.helpers import HTTP_STUB_POLL_INTERVAL
+from tests.helpers import HTTP_STUB_POLL_INTERVAL, LogRecorder
 
 
 @pytest.mark.parametrize(
@@ -280,6 +281,42 @@ async def test_proxy_rejects_redirect_playlist_and_mismatch() -> None:
         redirect.shutdown()
         playlist.shutdown()
         mismatch.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_proxy_rejects_oversized_playlist() -> None:
+    """清单超过上限时边读边拒: 上游给出的长度不可信, 不整份读进内存再判."""
+    line = b"#EXTINF:1.0,\nseg.ts\n"
+    body = b"#EXTM3U\n" + line * (PLAYLIST_MAX_BYTES // len(line) + 8)
+    server, _captured, _cancelled = _serve(media_type="application/vnd.apple.mpegurl", body=body)
+    stream = StreamClient()
+    try:
+        target = UpstreamPlaybackTarget(url=_origin(server), headers={"Authorization": "Bearer secret"})
+
+        @asynccontextmanager
+        async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+            yield
+            await stream.aclose()
+
+        app = FastAPI(lifespan=lifespan)
+
+        @app.api_route("/p", methods=["GET", "HEAD"])
+        async def play(request: Request):
+            return await stream.proxy(
+                request,
+                source_id="acme.play",
+                target=target,
+                rewrite_playlist=lambda text: text,
+            )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/p")
+
+        assert resp.status_code == 502
+        assert resp.json()["detail"] == "播放列表过大"
+    finally:
+        server.shutdown()
 
 
 @pytest.mark.asyncio
@@ -752,3 +789,39 @@ async def test_proxy_cache_control_override() -> None:
             assert fallback.headers["content-type"] == "application/octet-stream"
     finally:
         server.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_upstream_failure_log_hides_signed_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """上游失败日志保留定位信息, 但不带回播放地址里的签名参数.
+
+    异常串本身可能带上游 URL, 与单独记录的 ``url`` 字段都要按同一判据脱敏.
+    """
+    recorder = LogRecorder()
+    monkeypatch.setattr("amane.playback.proxy.logger", recorder)
+    url = "http://cdn.example/video.mp4?token=SIGNED-SECRET"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError(f"连接被拒: {request.url}", request=request)
+
+    stream = StreamClient()
+    original = stream._client
+    stream._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(HTTPException) as failure:
+            await stream.fetch_bytes(source_id="acme.play", target=UpstreamPlaybackTarget(url=url))
+        assert failure.value.status_code == 502
+        assert failure.value.detail == "播放来源不可达"
+    finally:
+        await stream.aclose()
+        await original.aclose()
+
+    text = recorder.text()
+    assert "SIGNED-SECRET" not in text
+    fields = [fields for _level, event, fields in recorder.records if event == "playback upstream request failed"]
+    assert len(fields) == 1, text
+    assert fields[0]["source"] == "acme.play"
+    assert fields[0]["url"] == "http://cdn.example/video.mp4?token=***"
+    error = str(fields[0]["error"])
+    assert "SIGNED-SECRET" not in error
+    assert "http://cdn.example/video.mp4?token=***" in error

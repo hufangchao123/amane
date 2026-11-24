@@ -549,64 +549,6 @@ export const ActorScrapeSubmissionSchema = {
     title: 'ActorScrapeSubmission'
 } as const;
 
-export const ActorScrapingConfigSchema = {
-    properties: {
-        profile_sites: {
-            items: {
-                type: 'string',
-                enum: [
-                    'minnano',
-                    'javdb',
-                    'wikipedia',
-                    'theporndb',
-                    'avbase'
-                ]
-            },
-            type: 'array',
-            title: 'Profile Sites',
-            description: '资料来源顺序 (单源字段填空优先级); 仅演员资料来源',
-            'x-ordered': true
-        },
-        image_sites: {
-            items: {
-                type: 'string',
-                enum: [
-                    'gfriends'
-                ]
-            },
-            type: 'array',
-            title: 'Image Sites',
-            description: '头像来源顺序 (优先于资料来源附图); 仅演员头像来源',
-            'x-ordered': true
-        },
-        download_images: {
-            type: 'boolean',
-            title: 'Download Images',
-            default: true
-        },
-        auto_scrape: {
-            type: 'boolean',
-            title: 'Auto Scrape',
-            default: true
-        },
-        auto_push: {
-            type: 'boolean',
-            title: 'Auto Push',
-            description: '演员刮削成功后自动将该演员推送到媒体服务器',
-            default: false
-        },
-        gfriends_repo: {
-            type: 'string',
-            title: 'Gfriends Repo',
-            description: 'gFriends GitHub 仓库 URL',
-            default: 'https://github.com/gfriends/gfriends'
-        }
-    },
-    type: 'object',
-    title: 'ActorScrapingConfig',
-    description: '资料来源顺序填空, 头像来源优先.'
-} as const;
-
 export const ActorSortFieldSchema = {
     type: 'string',
     enum: [
@@ -852,102 +794,6 @@ export const AgentCancelResponseSchema = {
     title: 'AgentCancelResponse'
 } as const;
 
-export const AgentConfigSchema = {
-    properties: {
-        api_type: {
-            $ref: '#/components/schemas/ApiType',
-            default: 'response'
-        },
-        api_key: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Api Key'
-        },
-        base_url: {
-            type: 'string',
-            title: 'Base Url',
-            default: 'https://api.openai.com/v1'
-        },
-        model: {
-            type: 'string',
-            title: 'Model',
-            default: 'gpt-4o-mini'
-        },
-        thinking: {
-            anyOf: [
-                {
-                    $ref: '#/components/schemas/AgentThinkingMode'
-                },
-                {
-                    type: 'null'
-                }
-            ]
-        },
-        max_tokens: {
-            type: 'integer',
-            minimum: 1,
-            title: 'Max Tokens',
-            default: 128000
-        },
-        rate_limit: {
-            type: 'number',
-            maximum: 100,
-            minimum: 0.1,
-            title: 'Rate Limit',
-            default: 2
-        },
-        sql_timeout_ms: {
-            type: 'integer',
-            maximum: 60000,
-            minimum: 50,
-            title: 'Sql Timeout Ms',
-            default: 5000,
-            'x-hidden': true
-        },
-        result_cache_ttl_s: {
-            type: 'integer',
-            maximum: 86400,
-            minimum: 60,
-            title: 'Result Cache Ttl S',
-            default: 3600,
-            'x-hidden': true
-        },
-        result_cache_max_entries: {
-            type: 'integer',
-            maximum: 1000,
-            minimum: 1,
-            title: 'Result Cache Max Entries',
-            default: 64,
-            'x-hidden': true
-        },
-        history_ttl_s: {
-            type: 'integer',
-            maximum: 86400,
-            minimum: 60,
-            title: 'History Ttl S',
-            default: 3600,
-            'x-hidden': true
-        },
-        history_max_sessions: {
-            type: 'integer',
-            maximum: 500,
-            minimum: 1,
-            title: 'History Max Sessions',
-            default: 32,
-            'x-hidden': true
-        }
-    },
-    type: 'object',
-    title: 'AgentConfig',
-    description: '与 llm 翻译 section 分离: 凭据/模型/限速各自独立.'
-} as const;
-
 export const AgentSessionCreateRequestSchema = {
     properties: {
         title: {
@@ -1187,16 +1033,6 @@ export const AgentTraceResponseSchema = {
         'events'
     ],
     title: 'AgentTraceResponse'
-} as const;
-
-export const ApiTypeSchema = {
-    type: 'string',
-    enum: [
-        'chat',
-        'response',
-        'anthropic'
-    ],
-    title: 'ApiType'
 } as const;
 
 export const ApprovalsRowSchema = {
@@ -1557,43 +1393,6 @@ export const BrowserBackendReportResponseSchema = {
     description: '``selected`` 是当前生效的后端, 供界面标出「已选但不可用」这一种组合.'
 } as const;
 
-export const BrowserConfigSchema = {
-    properties: {
-        backend: {
-            $ref: '#/components/schemas/BrowserBackendName',
-            default: 'off'
-        },
-        bsk_path: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Bsk Path',
-            'x-path-type': 'file',
-            'x-widget': 'PathPicker'
-        },
-        timeout: {
-            type: 'integer',
-            maximum: 120000,
-            minimum: 5000,
-            title: 'Timeout',
-            default: 30000
-        },
-        solver_url: {
-            type: 'string',
-            pattern: '^https?://.+',
-            title: 'Solver Url',
-            default: 'http://127.0.0.1:8191'
-        }
-    },
-    type: 'object',
-    title: 'BrowserConfig'
-} as const;
-
 export const BrowserInstanceResponseSchema = {
     properties: {
         instance_id: {
@@ -1629,16 +1428,6 @@ export const BrowserInstanceResponseSchema = {
     ],
     title: 'BrowserInstanceResponse',
     description: 'bsk 已连接的浏览器实例; 只用于展示, 选择实例属于后续能力.'
-} as const;
-
-export const BrowserModeSchema = {
-    type: 'string',
-    enum: [
-        'off',
-        'auto',
-        'always'
-    ],
-    title: 'BrowserMode'
 } as const;
 
 export const CacheKindSchema = {
@@ -3350,743 +3139,6 @@ export const HealthResponseSchema = {
     title: 'HealthResponse'
 } as const;
 
-export const HotSettingsSchema = {
-    properties: {
-        scraping: {
-            $ref: '#/components/schemas/ScrapingConfig',
-            default: {
-                download_resources: [
-                    'thumb',
-                    'poster',
-                    'extrafanart'
-                ],
-                crop_poster: true,
-                poster_ratio: 0.7,
-                poster_crop_skip_ratio: 0.9,
-                jpeg_quality: 95,
-                content_routes: {
-                    amateur: [
-                        'mgstage',
-                        'dmm',
-                        'javdb',
-                        'javbus'
-                    ],
-                    censored: [
-                        'dmm',
-                        'javdb',
-                        'javbus',
-                        'official'
-                    ],
-                    chinese: [
-                        'iqqtv',
-                        'javdb',
-                        'airav',
-                        'freejavbt'
-                    ],
-                    fc2: [
-                        'javdb',
-                        'fc2ppvdb',
-                        'fc2',
-                        'freejavbt',
-                        'airav'
-                    ],
-                    hentai: [
-                        'getchu',
-                        'dmm',
-                        'javdb'
-                    ],
-                    uncensored: [
-                        'javdb',
-                        'javbus',
-                        'avsox',
-                        'freejavbt',
-                        '1pondo',
-                        'caribbeancom',
-                        '10musume',
-                        'pacopacomama',
-                        'muramura',
-                        'h4610',
-                        'c0930',
-                        'h0930',
-                        'heyzo'
-                    ],
-                    western: [
-                        'theporndb',
-                        'javdb',
-                        'freejavbt'
-                    ]
-                },
-                field_priority: {},
-                field_blacklist: {},
-                field_language: {
-                    actors: 'zh_cn',
-                    directors: 'zh_cn',
-                    plot: 'zh_cn',
-                    publisher: 'zh_cn',
-                    series: 'zh_cn',
-                    studio: 'zh_cn',
-                    tags: 'zh_cn',
-                    title: 'zh_cn'
-                },
-                site_config: {
-                    '10musume': {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    '1pondo': {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    airav: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    avbase: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    avsox: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    c0930: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    caribbeancom: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    dahlia: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    dmm: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    faleno: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    fc2: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    fc2club: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    fc2ppvdb: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    freejavbt: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    getchu: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    gfriends: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    giga: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    h0930: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    h4610: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    heyzo: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    iqqtv: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    jav321: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    javbus: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    javdb: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    javlibrary: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    kin8: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    mgstage: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    minnano: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    muramura: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    official: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    pacopacomama: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    prestige: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    r18dev: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    theporndb: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    wikipedia: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    },
-                    xcity: {
-                        cookie: {},
-                        languages: [
-                            'zh',
-                            'ja',
-                            'en'
-                        ],
-                        official_routes: {},
-                        rate_limit: 2,
-                        use_browser: 'auto',
-                        use_proxy: true
-                    }
-                }
-            }
-        },
-        media_server: {
-            $ref: '#/components/schemas/MediaServerConfig',
-            default: {
-                kind: 'jellyfin',
-                verify_tls: true,
-                auto_refresh: false
-            }
-        },
-        actor_scraping: {
-            $ref: '#/components/schemas/ActorScrapingConfig',
-            default: {
-                profile_sites: [
-                    'minnano',
-                    'javdb',
-                    'wikipedia',
-                    'theporndb',
-                    'avbase'
-                ],
-                image_sites: [
-                    'gfriends'
-                ],
-                download_images: true,
-                auto_scrape: true,
-                auto_push: false,
-                gfriends_repo: 'https://github.com/gfriends/gfriends'
-            }
-        },
-        agent: {
-            $ref: '#/components/schemas/AgentConfig',
-            default: {
-                api_type: 'response',
-                base_url: 'https://api.openai.com/v1',
-                model: 'gpt-4o-mini',
-                max_tokens: 128000,
-                rate_limit: 2,
-                sql_timeout_ms: 5000,
-                result_cache_ttl_s: 3600,
-                result_cache_max_entries: 64,
-                history_ttl_s: 3600,
-                history_max_sessions: 32
-            }
-        },
-        network: {
-            $ref: '#/components/schemas/NetworkConfig',
-            default: {
-                timeout: 10,
-                max_retries: 2,
-                max_clients: 50,
-                browser: {
-                    backend: 'off',
-                    solver_url: 'http://127.0.0.1:8191',
-                    timeout: 30000
-                },
-                chunked_threshold: 2097152,
-                chunk_size: 1048576,
-                concurrency: 10,
-                rate_limits: {},
-                default_rate_limit: 5
-            }
-        },
-        sr: {
-            $ref: '#/components/schemas/SrConfig',
-            default: {
-                enabled: false,
-                max_dim_threshold: 1200,
-                max_bytes_threshold: 2097152,
-                preset: 'waifu-photo-2x',
-                output_format: 'jpg',
-                tta: false
-            }
-        },
-        semantic: {
-            $ref: '#/components/schemas/SemanticConfig',
-            default: {
-                auto_maintain: false
-            }
-        },
-        watermark: {
-            $ref: '#/components/schemas/WatermarkConfig',
-            default: {
-                enabled: false,
-                scale: 0.08,
-                corners: {
-                    cracked: 'top_left',
-                    definition: 'top_left',
-                    leaked: 'top_left',
-                    subtitle: 'top_left',
-                    uncensored: 'top_left'
-                }
-            }
-        },
-        llm: {
-            $ref: '#/components/schemas/LLMConfig',
-            default: {
-                enabled: false,
-                translate_fields: [
-                    'title',
-                    'plot'
-                ],
-                field_prompts: {},
-                api_type: 'chat',
-                base_url: 'https://api.openai.com/v1',
-                model: '',
-                rate_limit: 2
-            }
-        },
-        r18: {
-            $ref: '#/components/schemas/R18Config',
-            default: {
-                db_name: 'r18dev',
-                read_user: 'r18dev_readonly',
-                read_password: 'r18dev_readonly',
-                read_timeout: 30,
-                psql_path: 'psql'
-            }
-        },
-        watcher: {
-            $ref: '#/components/schemas/WatcherConfig',
-            default: {
-                use_polling: false,
-                debounce_seconds: 3,
-                settle_seconds: 5,
-                media_extensions: [
-                    '.mp4',
-                    '.mkv',
-                    '.avi',
-                    '.wmv',
-                    '.flv',
-                    '.mov',
-                    '.ts',
-                    '.iso',
-                    '.strm'
-                ]
-            }
-        },
-        subtitles: {
-            $ref: '#/components/schemas/SubtitleFetchConfig',
-            default: {
-                enabled: false,
-                providers: [
-                    'subtitlecat',
-                    'avsubtitles'
-                ],
-                languages: [
-                    'zh-CN',
-                    'zh-TW'
-                ],
-                max_attempts: 3,
-                generation: {
-                    base_url: '',
-                    enabled: false,
-                    fallback_after_fetch: false,
-                    language: 'ja',
-                    max_file_minutes: 180,
-                    model: 'Systran/faster-whisper-medium',
-                    timeout_seconds: 1800,
-                    translate: true
-                }
-            }
-        },
-        wash: {
-            $ref: '#/components/schemas/WashConfig',
-            default: {
-                enabled: false,
-                local: true,
-                min_size_mb: 300,
-                prefer: [
-                    'quality'
-                ],
-                strm: true,
-                strm_prefer: 'path',
-                auto_on_ingest: false,
-                auto_execute: false,
-                auto_execute_min_gain_percent: 30,
-                keep_days: 30
-            }
-        },
-        notify: {
-            $ref: '#/components/schemas/NotifyConfig',
-            default: {
-                enabled: false,
-                kind: 'webhook',
-                url: '',
-                timeout_seconds: 10,
-                max_records: 50,
-                sections: [
-                    'queue',
-                    'types',
-                    'library',
-                    'wash'
-                ]
-            }
-        },
-        worker: {
-            $ref: '#/components/schemas/WorkerConfig',
-            default: {
-                concurrency: 10,
-                poll_interval: 2,
-                shutdown_timeout: 10
-            }
-        },
-        logging: {
-            $ref: '#/components/schemas/LoggingConfig',
-            default: {
-                level: 'INFO',
-                debug_capture: false
-            }
-        },
-        plugins: {
-            additionalProperties: {
-                $ref: '#/components/schemas/PluginConfig'
-            },
-            type: 'object',
-            title: 'Plugins',
-            'x-hidden': true
-        }
-    },
-    additionalProperties: false,
-    type: 'object',
-    title: 'HotSettings',
-    description: '运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败.'
-} as const;
-
 export const InterruptSchema = {
     properties: {
         id: {
@@ -4426,94 +3478,6 @@ export const InventorySummaryResponseSchema = {
 } as const;
 
 export const JsonValueSchema = {} as const;
-
-export const LLMConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        translate_fields: {
-            items: {
-                $ref: '#/components/schemas/MetadataField'
-            },
-            type: 'array',
-            title: 'Translate Fields'
-        },
-        system_prompt: {
-            anyOf: [
-                {
-                    type: 'string',
-                    maxLength: 2000
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'System Prompt',
-            'x-long': true
-        },
-        field_prompts: {
-            additionalProperties: {
-                type: 'string',
-                maxLength: 2000,
-                'x-long': true
-            },
-            propertyNames: {
-                $ref: '#/components/schemas/MetadataField'
-            },
-            type: 'object',
-            title: 'Field Prompts'
-        },
-        api_key: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Api Key'
-        },
-        api_type: {
-            $ref: '#/components/schemas/ApiType',
-            default: 'chat'
-        },
-        base_url: {
-            type: 'string',
-            title: 'Base Url',
-            default: 'https://api.openai.com/v1'
-        },
-        model: {
-            type: 'string',
-            title: 'Model',
-            default: ''
-        },
-        rate_limit: {
-            type: 'number',
-            maximum: 100,
-            minimum: 0.1,
-            title: 'Rate Limit',
-            default: 2
-        }
-    },
-    type: 'object',
-    title: 'LLMConfig',
-    description: '凭据放 Hot, 可在 UI 修改并热生效. 与 agent section 隔离.'
-} as const;
-
-export const LanguageSchema = {
-    type: 'string',
-    enum: [
-        'zh_cn',
-        'zh_tw',
-        'jp',
-        'en'
-    ],
-    title: 'Language'
-} as const;
 
 export const LibraryAutomationSchema = {
     type: 'string',
@@ -5467,66 +4431,6 @@ export const LinkModeSchema = {
     description: '整理后在 link_template 位置如何指向真实视频.'
 } as const;
 
-export const LoggingConfigSchema = {
-    properties: {
-        level: {
-            type: 'string',
-            enum: [
-                'DEBUG',
-                'INFO',
-                'WARNING',
-                'ERROR',
-                'CRITICAL'
-            ],
-            title: 'Level',
-            default: 'INFO'
-        },
-        debug_capture: {
-            type: 'boolean',
-            title: 'Debug Capture',
-            default: false
-        }
-    },
-    type: 'object',
-    title: 'LoggingConfig'
-} as const;
-
-export const ManufacturerSchema = {
-    type: 'string',
-    enum: [
-        'attackers',
-        'befree',
-        'bi',
-        'bibian',
-        'das',
-        'ebody',
-        'fitch',
-        'hajime_kikaku',
-        'honnaka',
-        'hunter',
-        'idea_pocket',
-        'kawaii',
-        'kirakira',
-        'madonna',
-        'miman',
-        'mko_labo',
-        'moodyz',
-        'muku',
-        'mvg',
-        'nanpa_japan',
-        'oppai',
-        'opera',
-        'premium_beauty',
-        'rookie',
-        's1',
-        'tameikegoro',
-        'tosatsu',
-        'v',
-        'wanz_factory'
-    ],
-    title: 'Manufacturer'
-} as const;
-
 export const MediaBatchDeleteRequestSchema = {
     properties: {
         ids: {
@@ -5955,60 +4859,6 @@ export const MediaRefreshSubmissionSchema = {
     ],
     title: 'MediaRefreshSubmission',
     description: '媒体库刷新: 目标服务器由 ``media_server`` 配置决定.'
-} as const;
-
-export const MediaServerConfigSchema = {
-    properties: {
-        kind: {
-            type: 'string',
-            enum: [
-                'emby',
-                'jellyfin'
-            ],
-            title: 'Kind',
-            description: '媒体服务器类型',
-            default: 'jellyfin'
-        },
-        url: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Url',
-            description: '服务器地址, 含协议、端口与可选子路径'
-        },
-        api_key: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Api Key',
-            description: '管理员 API Key'
-        },
-        verify_tls: {
-            type: 'boolean',
-            title: 'Verify Tls',
-            description: '校验 HTTPS 证书; 自签名证书可关闭',
-            default: true
-        },
-        auto_refresh: {
-            type: 'boolean',
-            title: 'Auto Refresh',
-            description: '整理落盘后自动让媒体服务器重扫媒体库',
-            default: false
-        }
-    },
-    type: 'object',
-    title: 'MediaServerConfig',
-    description: 'Emby / Jellyfin 人物推送; url 与 api_key 齐备才启用.'
 } as const;
 
 export const MediaSortFieldSchema = {
@@ -7266,84 +6116,6 @@ export const MoveModeSchema = {
     description: '整理时将源文件写入模板路径的方式.'
 } as const;
 
-export const NetworkConfigSchema = {
-    properties: {
-        proxy: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Proxy'
-        },
-        timeout: {
-            type: 'number',
-            maximum: 300,
-            minimum: 5,
-            title: 'Timeout',
-            default: 10
-        },
-        max_retries: {
-            type: 'integer',
-            maximum: 10,
-            minimum: 0,
-            title: 'Max Retries',
-            default: 2
-        },
-        max_clients: {
-            type: 'integer',
-            maximum: 500,
-            minimum: 5,
-            title: 'Max Clients',
-            default: 50,
-            'x-hidden': true
-        },
-        browser: {
-            $ref: '#/components/schemas/BrowserConfig'
-        },
-        chunked_threshold: {
-            type: 'integer',
-            maximum: 104857600,
-            minimum: 524288,
-            title: 'Chunked Threshold',
-            default: 2097152
-        },
-        chunk_size: {
-            type: 'integer',
-            maximum: 52428800,
-            minimum: 262144,
-            title: 'Chunk Size',
-            default: 1048576
-        },
-        concurrency: {
-            type: 'integer',
-            maximum: 50,
-            minimum: 1,
-            title: 'Concurrency',
-            default: 10
-        },
-        rate_limits: {
-            additionalProperties: {
-                type: 'number'
-            },
-            type: 'object',
-            title: 'Rate Limits'
-        },
-        default_rate_limit: {
-            type: 'number',
-            maximum: 100,
-            minimum: 0.1,
-            title: 'Default Rate Limit',
-            default: 5
-        }
-    },
-    type: 'object',
-    title: 'NetworkConfig'
-} as const;
-
 export const NfoLibraryOptionSchema = {
     properties: {
         library_id: {
@@ -7506,64 +6278,6 @@ export const NfoStatusResponseSchema = {
     type: 'object',
     title: 'NfoStatusResponse',
     description: '演员头像的库存情况; 待补条数由修补任务预演后才知道, 这里只报可用素材.'
-} as const;
-
-export const NotifyConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        kind: {
-            type: 'string',
-            enum: [
-                'webhook',
-                'bark',
-                'serverchan',
-                'telegram'
-            ],
-            title: 'Kind',
-            default: 'webhook'
-        },
-        url: {
-            type: 'string',
-            maxLength: 2000,
-            title: 'Url',
-            description: '渠道地址; 可能含密钥, 导出任务记录时脱敏',
-            default: ''
-        },
-        timeout_seconds: {
-            type: 'integer',
-            maximum: 60,
-            minimum: 1,
-            title: 'Timeout Seconds',
-            default: 10
-        },
-        max_records: {
-            type: 'integer',
-            maximum: 1000,
-            minimum: 1,
-            title: 'Max Records',
-            default: 50
-        },
-        sections: {
-            items: {
-                type: 'string',
-                enum: [
-                    'queue',
-                    'types',
-                    'library',
-                    'wash'
-                ]
-            },
-            type: 'array',
-            title: 'Sections'
-        }
-    },
-    type: 'object',
-    title: 'NotifyConfig',
-    description: '通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.'
 } as const;
 
 export const NotifyDigestRoutineSchema = {
@@ -8307,63 +7021,6 @@ export const PluginResponseSchema = {
         'config_schema'
     ],
     title: 'PluginResponse'
-} as const;
-
-export const R18ConfigSchema = {
-    properties: {
-        dsn: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Dsn'
-        },
-        db_name: {
-            type: 'string',
-            title: 'Db Name',
-            default: 'r18dev'
-        },
-        read_user: {
-            type: 'string',
-            title: 'Read User',
-            default: 'r18dev_readonly'
-        },
-        read_password: {
-            type: 'string',
-            title: 'Read Password',
-            default: 'r18dev_readonly'
-        },
-        read_timeout: {
-            type: 'integer',
-            maximum: 600,
-            minimum: 1,
-            title: 'Read Timeout',
-            default: 30
-        },
-        download_url: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Download Url'
-        },
-        psql_path: {
-            type: 'string',
-            title: 'Psql Path',
-            default: 'psql'
-        }
-    },
-    type: 'object',
-    title: 'R18Config',
-    description: '放 Hot: 修改 dsn 经 AppRuntime.apply_rebuild() 重建只读引擎. 未配置 dsn 时整个数据源禁用.\n定时导入不在此节, 须经 Schedule API 创建 r18_import.'
 } as const;
 
 export const R18ImportResultSchema = {
@@ -9690,216 +8347,6 @@ export const ScrapeTransferSubmissionSchema = {
     description: '刮削后的单文件转移: 通常由刮削任务扇出, 也可手工提交重试.'
 } as const;
 
-export const ScrapingConfigSchema = {
-    properties: {
-        download_resources: {
-            items: {
-                $ref: '#/components/schemas/DownloadableResource'
-            },
-            type: 'array',
-            title: 'Download Resources',
-            description: '刮削时自动下载到 Resource 目录的资源类型'
-        },
-        crop_poster: {
-            type: 'boolean',
-            title: 'Crop Poster',
-            default: true
-        },
-        poster_ratio: {
-            type: 'number',
-            maximum: 1,
-            minimum: 0.3,
-            title: 'Poster Ratio',
-            default: 0.7
-        },
-        poster_crop_skip_ratio: {
-            type: 'number',
-            maximum: 1,
-            minimum: 0.5,
-            title: 'Poster Crop Skip Ratio',
-            default: 0.9
-        },
-        jpeg_quality: {
-            type: 'integer',
-            maximum: 100,
-            minimum: 50,
-            title: 'Jpeg Quality',
-            default: 95,
-            'x-hidden': true
-        },
-        content_routes: {
-            additionalProperties: {
-                items: {
-                    type: 'string',
-                    enum: [
-                        '10musume',
-                        '1pondo',
-                        'airav',
-                        'avbase',
-                        'avsox',
-                        'c0930',
-                        'caribbeancom',
-                        'dahlia',
-                        'dmm',
-                        'faleno',
-                        'fc2',
-                        'fc2club',
-                        'fc2ppvdb',
-                        'freejavbt',
-                        'getchu',
-                        'giga',
-                        'h0930',
-                        'h4610',
-                        'heyzo',
-                        'iqqtv',
-                        'jav321',
-                        'javbus',
-                        'javdb',
-                        'javlibrary',
-                        'kin8',
-                        'mgstage',
-                        'muramura',
-                        'official',
-                        'pacopacomama',
-                        'prestige',
-                        'r18dev',
-                        'theporndb',
-                        'xcity'
-                    ]
-                },
-                type: 'array',
-                'x-ordered': true
-            },
-            propertyNames: {
-                $ref: '#/components/schemas/ContentType'
-            },
-            type: 'object',
-            title: 'Content Routes',
-            'x-frozen-keys': true
-        },
-        field_priority: {
-            additionalProperties: {
-                items: {
-                    type: 'string',
-                    enum: [
-                        '10musume',
-                        '1pondo',
-                        'airav',
-                        'avbase',
-                        'avsox',
-                        'c0930',
-                        'caribbeancom',
-                        'dahlia',
-                        'dmm',
-                        'faleno',
-                        'fc2',
-                        'fc2club',
-                        'fc2ppvdb',
-                        'freejavbt',
-                        'getchu',
-                        'giga',
-                        'h0930',
-                        'h4610',
-                        'heyzo',
-                        'iqqtv',
-                        'jav321',
-                        'javbus',
-                        'javdb',
-                        'javlibrary',
-                        'kin8',
-                        'mgstage',
-                        'muramura',
-                        'official',
-                        'pacopacomama',
-                        'prestige',
-                        'r18dev',
-                        'theporndb',
-                        'xcity'
-                    ]
-                },
-                type: 'array',
-                default: [],
-                'x-ordered': true
-            },
-            propertyNames: {
-                $ref: '#/components/schemas/MetadataField'
-            },
-            type: 'object',
-            title: 'Field Priority'
-        },
-        field_blacklist: {
-            additionalProperties: {
-                items: {
-                    type: 'string',
-                    enum: [
-                        '10musume',
-                        '1pondo',
-                        'airav',
-                        'avbase',
-                        'avsox',
-                        'c0930',
-                        'caribbeancom',
-                        'dahlia',
-                        'dmm',
-                        'faleno',
-                        'fc2',
-                        'fc2club',
-                        'fc2ppvdb',
-                        'freejavbt',
-                        'getchu',
-                        'giga',
-                        'h0930',
-                        'h4610',
-                        'heyzo',
-                        'iqqtv',
-                        'jav321',
-                        'javbus',
-                        'javdb',
-                        'javlibrary',
-                        'kin8',
-                        'mgstage',
-                        'muramura',
-                        'official',
-                        'pacopacomama',
-                        'prestige',
-                        'r18dev',
-                        'theporndb',
-                        'xcity'
-                    ]
-                },
-                type: 'array',
-                default: []
-            },
-            propertyNames: {
-                $ref: '#/components/schemas/MetadataField'
-            },
-            type: 'object',
-            title: 'Field Blacklist'
-        },
-        field_language: {
-            additionalProperties: {
-                $ref: '#/components/schemas/Language'
-            },
-            propertyNames: {
-                $ref: '#/components/schemas/MetadataField'
-            },
-            type: 'object',
-            title: 'Field Language',
-            'x-frozen-keys': true
-        },
-        site_config: {
-            additionalProperties: {
-                $ref: '#/components/schemas/SiteConfig'
-            },
-            type: 'object',
-            title: 'Site Config',
-            'x-frozen-keys': true
-        }
-    },
-    type: 'object',
-    title: 'ScrapingConfig'
-} as const;
-
 export const SelectionNoticeResponseSchema = {
     properties: {
         kind: {
@@ -10081,20 +8528,6 @@ export const SemanticBenchmarkSubmissionSchema = {
         'type'
     ],
     title: 'SemanticBenchmarkSubmission'
-} as const;
-
-export const SemanticConfigSchema = {
-    properties: {
-        auto_maintain: {
-            type: 'boolean',
-            title: 'Auto Maintain',
-            description: '条目图片变化后立即增量索引; 打开时视觉模型常驻',
-            default: false
-        }
-    },
-    type: 'object',
-    title: 'SemanticConfig',
-    description: '封面与剧照语义检索. 模型身份由 ``semantic/models.py`` 的清单决定, 不随配置变化.'
 } as const;
 
 export const SemanticDiagnosticsResponseSchema = {
@@ -10404,162 +8837,6 @@ export const SemanticStatusResponseSchema = {
     description: '语义检索的轻量状态: 页面据此决定入口与提示, 不读取存储统计.'
 } as const;
 
-export const SiteConfigSchema = {
-    properties: {
-        base_url: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Base Url'
-        },
-        use_proxy: {
-            type: 'boolean',
-            title: 'Use Proxy',
-            default: true
-        },
-        proxy: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Proxy'
-        },
-        use_browser: {
-            $ref: '#/components/schemas/BrowserMode',
-            default: 'auto'
-        },
-        browser_backend: {
-            anyOf: [
-                {
-                    $ref: '#/components/schemas/BrowserBackendName'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            'x-hidden': true
-        },
-        cookie: {
-            additionalProperties: {
-                type: 'string'
-            },
-            type: 'object',
-            title: 'Cookie',
-            default: {}
-        },
-        api_token: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Api Token',
-            'x-visible-keys': [
-                'theporndb'
-            ]
-        },
-        official_routes: {
-            additionalProperties: {
-                $ref: '#/components/schemas/Manufacturer'
-            },
-            type: 'object',
-            title: 'Official Routes',
-            'x-visible-keys': [
-                'official'
-            ]
-        },
-        rate_limit: {
-            anyOf: [
-                {
-                    type: 'number',
-                    maximum: 100,
-                    minimum: 0.1
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Rate Limit',
-            default: 2
-        },
-        languages: {
-            items: {
-                type: 'string',
-                enum: [
-                    'zh',
-                    'ja',
-                    'en'
-                ]
-            },
-            type: 'array',
-            title: 'Languages',
-            description: '词条语言优先级, 依序取第一个有正文的词条',
-            'x-ordered': true,
-            'x-visible-keys': [
-                'wikipedia'
-            ]
-        }
-    },
-    type: 'object',
-    title: 'SiteConfig'
-} as const;
-
-export const SiteNameSchema = {
-    type: 'string',
-    enum: [
-        '10musume',
-        '1pondo',
-        'airav',
-        'avbase',
-        'avsox',
-        'c0930',
-        'caribbeancom',
-        'dahlia',
-        'dmm',
-        'faleno',
-        'fc2',
-        'fc2club',
-        'fc2ppvdb',
-        'freejavbt',
-        'getchu',
-        'gfriends',
-        'giga',
-        'h0930',
-        'h4610',
-        'heyzo',
-        'iqqtv',
-        'jav321',
-        'javbus',
-        'javdb',
-        'javlibrary',
-        'kin8',
-        'mgstage',
-        'minnano',
-        'muramura',
-        'official',
-        'pacopacomama',
-        'prestige',
-        'r18dev',
-        'theporndb',
-        'wikipedia',
-        'xcity'
-    ],
-    title: 'SiteName',
-    description: '爬虫站点名称 (影片与演员源共用).'
-} as const;
-
 export const SiteOutcomeKindSchema = {
     type: 'string',
     enum: [
@@ -10760,73 +9037,6 @@ export const SourceKindSchema = {
     description: '来源类别, 供展示分组用. 插件来源的 ID 由插件命名空间决定, 不能从名字反推.'
 } as const;
 
-export const SrConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        max_dim_threshold: {
-            type: 'integer',
-            maximum: 8192,
-            minimum: 64,
-            title: 'Max Dim Threshold',
-            default: 1200
-        },
-        max_bytes_threshold: {
-            type: 'integer',
-            maximum: 67108864,
-            minimum: 65536,
-            title: 'Max Bytes Threshold',
-            default: 2097152
-        },
-        preset: {
-            $ref: '#/components/schemas/SrPreset',
-            default: 'waifu-photo-2x'
-        },
-        output_format: {
-            type: 'string',
-            enum: [
-                'jpg',
-                'png',
-                'webp'
-            ],
-            title: 'Output Format',
-            default: 'jpg'
-        },
-        tta: {
-            type: 'boolean',
-            title: 'Tta',
-            default: false,
-            'x-hidden': true
-        }
-    },
-    type: 'object',
-    title: 'SrConfig'
-} as const;
-
-export const SrPresetSchema = {
-    type: 'string',
-    enum: [
-        'realesr-photo-4x',
-        'waifu-photo-2x'
-    ],
-    title: 'SrPreset'
-} as const;
-
-export const StrmPreferSchema = {
-    type: 'string',
-    enum: [
-        'path',
-        'definition',
-        'newest',
-        'oldest'
-    ],
-    title: 'StrmPrefer',
-    description: 'STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.'
-} as const;
-
 export const SubtitleAuditResultSchema = {
     properties: {
         type: {
@@ -10934,58 +9144,6 @@ export const SubtitleAuditSubmissionSchema = {
     ],
     title: 'SubtitleAuditSubmission',
     description: '巡检范围; 空表示全部媒体库.'
-} as const;
-
-export const SubtitleFetchConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        providers: {
-            items: {
-                type: 'string',
-                enum: [
-                    'subtitlecat',
-                    'avsubtitles'
-                ]
-            },
-            type: 'array',
-            title: 'Providers'
-        },
-        languages: {
-            items: {
-                type: 'string'
-            },
-            type: 'array',
-            title: 'Languages',
-            description: '优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级'
-        },
-        max_attempts: {
-            type: 'integer',
-            maximum: 10,
-            minimum: 1,
-            title: 'Max Attempts',
-            default: 3
-        },
-        generation: {
-            $ref: '#/components/schemas/SubtitleGenerateConfig',
-            default: {
-                enabled: false,
-                base_url: '',
-                model: 'Systran/faster-whisper-medium',
-                language: 'ja',
-                translate: true,
-                max_file_minutes: 180,
-                timeout_seconds: 1800,
-                fallback_after_fetch: false
-            }
-        }
-    },
-    type: 'object',
-    title: 'SubtitleFetchConfig',
-    description: '字幕批量下载: 缺凭据时只用免鉴权来源.'
 } as const;
 
 export const SubtitleFetchResultSchema = {
@@ -11148,75 +9306,6 @@ export const SubtitleFilesResponseSchema = {
     ],
     title: 'SubtitleFilesResponse',
     description: '某个视频旁边现有的字幕清单.'
-} as const;
-
-export const SubtitleGenerateConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        base_url: {
-            type: 'string',
-            maxLength: 2000,
-            title: 'Base Url',
-            description: 'OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1',
-            default: ''
-        },
-        api_key: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Api Key',
-            description: '端点不需要鉴权时留空'
-        },
-        model: {
-            type: 'string',
-            maxLength: 200,
-            title: 'Model',
-            default: 'Systran/faster-whisper-medium'
-        },
-        language: {
-            type: 'string',
-            maxLength: 20,
-            title: 'Language',
-            description: '音轨语言; 转写结果就是这一种',
-            default: 'ja'
-        },
-        translate: {
-            type: 'boolean',
-            title: 'Translate',
-            default: true
-        },
-        max_file_minutes: {
-            type: 'integer',
-            maximum: 600,
-            minimum: 1,
-            title: 'Max File Minutes',
-            default: 180
-        },
-        timeout_seconds: {
-            type: 'integer',
-            maximum: 7200,
-            minimum: 30,
-            title: 'Timeout Seconds',
-            default: 1800
-        },
-        fallback_after_fetch: {
-            type: 'boolean',
-            title: 'Fallback After Fetch',
-            default: false
-        }
-    },
-    type: 'object',
-    title: 'SubtitleGenerateConfig',
-    description: '转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.\n\n转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.\n这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.'
 } as const;
 
 export const SubtitleGenerateResultSchema = {
@@ -13218,85 +11307,6 @@ export const WashChoiceRequestSchema = {
     description: '对某一组候选的显式决定: 钉住一份, 或者整组留着不再提示.'
 } as const;
 
-export const WashConfigSchema = {
-    properties: {
-        enabled: {
-            type: 'boolean',
-            title: 'Enabled',
-            default: false
-        },
-        local: {
-            type: 'boolean',
-            title: 'Local',
-            default: true
-        },
-        min_size_mb: {
-            type: 'integer',
-            minimum: 0,
-            title: 'Min Size Mb',
-            default: 300
-        },
-        prefer: {
-            items: {
-                $ref: '#/components/schemas/WashPrefer'
-            },
-            type: 'array',
-            title: 'Prefer',
-            'x-ordered': true
-        },
-        strm: {
-            type: 'boolean',
-            title: 'Strm',
-            default: true
-        },
-        strm_prefer: {
-            $ref: '#/components/schemas/StrmPrefer',
-            default: 'path'
-        },
-        auto_on_ingest: {
-            type: 'boolean',
-            title: 'Auto On Ingest',
-            default: false
-        },
-        auto_execute: {
-            type: 'boolean',
-            title: 'Auto Execute',
-            default: false
-        },
-        auto_execute_min_gain_percent: {
-            type: 'integer',
-            maximum: 90,
-            minimum: 10,
-            title: 'Auto Execute Min Gain Percent',
-            default: 30
-        },
-        keep_days: {
-            type: 'integer',
-            maximum: 365,
-            minimum: 1,
-            title: 'Keep Days',
-            default: 30,
-            'x-group': 'shared'
-        }
-    },
-    type: 'object',
-    title: 'WashConfig',
-    description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.\n\n字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,\n共用的回收站保留天数排最后.'
-} as const;
-
-export const WashPreferSchema = {
-    type: 'string',
-    enum: [
-        'quality',
-        'subtitle',
-        'largest',
-        'newest',
-        'oldest'
-    ],
-    title: 'WashPrefer',
-    description: '洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.\n\n只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:\n让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.'
-} as const;
-
 export const WashPurgeRoutineSchema = {
     properties: {
         type: {
@@ -13546,52 +11556,1277 @@ export const WashStatusResponseSchema = {
     description: '状态卡: 待处理组数 (估算)、回收站条数、可还原体积.'
 } as const;
 
+export const ActorScrapingConfigSchema = {
+    description: '资料来源顺序填空, 头像来源优先.',
+    properties: {
+        profile_sites: {
+            description: '资料来源顺序 (单源字段填空优先级); 仅演员资料来源',
+            items: {
+                enum: [
+                    'minnano',
+                    'javdb',
+                    'wikipedia',
+                    'theporndb',
+                    'avbase'
+                ],
+                type: 'string'
+            },
+            title: 'Profile Sites',
+            type: 'array',
+            'x-ordered': true
+        },
+        image_sites: {
+            description: '头像来源顺序 (优先于资料来源附图); 仅演员头像来源',
+            items: {
+                enum: [
+                    'gfriends'
+                ],
+                type: 'string'
+            },
+            title: 'Image Sites',
+            type: 'array',
+            'x-ordered': true
+        },
+        download_images: {
+            default: true,
+            title: 'Download Images',
+            type: 'boolean'
+        },
+        auto_scrape: {
+            default: true,
+            title: 'Auto Scrape',
+            type: 'boolean'
+        },
+        auto_push: {
+            default: false,
+            description: '演员刮削成功后自动将该演员推送到媒体服务器',
+            title: 'Auto Push',
+            type: 'boolean'
+        },
+        gfriends_repo: {
+            default: 'https://github.com/gfriends/gfriends',
+            description: 'gFriends GitHub 仓库 URL',
+            title: 'Gfriends Repo',
+            type: 'string'
+        }
+    },
+    title: 'ActorScrapingConfig',
+    type: 'object'
+} as const;
+
+export const AgentConfigSchema = {
+    description: '与 llm 翻译 section 分离: 凭据/模型/限速各自独立.',
+    properties: {
+        api_type: {
+            $ref: '#/components/schemas/ApiType',
+            default: 'response'
+        },
+        api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Api Key'
+        },
+        base_url: {
+            default: 'https://api.openai.com/v1',
+            title: 'Base Url',
+            type: 'string'
+        },
+        model: {
+            default: 'gpt-4o-mini',
+            title: 'Model',
+            type: 'string'
+        },
+        thinking: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/AgentThinkingMode'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null
+        },
+        max_tokens: {
+            default: 128000,
+            minimum: 1,
+            title: 'Max Tokens',
+            type: 'integer'
+        },
+        rate_limit: {
+            default: 2,
+            maximum: 100,
+            minimum: 0.1,
+            title: 'Rate Limit',
+            type: 'number'
+        },
+        sql_timeout_ms: {
+            default: 5000,
+            maximum: 60000,
+            minimum: 50,
+            title: 'Sql Timeout Ms',
+            type: 'integer',
+            'x-hidden': true
+        },
+        result_cache_ttl_s: {
+            default: 3600,
+            maximum: 86400,
+            minimum: 60,
+            title: 'Result Cache Ttl S',
+            type: 'integer',
+            'x-hidden': true
+        },
+        result_cache_max_entries: {
+            default: 64,
+            maximum: 1000,
+            minimum: 1,
+            title: 'Result Cache Max Entries',
+            type: 'integer',
+            'x-hidden': true
+        },
+        history_ttl_s: {
+            default: 3600,
+            maximum: 86400,
+            minimum: 60,
+            title: 'History Ttl S',
+            type: 'integer',
+            'x-hidden': true
+        },
+        history_max_sessions: {
+            default: 32,
+            maximum: 500,
+            minimum: 1,
+            title: 'History Max Sessions',
+            type: 'integer',
+            'x-hidden': true
+        }
+    },
+    title: 'AgentConfig',
+    type: 'object'
+} as const;
+
+export const ApiTypeSchema = {
+    enum: [
+        'chat',
+        'response',
+        'anthropic'
+    ],
+    title: 'ApiType',
+    type: 'string'
+} as const;
+
+export const BrowserConfigSchema = {
+    properties: {
+        backend: {
+            $ref: '#/components/schemas/BrowserBackendName',
+            default: 'off'
+        },
+        bsk_path: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Bsk Path',
+            'x-path-type': 'file',
+            'x-widget': 'PathPicker'
+        },
+        timeout: {
+            default: 30000,
+            maximum: 120000,
+            minimum: 5000,
+            title: 'Timeout',
+            type: 'integer'
+        },
+        solver_url: {
+            default: 'http://127.0.0.1:8191',
+            pattern: '^https?://.+',
+            title: 'Solver Url',
+            type: 'string'
+        }
+    },
+    title: 'BrowserConfig',
+    type: 'object'
+} as const;
+
+export const BrowserModeSchema = {
+    enum: [
+        'off',
+        'auto',
+        'always'
+    ],
+    title: 'BrowserMode',
+    type: 'string'
+} as const;
+
+export const LLMConfigSchema = {
+    description: '凭据放 Hot, 可在 UI 修改并热生效. 与 agent section 隔离.',
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        translate_fields: {
+            items: {
+                $ref: '#/components/schemas/MetadataField'
+            },
+            title: 'Translate Fields',
+            type: 'array'
+        },
+        system_prompt: {
+            anyOf: [
+                {
+                    maxLength: 2000,
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'System Prompt',
+            'x-long': true
+        },
+        field_prompts: {
+            additionalProperties: {
+                maxLength: 2000,
+                type: 'string',
+                'x-long': true
+            },
+            propertyNames: {
+                $ref: '#/components/schemas/MetadataField'
+            },
+            title: 'Field Prompts',
+            type: 'object'
+        },
+        api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Api Key'
+        },
+        api_type: {
+            $ref: '#/components/schemas/ApiType',
+            default: 'chat'
+        },
+        base_url: {
+            default: 'https://api.openai.com/v1',
+            title: 'Base Url',
+            type: 'string'
+        },
+        model: {
+            default: '',
+            title: 'Model',
+            type: 'string'
+        },
+        rate_limit: {
+            default: 2,
+            maximum: 100,
+            minimum: 0.1,
+            title: 'Rate Limit',
+            type: 'number'
+        }
+    },
+    title: 'LLMConfig',
+    type: 'object'
+} as const;
+
+export const LanguageSchema = {
+    enum: [
+        'zh_cn',
+        'zh_tw',
+        'jp',
+        'en'
+    ],
+    title: 'Language',
+    type: 'string'
+} as const;
+
+export const LoggingConfigSchema = {
+    properties: {
+        level: {
+            default: 'INFO',
+            enum: [
+                'DEBUG',
+                'INFO',
+                'WARNING',
+                'ERROR',
+                'CRITICAL'
+            ],
+            title: 'Level',
+            type: 'string'
+        },
+        debug_capture: {
+            default: false,
+            title: 'Debug Capture',
+            type: 'boolean'
+        }
+    },
+    title: 'LoggingConfig',
+    type: 'object'
+} as const;
+
+export const ManufacturerSchema = {
+    enum: [
+        'attackers',
+        'befree',
+        'bi',
+        'bibian',
+        'das',
+        'ebody',
+        'fitch',
+        'hajime_kikaku',
+        'honnaka',
+        'hunter',
+        'idea_pocket',
+        'kawaii',
+        'kirakira',
+        'madonna',
+        'miman',
+        'mko_labo',
+        'moodyz',
+        'muku',
+        'mvg',
+        'nanpa_japan',
+        'oppai',
+        'opera',
+        'premium_beauty',
+        'rookie',
+        's1',
+        'tameikegoro',
+        'tosatsu',
+        'v',
+        'wanz_factory'
+    ],
+    title: 'Manufacturer',
+    type: 'string'
+} as const;
+
+export const MediaServerConfigSchema = {
+    description: 'Emby / Jellyfin 人物推送; url 与 api_key 齐备才启用.',
+    properties: {
+        kind: {
+            default: 'jellyfin',
+            description: '媒体服务器类型',
+            enum: [
+                'emby',
+                'jellyfin'
+            ],
+            title: 'Kind',
+            type: 'string'
+        },
+        url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            description: '服务器地址, 含协议、端口与可选子路径',
+            title: 'Url'
+        },
+        api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            description: '管理员 API Key',
+            title: 'Api Key'
+        },
+        verify_tls: {
+            default: true,
+            description: '校验 HTTPS 证书; 自签名证书可关闭',
+            title: 'Verify Tls',
+            type: 'boolean'
+        },
+        auto_refresh: {
+            default: false,
+            description: '整理落盘后自动让媒体服务器重扫媒体库',
+            title: 'Auto Refresh',
+            type: 'boolean'
+        }
+    },
+    title: 'MediaServerConfig',
+    type: 'object'
+} as const;
+
+export const NetworkConfigSchema = {
+    properties: {
+        proxy: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Proxy'
+        },
+        timeout: {
+            default: 10,
+            maximum: 300,
+            minimum: 5,
+            title: 'Timeout',
+            type: 'number'
+        },
+        max_retries: {
+            default: 2,
+            maximum: 10,
+            minimum: 0,
+            title: 'Max Retries',
+            type: 'integer'
+        },
+        max_clients: {
+            default: 50,
+            maximum: 500,
+            minimum: 5,
+            title: 'Max Clients',
+            type: 'integer',
+            'x-hidden': true
+        },
+        browser: {
+            $ref: '#/components/schemas/BrowserConfig'
+        },
+        chunked_threshold: {
+            default: 2097152,
+            maximum: 104857600,
+            minimum: 524288,
+            title: 'Chunked Threshold',
+            type: 'integer'
+        },
+        chunk_size: {
+            default: 1048576,
+            maximum: 52428800,
+            minimum: 262144,
+            title: 'Chunk Size',
+            type: 'integer'
+        },
+        concurrency: {
+            default: 10,
+            maximum: 50,
+            minimum: 1,
+            title: 'Concurrency',
+            type: 'integer'
+        },
+        rate_limits: {
+            additionalProperties: {
+                type: 'number'
+            },
+            title: 'Rate Limits',
+            type: 'object'
+        },
+        default_rate_limit: {
+            default: 5,
+            maximum: 100,
+            minimum: 0.1,
+            title: 'Default Rate Limit',
+            type: 'number'
+        }
+    },
+    title: 'NetworkConfig',
+    type: 'object'
+} as const;
+
+export const NotifyConfigSchema = {
+    description: '通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.',
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        kind: {
+            default: 'webhook',
+            enum: [
+                'webhook',
+                'bark',
+                'serverchan',
+                'telegram'
+            ],
+            title: 'Kind',
+            type: 'string'
+        },
+        url: {
+            default: '',
+            description: '渠道地址; 可能含密钥, 导出任务记录时脱敏',
+            maxLength: 2000,
+            title: 'Url',
+            type: 'string'
+        },
+        timeout_seconds: {
+            default: 10,
+            maximum: 60,
+            minimum: 1,
+            title: 'Timeout Seconds',
+            type: 'integer'
+        },
+        max_records: {
+            default: 50,
+            maximum: 1000,
+            minimum: 1,
+            title: 'Max Records',
+            type: 'integer'
+        },
+        sections: {
+            items: {
+                enum: [
+                    'queue',
+                    'types',
+                    'library',
+                    'wash'
+                ],
+                type: 'string'
+            },
+            title: 'Sections',
+            type: 'array'
+        }
+    },
+    title: 'NotifyConfig',
+    type: 'object'
+} as const;
+
+export const R18ConfigSchema = {
+    description: '放 Hot: 修改 dsn 经 AppRuntime.apply_rebuild() 重建只读引擎. 未配置 dsn 时整个数据源禁用.\n定时导入不在此节, 须经 Schedule API 创建 r18_import.',
+    properties: {
+        dsn: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Dsn'
+        },
+        db_name: {
+            default: 'r18dev',
+            title: 'Db Name',
+            type: 'string'
+        },
+        read_user: {
+            default: 'r18dev_readonly',
+            title: 'Read User',
+            type: 'string'
+        },
+        read_password: {
+            default: 'r18dev_readonly',
+            title: 'Read Password',
+            type: 'string'
+        },
+        read_timeout: {
+            default: 30,
+            maximum: 600,
+            minimum: 1,
+            title: 'Read Timeout',
+            type: 'integer'
+        },
+        download_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Download Url'
+        },
+        psql_path: {
+            default: 'psql',
+            title: 'Psql Path',
+            type: 'string'
+        }
+    },
+    title: 'R18Config',
+    type: 'object'
+} as const;
+
+export const ScrapingConfigSchema = {
+    properties: {
+        download_resources: {
+            description: '刮削时自动下载到 Resource 目录的资源类型',
+            items: {
+                $ref: '#/components/schemas/DownloadableResource'
+            },
+            title: 'Download Resources',
+            type: 'array'
+        },
+        crop_poster: {
+            default: true,
+            title: 'Crop Poster',
+            type: 'boolean'
+        },
+        poster_ratio: {
+            default: 0.7,
+            maximum: 1,
+            minimum: 0.3,
+            title: 'Poster Ratio',
+            type: 'number'
+        },
+        poster_crop_skip_ratio: {
+            default: 0.9,
+            maximum: 1,
+            minimum: 0.5,
+            title: 'Poster Crop Skip Ratio',
+            type: 'number'
+        },
+        jpeg_quality: {
+            default: 95,
+            maximum: 100,
+            minimum: 50,
+            title: 'Jpeg Quality',
+            type: 'integer',
+            'x-hidden': true
+        },
+        content_routes: {
+            additionalProperties: {
+                items: {
+                    enum: [
+                        '10musume',
+                        '1pondo',
+                        'airav',
+                        'avbase',
+                        'avsox',
+                        'c0930',
+                        'caribbeancom',
+                        'dahlia',
+                        'dmm',
+                        'faleno',
+                        'fc2',
+                        'fc2club',
+                        'fc2ppvdb',
+                        'freejavbt',
+                        'getchu',
+                        'giga',
+                        'h0930',
+                        'h4610',
+                        'heyzo',
+                        'iqqtv',
+                        'jav321',
+                        'javbus',
+                        'javdb',
+                        'javlibrary',
+                        'kin8',
+                        'mgstage',
+                        'muramura',
+                        'official',
+                        'pacopacomama',
+                        'prestige',
+                        'r18dev',
+                        'theporndb',
+                        'xcity'
+                    ],
+                    type: 'string'
+                },
+                type: 'array',
+                'x-ordered': true
+            },
+            propertyNames: {
+                $ref: '#/components/schemas/ContentType'
+            },
+            title: 'Content Routes',
+            type: 'object',
+            'x-frozen-keys': true
+        },
+        field_priority: {
+            additionalProperties: {
+                default: [],
+                items: {
+                    enum: [
+                        '10musume',
+                        '1pondo',
+                        'airav',
+                        'avbase',
+                        'avsox',
+                        'c0930',
+                        'caribbeancom',
+                        'dahlia',
+                        'dmm',
+                        'faleno',
+                        'fc2',
+                        'fc2club',
+                        'fc2ppvdb',
+                        'freejavbt',
+                        'getchu',
+                        'giga',
+                        'h0930',
+                        'h4610',
+                        'heyzo',
+                        'iqqtv',
+                        'jav321',
+                        'javbus',
+                        'javdb',
+                        'javlibrary',
+                        'kin8',
+                        'mgstage',
+                        'muramura',
+                        'official',
+                        'pacopacomama',
+                        'prestige',
+                        'r18dev',
+                        'theporndb',
+                        'xcity'
+                    ],
+                    type: 'string'
+                },
+                type: 'array',
+                'x-ordered': true
+            },
+            propertyNames: {
+                $ref: '#/components/schemas/MetadataField'
+            },
+            title: 'Field Priority',
+            type: 'object'
+        },
+        field_blacklist: {
+            additionalProperties: {
+                default: [],
+                items: {
+                    enum: [
+                        '10musume',
+                        '1pondo',
+                        'airav',
+                        'avbase',
+                        'avsox',
+                        'c0930',
+                        'caribbeancom',
+                        'dahlia',
+                        'dmm',
+                        'faleno',
+                        'fc2',
+                        'fc2club',
+                        'fc2ppvdb',
+                        'freejavbt',
+                        'getchu',
+                        'giga',
+                        'h0930',
+                        'h4610',
+                        'heyzo',
+                        'iqqtv',
+                        'jav321',
+                        'javbus',
+                        'javdb',
+                        'javlibrary',
+                        'kin8',
+                        'mgstage',
+                        'muramura',
+                        'official',
+                        'pacopacomama',
+                        'prestige',
+                        'r18dev',
+                        'theporndb',
+                        'xcity'
+                    ],
+                    type: 'string'
+                },
+                type: 'array'
+            },
+            propertyNames: {
+                $ref: '#/components/schemas/MetadataField'
+            },
+            title: 'Field Blacklist',
+            type: 'object'
+        },
+        field_language: {
+            additionalProperties: {
+                $ref: '#/components/schemas/Language'
+            },
+            propertyNames: {
+                $ref: '#/components/schemas/MetadataField'
+            },
+            title: 'Field Language',
+            type: 'object',
+            'x-frozen-keys': true
+        },
+        site_config: {
+            additionalProperties: {
+                $ref: '#/components/schemas/SiteConfig'
+            },
+            title: 'Site Config',
+            type: 'object',
+            'x-frozen-keys': true
+        }
+    },
+    title: 'ScrapingConfig',
+    type: 'object'
+} as const;
+
+export const SemanticConfigSchema = {
+    description: '封面与剧照语义检索. 模型身份由 ``semantic/models.py`` 的清单决定, 不随配置变化.',
+    properties: {
+        auto_maintain: {
+            default: false,
+            description: '条目图片变化后立即增量索引; 打开时视觉模型常驻',
+            title: 'Auto Maintain',
+            type: 'boolean'
+        }
+    },
+    title: 'SemanticConfig',
+    type: 'object'
+} as const;
+
+export const SiteConfigSchema = {
+    properties: {
+        base_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Base Url'
+        },
+        use_proxy: {
+            default: true,
+            title: 'Use Proxy',
+            type: 'boolean'
+        },
+        proxy: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Proxy'
+        },
+        use_browser: {
+            $ref: '#/components/schemas/BrowserMode',
+            default: 'auto'
+        },
+        browser_backend: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/BrowserBackendName'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            'x-hidden': true
+        },
+        cookie: {
+            additionalProperties: {
+                type: 'string'
+            },
+            default: {},
+            title: 'Cookie',
+            type: 'object'
+        },
+        api_token: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Api Token',
+            'x-visible-keys': [
+                'theporndb'
+            ]
+        },
+        official_routes: {
+            additionalProperties: {
+                $ref: '#/components/schemas/Manufacturer'
+            },
+            title: 'Official Routes',
+            type: 'object',
+            'x-visible-keys': [
+                'official'
+            ]
+        },
+        rate_limit: {
+            anyOf: [
+                {
+                    maximum: 100,
+                    minimum: 0.1,
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: 2,
+            title: 'Rate Limit'
+        },
+        languages: {
+            description: '词条语言优先级, 依序取第一个有正文的词条',
+            items: {
+                enum: [
+                    'zh',
+                    'ja',
+                    'en'
+                ],
+                type: 'string'
+            },
+            title: 'Languages',
+            type: 'array',
+            'x-ordered': true,
+            'x-visible-keys': [
+                'wikipedia'
+            ]
+        }
+    },
+    title: 'SiteConfig',
+    type: 'object'
+} as const;
+
+export const SrConfigSchema = {
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        max_dim_threshold: {
+            default: 1200,
+            maximum: 8192,
+            minimum: 64,
+            title: 'Max Dim Threshold',
+            type: 'integer'
+        },
+        max_bytes_threshold: {
+            default: 2097152,
+            maximum: 67108864,
+            minimum: 65536,
+            title: 'Max Bytes Threshold',
+            type: 'integer'
+        },
+        preset: {
+            $ref: '#/components/schemas/SrPreset',
+            default: 'waifu-photo-2x'
+        },
+        output_format: {
+            default: 'jpg',
+            enum: [
+                'jpg',
+                'png',
+                'webp'
+            ],
+            title: 'Output Format',
+            type: 'string'
+        },
+        tta: {
+            default: false,
+            title: 'Tta',
+            type: 'boolean',
+            'x-hidden': true
+        }
+    },
+    title: 'SrConfig',
+    type: 'object'
+} as const;
+
+export const SrPresetSchema = {
+    enum: [
+        'realesr-photo-4x',
+        'waifu-photo-2x'
+    ],
+    title: 'SrPreset',
+    type: 'string'
+} as const;
+
+export const StrmPreferSchema = {
+    description: 'STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.',
+    enum: [
+        'path',
+        'definition',
+        'newest',
+        'oldest'
+    ],
+    title: 'StrmPrefer',
+    type: 'string'
+} as const;
+
+export const SubtitleFetchConfigSchema = {
+    description: '字幕批量下载: 缺凭据时只用免鉴权来源.',
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        providers: {
+            items: {
+                enum: [
+                    'subtitlecat',
+                    'avsubtitles'
+                ],
+                type: 'string'
+            },
+            title: 'Providers',
+            type: 'array'
+        },
+        languages: {
+            description: '优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级',
+            items: {
+                type: 'string'
+            },
+            title: 'Languages',
+            type: 'array'
+        },
+        max_attempts: {
+            default: 3,
+            maximum: 10,
+            minimum: 1,
+            title: 'Max Attempts',
+            type: 'integer'
+        },
+        generation: {
+            $ref: '#/components/schemas/SubtitleGenerateConfig',
+            default: {
+                enabled: false,
+                base_url: '',
+                api_key: null,
+                model: 'Systran/faster-whisper-medium',
+                language: 'ja',
+                translate: true,
+                max_file_minutes: 180,
+                timeout_seconds: 1800,
+                fallback_after_fetch: false
+            }
+        }
+    },
+    title: 'SubtitleFetchConfig',
+    type: 'object'
+} as const;
+
+export const SubtitleGenerateConfigSchema = {
+    description: '转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.\n\n转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.\n这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.',
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        base_url: {
+            default: '',
+            description: 'OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1',
+            maxLength: 2000,
+            title: 'Base Url',
+            type: 'string'
+        },
+        api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            description: '端点不需要鉴权时留空',
+            title: 'Api Key'
+        },
+        model: {
+            default: 'Systran/faster-whisper-medium',
+            maxLength: 200,
+            title: 'Model',
+            type: 'string'
+        },
+        language: {
+            default: 'ja',
+            description: '音轨语言; 转写结果就是这一种',
+            maxLength: 20,
+            title: 'Language',
+            type: 'string'
+        },
+        translate: {
+            default: true,
+            title: 'Translate',
+            type: 'boolean'
+        },
+        max_file_minutes: {
+            default: 180,
+            maximum: 600,
+            minimum: 1,
+            title: 'Max File Minutes',
+            type: 'integer'
+        },
+        timeout_seconds: {
+            default: 1800,
+            maximum: 7200,
+            minimum: 30,
+            title: 'Timeout Seconds',
+            type: 'integer'
+        },
+        fallback_after_fetch: {
+            default: false,
+            title: 'Fallback After Fetch',
+            type: 'boolean'
+        }
+    },
+    title: 'SubtitleGenerateConfig',
+    type: 'object'
+} as const;
+
+export const WashConfigSchema = {
+    description: '洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.\n\n字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,\n共用的回收站保留天数排最后.',
+    properties: {
+        enabled: {
+            default: false,
+            title: 'Enabled',
+            type: 'boolean'
+        },
+        local: {
+            default: true,
+            title: 'Local',
+            type: 'boolean'
+        },
+        min_size_mb: {
+            default: 300,
+            minimum: 0,
+            title: 'Min Size Mb',
+            type: 'integer'
+        },
+        prefer: {
+            items: {
+                $ref: '#/components/schemas/WashPrefer'
+            },
+            title: 'Prefer',
+            type: 'array',
+            'x-ordered': true
+        },
+        strm: {
+            default: true,
+            title: 'Strm',
+            type: 'boolean'
+        },
+        strm_prefer: {
+            $ref: '#/components/schemas/StrmPrefer',
+            default: 'path'
+        },
+        auto_on_ingest: {
+            default: false,
+            title: 'Auto On Ingest',
+            type: 'boolean'
+        },
+        auto_execute: {
+            default: false,
+            title: 'Auto Execute',
+            type: 'boolean'
+        },
+        auto_execute_min_gain_percent: {
+            default: 30,
+            maximum: 90,
+            minimum: 10,
+            title: 'Auto Execute Min Gain Percent',
+            type: 'integer'
+        },
+        keep_days: {
+            default: 30,
+            maximum: 365,
+            minimum: 1,
+            title: 'Keep Days',
+            type: 'integer',
+            'x-group': 'shared'
+        }
+    },
+    title: 'WashConfig',
+    type: 'object'
+} as const;
+
+export const WashPreferSchema = {
+    description: '洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.\n\n只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:\n让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.',
+    enum: [
+        'quality',
+        'subtitle',
+        'largest',
+        'newest',
+        'oldest'
+    ],
+    title: 'WashPrefer',
+    type: 'string'
+} as const;
+
 export const WatcherConfigSchema = {
     properties: {
         use_polling: {
-            type: 'boolean',
+            default: false,
             title: 'Use Polling',
-            default: false
+            type: 'boolean'
         },
         debounce_seconds: {
-            type: 'number',
+            default: 3,
             maximum: 30,
             minimum: 0.5,
             title: 'Debounce Seconds',
-            default: 3
+            type: 'number'
         },
         settle_seconds: {
-            type: 'number',
+            default: 5,
             maximum: 600,
             minimum: 0,
             title: 'Settle Seconds',
-            default: 5
+            type: 'number'
         },
         media_extensions: {
             items: {
                 type: 'string'
             },
-            type: 'array',
-            title: 'Media Extensions'
+            title: 'Media Extensions',
+            type: 'array'
         }
     },
-    type: 'object',
-    title: 'WatcherConfig'
+    title: 'WatcherConfig',
+    type: 'object'
 } as const;
 
 export const WatermarkConfigSchema = {
     properties: {
         enabled: {
-            type: 'boolean',
+            default: false,
             title: 'Enabled',
-            default: false
+            type: 'boolean'
         },
         scale: {
-            type: 'number',
+            default: 0.08,
             maximum: 0.25,
             minimum: 0.03,
             title: 'Scale',
-            default: 0.08
+            type: 'number'
         },
         corners: {
             additionalProperties: {
@@ -13600,17 +12835,17 @@ export const WatermarkConfigSchema = {
             propertyNames: {
                 $ref: '#/components/schemas/WatermarkKind'
             },
-            type: 'object',
             title: 'Corners',
+            type: 'object',
             'x-frozen-keys': true
         }
     },
-    type: 'object',
-    title: 'WatermarkConfig'
+    title: 'WatermarkConfig',
+    type: 'object'
 } as const;
 
 export const WatermarkCornerSchema = {
-    type: 'string',
+    description: '角标锚点. 同角多枚按相位顺序向内叠 (上往下 / 下往上), 右角右对齐.',
     enum: [
         'top_left',
         'top_right',
@@ -13618,11 +12853,11 @@ export const WatermarkCornerSchema = {
         'bottom_right'
     ],
     title: 'WatermarkCorner',
-    description: '角标锚点. 同角多枚按相位顺序向内叠 (上往下 / 下往上), 右角右对齐.'
+    type: 'string'
 } as const;
 
 export const WatermarkKindSchema = {
-    type: 'string',
+    description: '整理落盘封面角标类别. 分辨率共用 definition, 不论 4K/1080p.',
     enum: [
         'subtitle',
         'uncensored',
@@ -13631,35 +12866,927 @@ export const WatermarkKindSchema = {
         'definition'
     ],
     title: 'WatermarkKind',
-    description: '整理落盘封面角标类别. 分辨率共用 definition, 不论 4K/1080p.'
+    type: 'string'
 } as const;
 
 export const WorkerConfigSchema = {
     properties: {
         concurrency: {
-            type: 'integer',
+            default: 10,
             maximum: 64,
             minimum: 1,
             title: 'Concurrency',
-            default: 10
+            type: 'integer'
         },
         poll_interval: {
-            type: 'number',
+            default: 2,
             maximum: 10,
             minimum: 0.1,
             title: 'Poll Interval',
-            default: 2,
+            type: 'number',
             'x-hidden': true
         },
         shutdown_timeout: {
-            type: 'number',
+            default: 10,
             maximum: 120,
             minimum: 0,
             title: 'Shutdown Timeout',
-            default: 10,
+            type: 'number',
             'x-hidden': true
         }
     },
-    type: 'object',
-    title: 'WorkerConfig'
+    title: 'WorkerConfig',
+    type: 'object'
+} as const;
+
+export const HotSettingsSchema = {
+    additionalProperties: false,
+    description: '运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败.',
+    properties: {
+        scraping: {
+            $ref: '#/components/schemas/ScrapingConfig',
+            default: {
+                download_resources: [
+                    'thumb',
+                    'poster',
+                    'extrafanart'
+                ],
+                crop_poster: true,
+                poster_ratio: 0.7,
+                poster_crop_skip_ratio: 0.9,
+                jpeg_quality: 95,
+                content_routes: {
+                    amateur: [
+                        'mgstage',
+                        'dmm',
+                        'javdb',
+                        'javbus'
+                    ],
+                    censored: [
+                        'dmm',
+                        'javdb',
+                        'javbus',
+                        'official'
+                    ],
+                    chinese: [
+                        'iqqtv',
+                        'javdb',
+                        'airav',
+                        'freejavbt'
+                    ],
+                    fc2: [
+                        'javdb',
+                        'fc2ppvdb',
+                        'fc2',
+                        'freejavbt',
+                        'airav'
+                    ],
+                    hentai: [
+                        'getchu',
+                        'dmm',
+                        'javdb'
+                    ],
+                    uncensored: [
+                        'javdb',
+                        'javbus',
+                        'avsox',
+                        'freejavbt',
+                        '1pondo',
+                        'caribbeancom',
+                        '10musume',
+                        'pacopacomama',
+                        'muramura',
+                        'h4610',
+                        'c0930',
+                        'h0930',
+                        'heyzo'
+                    ],
+                    western: [
+                        'theporndb',
+                        'javdb',
+                        'freejavbt'
+                    ]
+                },
+                field_priority: {},
+                field_blacklist: {},
+                field_language: {
+                    actors: 'zh_cn',
+                    directors: 'zh_cn',
+                    plot: 'zh_cn',
+                    publisher: 'zh_cn',
+                    series: 'zh_cn',
+                    studio: 'zh_cn',
+                    tags: 'zh_cn',
+                    title: 'zh_cn'
+                },
+                site_config: {
+                    '10musume': {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    '1pondo': {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    airav: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    avbase: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    avsox: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    c0930: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    caribbeancom: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    dahlia: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    dmm: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    faleno: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    fc2: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    fc2club: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    fc2ppvdb: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    freejavbt: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    getchu: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    gfriends: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    giga: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    h0930: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    h4610: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    heyzo: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    iqqtv: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    jav321: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    javbus: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    javdb: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    javlibrary: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    kin8: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    mgstage: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    minnano: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    muramura: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    official: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    pacopacomama: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    prestige: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    r18dev: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    theporndb: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    wikipedia: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    },
+                    xcity: {
+                        api_token: null,
+                        base_url: null,
+                        browser_backend: null,
+                        cookie: {},
+                        languages: [
+                            'zh',
+                            'ja',
+                            'en'
+                        ],
+                        official_routes: {},
+                        proxy: null,
+                        rate_limit: 2,
+                        use_browser: 'auto',
+                        use_proxy: true
+                    }
+                }
+            }
+        },
+        media_server: {
+            $ref: '#/components/schemas/MediaServerConfig',
+            default: {
+                kind: 'jellyfin',
+                url: null,
+                api_key: null,
+                verify_tls: true,
+                auto_refresh: false
+            }
+        },
+        actor_scraping: {
+            $ref: '#/components/schemas/ActorScrapingConfig',
+            default: {
+                profile_sites: [
+                    'minnano',
+                    'javdb',
+                    'wikipedia',
+                    'theporndb',
+                    'avbase'
+                ],
+                image_sites: [
+                    'gfriends'
+                ],
+                download_images: true,
+                auto_scrape: true,
+                auto_push: false,
+                gfriends_repo: 'https://github.com/gfriends/gfriends'
+            }
+        },
+        agent: {
+            $ref: '#/components/schemas/AgentConfig',
+            default: {
+                api_type: 'response',
+                api_key: null,
+                base_url: 'https://api.openai.com/v1',
+                model: 'gpt-4o-mini',
+                thinking: null,
+                max_tokens: 128000,
+                rate_limit: 2,
+                sql_timeout_ms: 5000,
+                result_cache_ttl_s: 3600,
+                result_cache_max_entries: 64,
+                history_ttl_s: 3600,
+                history_max_sessions: 32
+            }
+        },
+        network: {
+            $ref: '#/components/schemas/NetworkConfig',
+            default: {
+                proxy: null,
+                timeout: 10,
+                max_retries: 2,
+                max_clients: 50,
+                browser: {
+                    backend: 'off',
+                    bsk_path: null,
+                    solver_url: 'http://127.0.0.1:8191',
+                    timeout: 30000
+                },
+                chunked_threshold: 2097152,
+                chunk_size: 1048576,
+                concurrency: 10,
+                rate_limits: {},
+                default_rate_limit: 5
+            }
+        },
+        sr: {
+            $ref: '#/components/schemas/SrConfig',
+            default: {
+                enabled: false,
+                max_dim_threshold: 1200,
+                max_bytes_threshold: 2097152,
+                preset: 'waifu-photo-2x',
+                output_format: 'jpg',
+                tta: false
+            }
+        },
+        semantic: {
+            $ref: '#/components/schemas/SemanticConfig',
+            default: {
+                auto_maintain: false
+            }
+        },
+        watermark: {
+            $ref: '#/components/schemas/WatermarkConfig',
+            default: {
+                enabled: false,
+                scale: 0.08,
+                corners: {
+                    cracked: 'top_left',
+                    definition: 'top_left',
+                    leaked: 'top_left',
+                    subtitle: 'top_left',
+                    uncensored: 'top_left'
+                }
+            }
+        },
+        llm: {
+            $ref: '#/components/schemas/LLMConfig',
+            default: {
+                enabled: false,
+                translate_fields: [
+                    'title',
+                    'plot'
+                ],
+                system_prompt: null,
+                field_prompts: {},
+                api_key: null,
+                api_type: 'chat',
+                base_url: 'https://api.openai.com/v1',
+                model: '',
+                rate_limit: 2
+            }
+        },
+        r18: {
+            $ref: '#/components/schemas/R18Config',
+            default: {
+                dsn: null,
+                db_name: 'r18dev',
+                read_user: 'r18dev_readonly',
+                read_password: 'r18dev_readonly',
+                read_timeout: 30,
+                download_url: null,
+                psql_path: 'psql'
+            }
+        },
+        watcher: {
+            $ref: '#/components/schemas/WatcherConfig',
+            default: {
+                use_polling: false,
+                debounce_seconds: 3,
+                settle_seconds: 5,
+                media_extensions: [
+                    '.mp4',
+                    '.mkv',
+                    '.avi',
+                    '.wmv',
+                    '.flv',
+                    '.mov',
+                    '.ts',
+                    '.iso',
+                    '.strm'
+                ]
+            }
+        },
+        subtitles: {
+            $ref: '#/components/schemas/SubtitleFetchConfig',
+            default: {
+                enabled: false,
+                providers: [
+                    'subtitlecat',
+                    'avsubtitles'
+                ],
+                languages: [
+                    'zh-CN',
+                    'zh-TW'
+                ],
+                max_attempts: 3,
+                generation: {
+                    api_key: null,
+                    base_url: '',
+                    enabled: false,
+                    fallback_after_fetch: false,
+                    language: 'ja',
+                    max_file_minutes: 180,
+                    model: 'Systran/faster-whisper-medium',
+                    timeout_seconds: 1800,
+                    translate: true
+                }
+            }
+        },
+        wash: {
+            $ref: '#/components/schemas/WashConfig',
+            default: {
+                enabled: false,
+                local: true,
+                min_size_mb: 300,
+                prefer: [
+                    'quality'
+                ],
+                strm: true,
+                strm_prefer: 'path',
+                auto_on_ingest: false,
+                auto_execute: false,
+                auto_execute_min_gain_percent: 30,
+                keep_days: 30
+            }
+        },
+        notify: {
+            $ref: '#/components/schemas/NotifyConfig',
+            default: {
+                enabled: false,
+                kind: 'webhook',
+                url: '',
+                timeout_seconds: 10,
+                max_records: 50,
+                sections: [
+                    'queue',
+                    'types',
+                    'library',
+                    'wash'
+                ]
+            }
+        },
+        worker: {
+            $ref: '#/components/schemas/WorkerConfig',
+            default: {
+                concurrency: 10,
+                poll_interval: 2,
+                shutdown_timeout: 10
+            }
+        },
+        logging: {
+            $ref: '#/components/schemas/LoggingConfig',
+            default: {
+                level: 'INFO',
+                debug_capture: false
+            }
+        },
+        plugins: {
+            additionalProperties: {
+                $ref: '#/components/schemas/PluginConfig'
+            },
+            title: 'Plugins',
+            type: 'object',
+            'x-hidden': true
+        }
+    },
+    title: 'HotSettings',
+    type: 'object'
 } as const;

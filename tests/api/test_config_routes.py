@@ -5,11 +5,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from amane.config import HotSettings
+from amane.observability.redact import redact_hot
 from tests.api.conftest import hot_for_tests
 
 if TYPE_CHECKING:
     from httpx2 import AsyncClient
+
+
+def _redacted_defaults() -> dict[str, object]:
+    """响应是脱敏投影; 直接按 HotSettings 回填会把占位符当成真值."""
+    return redact_hot(hot_for_tests().model_dump(mode="json"))
 
 
 class TestConfigHttp:
@@ -17,7 +22,7 @@ class TestConfigHttp:
     async def test_get_patch_schema(self, client: AsyncClient):
         resp = await client.get("config")
         assert resp.status_code == 200
-        assert HotSettings.model_validate(resp.json()) == hot_for_tests()
+        assert resp.json() == _redacted_defaults()
         data = resp.json()
         assert isinstance(data["scraping"]["download_resources"], list)
         assert isinstance(data["worker"]["concurrency"], int)
@@ -30,7 +35,7 @@ class TestConfigHttp:
 
         empty = await client.patch("config", json={})
         assert empty.status_code == 200
-        assert HotSettings.model_validate(empty.json()) == hot_for_tests()
+        assert empty.json() == _redacted_defaults()
         assert (await client.patch("config", json={"worker": {"concurrency": 999}})).status_code == 422
 
         patched = await client.patch(

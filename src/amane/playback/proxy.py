@@ -14,9 +14,23 @@ from starlette.responses import Response, StreamingResponse
 from starlette.types import Receive, Scope, Send
 
 from ..plugins.api import UpstreamPlaybackTarget
+from ..utils.urls import redact_url
 from .disconnect import DisconnectSignal
 
 logger = structlog.get_logger()
+
+
+def _error_text(exc: httpx.RequestError, url: str) -> str:
+    """异常文本去掉上游地址里的签名参数: httpx 会把请求 URL 拼进消息."""
+    text = str(exc)
+    candidates = [url]
+    if exc.request is not None:
+        candidates.append(str(exc.request.url))
+    for raw in candidates:
+        if raw:
+            text = text.replace(raw, redact_url(raw))
+    return text
+
 
 ProxyAllow = Literal["media", "hls_part", "subtitle"]
 PLAYLIST_MAX_BYTES = 2 * 1024 * 1024
@@ -186,6 +200,18 @@ def _secret_keys(target: UpstreamPlaybackTarget) -> set[str]:
     return {key.casefold() for key in target.headers}
 
 
+async def _read_bounded(response: httpx.Response, max_bytes: int) -> bytes:
+    """边读边判上限. 先整份 ``aread()`` 再比较会让超限的应答全部驻留内存."""
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in response.aiter_bytes():
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(status_code=502, detail="播放列表过大")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _filter_response_headers(headers: Mapping[str, str]) -> dict[str, str]:
     """透传播放需要的上游响应头, 丢弃 hop-by-hop 与 cookie.
 
@@ -320,6 +346,9 @@ class StreamClient:
             ),
             follow_redirects=False,
             proxy=proxy,
+            # 只走显式配置的代理: 环境变量里的 ``HTTP_PROXY`` 不参与播放链路, 否则同一请求可能被
+            # 带到运维没有指定的出口.
+            trust_env=False,
             headers={"Accept-Encoding": "identity"},
         )
         self._gate = UpstreamGate()
@@ -381,7 +410,12 @@ class StreamClient:
             response = await self._client.send(upstream_req, stream=True)
         except httpx.RequestError as exc:
             await release()
-            logger.warning("playback upstream request failed", source=source_id, error=str(exc))
+            logger.warning(
+                "playback upstream request failed",
+                source=source_id,
+                url=redact_url(url),
+                error=_error_text(exc, url),
+            )
             raise HTTPException(status_code=502, detail="播放来源不可达") from exc
         except BaseException:
             await release()
@@ -408,14 +442,7 @@ class StreamClient:
                 raise HTTPException(status_code=502, detail="播放来源重定向被拒绝")
             if response.status_code >= 400:
                 raise HTTPException(status_code=502, detail="播放来源失败")
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in response.aiter_bytes():
-                total += len(chunk)
-                if total > max_bytes:
-                    raise HTTPException(status_code=502, detail="播放列表过大")
-                chunks.append(chunk)
-            return b"".join(chunks)
+            return await _read_bounded(response, max_bytes)
         finally:
             await release()
 
@@ -473,9 +500,7 @@ class StreamClient:
                 raise HTTPException(status_code=502, detail="播放来源失败")
             content_type = response.headers.get("content-type", "")
             if is_playlist_type(content_type) and rewrite_playlist is not None and method == "GET":
-                raw = await response.aread()
-                if len(raw) > PLAYLIST_MAX_BYTES:
-                    raise HTTPException(status_code=502, detail="播放列表过大")
+                raw = await _read_bounded(response, PLAYLIST_MAX_BYTES)
                 try:
                     decoded = raw.decode("utf-8")
                 except UnicodeDecodeError as exc:

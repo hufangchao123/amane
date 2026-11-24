@@ -358,3 +358,62 @@ class TestFootprint:
         paths = {entry.path for entry in outcome.inventory.entries}
         assert video in paths
         assert not any(path.name == "secret.nfo" for path in paths)
+
+
+class TestWorkDirAccounting:
+    """整目录删除前的授权判定: 数的是子树里的索引条数, 边界是全部授权根."""
+
+    async def _two_movies(self, repo: Repository, tmp_path: Path) -> tuple[object, object, object]:
+        from amane.db.models import MediaFileStatus
+
+        root = tmp_path / "lib"
+        actor = root / "ActorA"
+        solo = actor / "ABC-001.mp4"
+        solo.parent.mkdir(parents=True, exist_ok=True)
+        solo.write_bytes(b"v" * 10)
+        nested = actor / "ABC-002" / "ABC-002.mp4"
+        nested.parent.mkdir(parents=True)
+        nested.write_bytes(b"v" * 10)
+        lib = await repo.create_library(name="t", path=str(root))
+        assert lib.id is not None
+        first = await repo.create_media_file(lib.id, path=str(solo), number="ABC-001", status=MediaFileStatus.SCRAPED)
+        second = await repo.create_media_file(
+            lib.id, path=str(nested), number="ABC-002", status=MediaFileStatus.SCRAPED
+        )
+        return lib, first, second
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_nested_movie_keeps_the_work_dir(self, repo: Repository, tmp_path: Path) -> None:
+        """同一目录下还有别的影片 (哪怕在子目录里) 时, 不把整目录当作品目录删."""
+        lib, first, second = await self._two_movies(repo, tmp_path)
+        assert first.id is not None and second.id is not None
+
+        outcome = build_footprint.sync(
+            library=lib, items=[first], indexed=[first, second], metas={}, include_work_dir=True
+        )
+
+        kinds = {notice.kind for notice in outcome.notices}
+        assert FootprintNoticeKind.WORK_DIR_MULTIPLE in kinds
+        paths = {entry.path for entry in outcome.inventory.entries}
+        assert (tmp_path / "lib" / "ActorA" / "ABC-002" / "ABC-002.mp4") not in paths
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_success_dir_itself_is_not_a_work_dir(self, repo: Repository, tmp_path: Path) -> None:
+        """成功目录本身就是授权根: 那里的散装视频不能把整个成功目录当作品目录删掉."""
+        from amane.db.models import MediaFileStatus
+
+        root = tmp_path / "lib"
+        ok_dir = tmp_path / "done"
+        ok_dir.mkdir()
+        root.mkdir()
+        video = ok_dir / "ABC-003.mp4"
+        video.write_bytes(b"v" * 10)
+        lib = await repo.create_library(name="t", path=str(root), scrape_transfer=True, scrape_ok_dir=str(ok_dir))
+        assert lib.id is not None
+        item = await repo.create_media_file(lib.id, path=str(video), number="ABC-003", status=MediaFileStatus.SCRAPED)
+
+        outcome = build_footprint.sync(library=lib, items=[item], indexed=[item], metas={}, include_work_dir=True)
+
+        kinds = {notice.kind for notice in outcome.notices}
+        assert FootprintNoticeKind.WORK_DIR_IS_ROOT in kinds
+        assert video in {entry.path for entry in outcome.inventory.entries}

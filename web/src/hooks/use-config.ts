@@ -7,6 +7,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { getConfigSchema } from "@/client/sdk.gen";
 import type { JSONSchemaObject } from "@/components/schema-form/schema";
+import type { HotSettings } from "@/client/types.gen";
 import { useAppMutation } from "@/hooks/use-app-mutation";
 
 export function useConfigSchema() {
@@ -21,7 +22,8 @@ export function useConfigSchema() {
 }
 
 export function useConfig() {
-  return useQuery(getConfigOptions());
+  // 接口响应已脱敏 (密钥位置是 ***), 因此不带 response_model; 结构仍是 HotSettings, 供字段读取用.
+  return useQuery({ ...getConfigOptions(), select: (data) => data as HotSettings });
 }
 
 export function useUpdateConfig() {

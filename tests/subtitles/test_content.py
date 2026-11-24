@@ -22,6 +22,24 @@ def _zip(entries: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
+class _LyingEntry:
+    """压缩包条目替身: 头里声明很小, 读出时却给出超限内容, 并记录每次读取的字节数."""
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+        self.reads: list[int] = []
+
+    def __enter__(self) -> _LyingEntry:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def read(self, size: int) -> bytes:
+        self.reads.append(size)
+        return self._data[:size]
+
+
 class TestUnwrap:
     def test_plain_subtitle_keeps_its_suffix(self):
         assert unwrap_subtitle(SRT, name_hint="AD-1.ass") == (SRT, ".ass")
@@ -60,6 +78,18 @@ class TestUnwrap:
         with pytest.raises(SubtitleSourceError) as excinfo:
             unwrap_subtitle(payload)
         assert "大小上限" in str(excinfo.value)
+
+    def test_archive_entry_lying_about_size_is_capped_by_read_bytes(self, monkeypatch: pytest.MonkeyPatch):
+        """条目头可以伪造声明大小: 解包只读上限加一个字节, 实际超出仍然拒绝."""
+        payload = _zip({"AD-1.srt": b"x" * 8})
+        entry = _LyingEntry(b"x" * (MAX_SUBTITLE_BYTES + 1))
+        monkeypatch.setattr(zipfile.ZipFile, "open", lambda _self, _info, *_args, **_kwargs: entry)
+
+        with pytest.raises(SubtitleSourceError) as excinfo:
+            unwrap_subtitle(payload)
+
+        assert "大小上限" in str(excinfo.value)
+        assert entry.reads == [MAX_SUBTITLE_BYTES + 1]
 
     def test_archive_without_subtitle_is_rejected(self):
         with pytest.raises(SubtitleSourceError) as excinfo:

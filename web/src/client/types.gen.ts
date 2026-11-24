@@ -360,46 +360,6 @@ export type ActorScrapeSubmission = {
 };
 
 /**
- * ActorScrapingConfig
- *
- * 资料来源顺序填空, 头像来源优先.
- */
-export type ActorScrapingConfig = {
-    /**
-     * Profile Sites
-     *
-     * 资料来源顺序 (单源字段填空优先级); 仅演员资料来源
-     */
-    profile_sites?: Array<'minnano' | 'javdb' | 'wikipedia' | 'theporndb' | 'avbase'>;
-    /**
-     * Image Sites
-     *
-     * 头像来源顺序 (优先于资料来源附图); 仅演员头像来源
-     */
-    image_sites?: Array<'gfriends'>;
-    /**
-     * Download Images
-     */
-    download_images?: boolean;
-    /**
-     * Auto Scrape
-     */
-    auto_scrape?: boolean;
-    /**
-     * Auto Push
-     *
-     * 演员刮削成功后自动将该演员推送到媒体服务器
-     */
-    auto_push?: boolean;
-    /**
-     * Gfriends Repo
-     *
-     * gFriends GitHub 仓库 URL
-     */
-    gfriends_repo?: string;
-};
-
-/**
  * ActorSortField
  */
 export type ActorSortField = 'name' | 'count' | 'updated_at' | 'has_image' | 'birthday' | 'height' | 'bust' | 'waist' | 'hip' | 'cup';
@@ -501,56 +461,6 @@ export type AgentCancelResponse = {
      * Cancelled
      */
     cancelled: boolean;
-};
-
-/**
- * AgentConfig
- *
- * 与 llm 翻译 section 分离: 凭据/模型/限速各自独立.
- */
-export type AgentConfig = {
-    api_type?: ApiType;
-    /**
-     * Api Key
-     */
-    api_key?: string | null;
-    /**
-     * Base Url
-     */
-    base_url?: string;
-    /**
-     * Model
-     */
-    model?: string;
-    thinking?: AgentThinkingMode | null;
-    /**
-     * Max Tokens
-     */
-    max_tokens?: number;
-    /**
-     * Rate Limit
-     */
-    rate_limit?: number;
-    /**
-     * Sql Timeout Ms
-     */
-    sql_timeout_ms?: number;
-    /**
-     * Result Cache Ttl S
-     */
-    result_cache_ttl_s?: number;
-    /**
-     * Result Cache Max Entries
-     */
-    result_cache_max_entries?: number;
-    /**
-     * History Ttl S
-     */
-    history_ttl_s?: number;
-    /**
-     * History Max Sessions
-     */
-    history_max_sessions?: number;
 };
 
 /**
@@ -667,11 +577,6 @@ export type AgentTraceResponse = {
      */
     last_seq?: number;
 };
-
-/**
- * ApiType
- */
-export type ApiType = 'chat' | 'response' | 'anthropic';
 
 /**
  * ApprovalsRow
@@ -922,25 +827,6 @@ export type BrowserBackendReportResponse = {
 };
 
 /**
- * BrowserConfig
- */
-export type BrowserConfig = {
-    backend?: BrowserBackendName;
-    /**
-     * Bsk Path
-     */
-    bsk_path?: string | null;
-    /**
-     * Timeout
-     */
-    timeout?: number;
-    /**
-     * Solver Url
-     */
-    solver_url?: string;
-};
-
-/**
  * BrowserInstanceResponse
  *
  * bsk 已连接的浏览器实例; 只用于展示, 选择实例属于后续能力.
@@ -963,11 +849,6 @@ export type BrowserInstanceResponse = {
      */
     unresponsive?: boolean;
 };
-
-/**
- * BrowserMode
- */
-export type BrowserMode = 'off' | 'auto' | 'always';
 
 /**
  * CacheKind
@@ -2001,36 +1882,6 @@ export type HealthResponse = {
 };
 
 /**
- * HotSettings
- *
- * 运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败.
- */
-export type HotSettings = {
-    scraping?: ScrapingConfig;
-    media_server?: MediaServerConfig;
-    actor_scraping?: ActorScrapingConfig;
-    agent?: AgentConfig;
-    network?: NetworkConfig;
-    sr?: SrConfig;
-    semantic?: SemanticConfig;
-    watermark?: WatermarkConfig;
-    llm?: LlmConfig;
-    r18?: R18Config;
-    watcher?: WatcherConfig;
-    subtitles?: SubtitleFetchConfig;
-    wash?: WashConfig;
-    notify?: NotifyConfig;
-    worker?: WorkerConfig;
-    logging?: LoggingConfig;
-    /**
-     * Plugins
-     */
-    plugins?: {
-        [key: string]: PluginConfig;
-    };
-};
-
-/**
  * Interrupt
  *
  * A pause carried inside ``RunFinishedEvent.outcome`` when the outcome is
@@ -2226,54 +2077,6 @@ export type InventorySummaryResponse = {
 };
 
 export type JsonValue = unknown;
-
-/**
- * LLMConfig
- *
- * 凭据放 Hot, 可在 UI 修改并热生效. 与 agent section 隔离.
- */
-export type LlmConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Translate Fields
-     */
-    translate_fields?: Array<MetadataField>;
-    /**
-     * System Prompt
-     */
-    system_prompt?: string | null;
-    /**
-     * Field Prompts
-     */
-    field_prompts?: {
-        [key in MetadataField]?: string;
-    };
-    /**
-     * Api Key
-     */
-    api_key?: string | null;
-    api_type?: ApiType;
-    /**
-     * Base Url
-     */
-    base_url?: string;
-    /**
-     * Model
-     */
-    model?: string;
-    /**
-     * Rate Limit
-     */
-    rate_limit?: number;
-};
-
-/**
- * Language
- */
-export type Language = 'zh_cn' | 'zh_tw' | 'jp' | 'en';
 
 /**
  * LibraryAutomation
@@ -2681,25 +2484,6 @@ export type LibraryUpdateRequest = {
 export type LinkMode = 'strm' | 'symlink';
 
 /**
- * LoggingConfig
- */
-export type LoggingConfig = {
-    /**
-     * Level
-     */
-    level?: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
-    /**
-     * Debug Capture
-     */
-    debug_capture?: boolean;
-};
-
-/**
- * Manufacturer
- */
-export type Manufacturer = 'attackers' | 'befree' | 'bi' | 'bibian' | 'das' | 'ebody' | 'fitch' | 'hajime_kikaku' | 'honnaka' | 'hunter' | 'idea_pocket' | 'kawaii' | 'kirakira' | 'madonna' | 'miman' | 'mko_labo' | 'moodyz' | 'muku' | 'mvg' | 'nanpa_japan' | 'oppai' | 'opera' | 'premium_beauty' | 'rookie' | 's1' | 'tameikegoro' | 'tosatsu' | 'v' | 'wanz_factory';
-
-/**
  * MediaBatchDeleteRequest
  *
  * 批量删除媒体文件记录; 不存在的 id 计入 missing.
@@ -2955,44 +2739,6 @@ export type MediaRefreshSubmission = {
      * Type
      */
     type: 'media_refresh';
-};
-
-/**
- * MediaServerConfig
- *
- * Emby / Jellyfin 人物推送; url 与 api_key 齐备才启用.
- */
-export type MediaServerConfig = {
-    /**
-     * Kind
-     *
-     * 媒体服务器类型
-     */
-    kind?: 'emby' | 'jellyfin';
-    /**
-     * Url
-     *
-     * 服务器地址, 含协议、端口与可选子路径
-     */
-    url?: string | null;
-    /**
-     * Api Key
-     *
-     * 管理员 API Key
-     */
-    api_key?: string | null;
-    /**
-     * Verify Tls
-     *
-     * 校验 HTTPS 证书; 自签名证书可关闭
-     */
-    verify_tls?: boolean;
-    /**
-     * Auto Refresh
-     *
-     * 整理落盘后自动让媒体服务器重扫媒体库
-     */
-    auto_refresh?: boolean;
 };
 
 /**
@@ -3654,51 +3400,6 @@ export type Mosaic = 'uncensored' | 'cracked' | 'leaked';
 export type MoveMode = 'move' | 'copy' | 'hardlink' | 'symlink';
 
 /**
- * NetworkConfig
- */
-export type NetworkConfig = {
-    /**
-     * Proxy
-     */
-    proxy?: string | null;
-    /**
-     * Timeout
-     */
-    timeout?: number;
-    /**
-     * Max Retries
-     */
-    max_retries?: number;
-    /**
-     * Max Clients
-     */
-    max_clients?: number;
-    browser?: BrowserConfig;
-    /**
-     * Chunked Threshold
-     */
-    chunked_threshold?: number;
-    /**
-     * Chunk Size
-     */
-    chunk_size?: number;
-    /**
-     * Concurrency
-     */
-    concurrency?: number;
-    /**
-     * Rate Limits
-     */
-    rate_limits?: {
-        [key: string]: number;
-    };
-    /**
-     * Default Rate Limit
-     */
-    default_rate_limit?: number;
-};
-
-/**
  * NfoLibraryOption
  *
  * 可作为修补目标的媒体库.
@@ -3814,40 +3515,6 @@ export type NfoStatusResponse = {
      * Libraries
      */
     libraries?: Array<NfoLibraryOption>;
-};
-
-/**
- * NotifyConfig
- *
- * 通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.
- */
-export type NotifyConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Kind
-     */
-    kind?: 'webhook' | 'bark' | 'serverchan' | 'telegram';
-    /**
-     * Url
-     *
-     * 渠道地址; 可能含密钥, 导出任务记录时脱敏
-     */
-    url?: string;
-    /**
-     * Timeout Seconds
-     */
-    timeout_seconds?: number;
-    /**
-     * Max Records
-     */
-    max_records?: number;
-    /**
-     * Sections
-     */
-    sections?: Array<'queue' | 'types' | 'library' | 'wash'>;
 };
 
 /**
@@ -4347,43 +4014,6 @@ export type PluginResponse = {
      * Path
      */
     path?: string | null;
-};
-
-/**
- * R18Config
- *
- * 放 Hot: 修改 dsn 经 AppRuntime.apply_rebuild() 重建只读引擎. 未配置 dsn 时整个数据源禁用.
- * 定时导入不在此节, 须经 Schedule API 创建 r18_import.
- */
-export type R18Config = {
-    /**
-     * Dsn
-     */
-    dsn?: string | null;
-    /**
-     * Db Name
-     */
-    db_name?: string;
-    /**
-     * Read User
-     */
-    read_user?: string;
-    /**
-     * Read Password
-     */
-    read_password?: string;
-    /**
-     * Read Timeout
-     */
-    read_timeout?: number;
-    /**
-     * Download Url
-     */
-    download_url?: string | null;
-    /**
-     * Psql Path
-     */
-    psql_path?: string;
 };
 
 /**
@@ -5172,64 +4802,6 @@ export type ScrapeTransferSubmission = {
 };
 
 /**
- * ScrapingConfig
- */
-export type ScrapingConfig = {
-    /**
-     * Download Resources
-     *
-     * 刮削时自动下载到 Resource 目录的资源类型
-     */
-    download_resources?: Array<DownloadableResource>;
-    /**
-     * Crop Poster
-     */
-    crop_poster?: boolean;
-    /**
-     * Poster Ratio
-     */
-    poster_ratio?: number;
-    /**
-     * Poster Crop Skip Ratio
-     */
-    poster_crop_skip_ratio?: number;
-    /**
-     * Jpeg Quality
-     */
-    jpeg_quality?: number;
-    /**
-     * Content Routes
-     */
-    content_routes?: {
-        [key in ContentType]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
-    };
-    /**
-     * Field Priority
-     */
-    field_priority?: {
-        [key in MetadataField]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
-    };
-    /**
-     * Field Blacklist
-     */
-    field_blacklist?: {
-        [key in MetadataField]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
-    };
-    /**
-     * Field Language
-     */
-    field_language?: {
-        [key in MetadataField]?: Language;
-    };
-    /**
-     * Site Config
-     */
-    site_config?: {
-        [key: string]: SiteConfig;
-    };
-};
-
-/**
  * SelectionNoticeResponse
  *
  * 展开时未能纳入清单的项. 面板按 ``kind`` 用界面语言给出文案, 因此服务端不带文案.
@@ -5344,20 +4916,6 @@ export type SemanticBenchmarkSubmission = {
      * Type
      */
     type: 'semantic_benchmark';
-};
-
-/**
- * SemanticConfig
- *
- * 封面与剧照语义检索. 模型身份由 ``semantic/models.py`` 的清单决定, 不随配置变化.
- */
-export type SemanticConfig = {
-    /**
-     * Auto Maintain
-     *
-     * 条目图片变化后立即增量索引; 打开时视觉模型常驻
-     */
-    auto_maintain?: boolean;
 };
 
 /**
@@ -5572,59 +5130,6 @@ export type SemanticStatusResponse = {
 };
 
 /**
- * SiteConfig
- */
-export type SiteConfig = {
-    /**
-     * Base Url
-     */
-    base_url?: string | null;
-    /**
-     * Use Proxy
-     */
-    use_proxy?: boolean;
-    /**
-     * Proxy
-     */
-    proxy?: string | null;
-    use_browser?: BrowserMode;
-    browser_backend?: BrowserBackendName | null;
-    /**
-     * Cookie
-     */
-    cookie?: {
-        [key: string]: string;
-    };
-    /**
-     * Api Token
-     */
-    api_token?: string | null;
-    /**
-     * Official Routes
-     */
-    official_routes?: {
-        [key: string]: Manufacturer;
-    };
-    /**
-     * Rate Limit
-     */
-    rate_limit?: number | null;
-    /**
-     * Languages
-     *
-     * 词条语言优先级, 依序取第一个有正文的词条
-     */
-    languages?: Array<'zh' | 'ja' | 'en'>;
-};
-
-/**
- * SiteName
- *
- * 爬虫站点名称 (影片与演员源共用).
- */
-export type SiteName = '10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'gfriends' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'minnano' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'wikipedia' | 'xcity';
-
-/**
  * SiteOutcomeKind
  */
 export type SiteOutcomeKind = 'ok' | 'failed' | 'cache_hit';
@@ -5734,45 +5239,6 @@ export type SourceDescriptor = {
 export type SourceKind = 'film' | 'actor' | 'plugin';
 
 /**
- * SrConfig
- */
-export type SrConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Max Dim Threshold
-     */
-    max_dim_threshold?: number;
-    /**
-     * Max Bytes Threshold
-     */
-    max_bytes_threshold?: number;
-    preset?: SrPreset;
-    /**
-     * Output Format
-     */
-    output_format?: 'jpg' | 'png' | 'webp';
-    /**
-     * Tta
-     */
-    tta?: boolean;
-};
-
-/**
- * SrPreset
- */
-export type SrPreset = 'realesr-photo-4x' | 'waifu-photo-2x';
-
-/**
- * StrmPrefer
- *
- * STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.
- */
-export type StrmPrefer = 'path' | 'definition' | 'newest' | 'oldest';
-
-/**
  * SubtitleAuditResult
  *
  * ``missing`` 取自库内标记, ``orphans`` 取自磁盘, 两者不互相校正. ``samples`` 只放前 20 条路径.
@@ -5846,33 +5312,6 @@ export type SubtitleAuditSubmission = {
      * Type
      */
     type: 'subtitle_audit';
-};
-
-/**
- * SubtitleFetchConfig
- *
- * 字幕批量下载: 缺凭据时只用免鉴权来源.
- */
-export type SubtitleFetchConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Providers
-     */
-    providers?: Array<'subtitlecat' | 'avsubtitles'>;
-    /**
-     * Languages
-     *
-     * 优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级
-     */
-    languages?: Array<string>;
-    /**
-     * Max Attempts
-     */
-    max_attempts?: number;
-    generation?: SubtitleGenerateConfig;
 };
 
 /**
@@ -5975,59 +5414,6 @@ export type SubtitleFilesResponse = {
      * Files
      */
     files: Array<SubtitleFileEntry>;
-};
-
-/**
- * SubtitleGenerateConfig
- *
- * 转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.
- *
- * 转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.
- * 这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.
- */
-export type SubtitleGenerateConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Base Url
-     *
-     * OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1
-     */
-    base_url?: string;
-    /**
-     * Api Key
-     *
-     * 端点不需要鉴权时留空
-     */
-    api_key?: string | null;
-    /**
-     * Model
-     */
-    model?: string;
-    /**
-     * Language
-     *
-     * 音轨语言; 转写结果就是这一种
-     */
-    language?: string;
-    /**
-     * Translate
-     */
-    translate?: boolean;
-    /**
-     * Max File Minutes
-     */
-    max_file_minutes?: number;
-    /**
-     * Timeout Seconds
-     */
-    timeout_seconds?: number;
-    /**
-     * Fallback After Fetch
-     */
-    fallback_after_fetch?: boolean;
 };
 
 /**
@@ -7203,64 +6589,6 @@ export type WashChoiceRequest = {
 };
 
 /**
- * WashConfig
- *
- * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
- *
- * 字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,
- * 共用的回收站保留天数排最后.
- */
-export type WashConfig = {
-    /**
-     * Enabled
-     */
-    enabled?: boolean;
-    /**
-     * Local
-     */
-    local?: boolean;
-    /**
-     * Min Size Mb
-     */
-    min_size_mb?: number;
-    /**
-     * Prefer
-     */
-    prefer?: Array<WashPrefer>;
-    /**
-     * Strm
-     */
-    strm?: boolean;
-    strm_prefer?: StrmPrefer;
-    /**
-     * Auto On Ingest
-     */
-    auto_on_ingest?: boolean;
-    /**
-     * Auto Execute
-     */
-    auto_execute?: boolean;
-    /**
-     * Auto Execute Min Gain Percent
-     */
-    auto_execute_min_gain_percent?: number;
-    /**
-     * Keep Days
-     */
-    keep_days?: number;
-};
-
-/**
- * WashPrefer
- *
- * 洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.
- *
- * 只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:
- * 让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.
- */
-export type WashPrefer = 'quality' | 'subtitle' | 'largest' | 'newest' | 'oldest';
-
-/**
  * WashPurgeRoutine
  *
  * 回收站到期清理; 到期范围由任务自己按 ``expires_at`` 判定, 因此没有参数.
@@ -7426,6 +6754,641 @@ export type WashStatusResponse = {
 };
 
 /**
+ * ActorScrapingConfig
+ *
+ * 资料来源顺序填空, 头像来源优先.
+ */
+export type ActorScrapingConfig = {
+    /**
+     * Profile Sites
+     *
+     * 资料来源顺序 (单源字段填空优先级); 仅演员资料来源
+     */
+    profile_sites?: Array<'minnano' | 'javdb' | 'wikipedia' | 'theporndb' | 'avbase'>;
+    /**
+     * Image Sites
+     *
+     * 头像来源顺序 (优先于资料来源附图); 仅演员头像来源
+     */
+    image_sites?: Array<'gfriends'>;
+    /**
+     * Download Images
+     */
+    download_images?: boolean;
+    /**
+     * Auto Scrape
+     */
+    auto_scrape?: boolean;
+    /**
+     * Auto Push
+     *
+     * 演员刮削成功后自动将该演员推送到媒体服务器
+     */
+    auto_push?: boolean;
+    /**
+     * Gfriends Repo
+     *
+     * gFriends GitHub 仓库 URL
+     */
+    gfriends_repo?: string;
+};
+
+/**
+ * AgentConfig
+ *
+ * 与 llm 翻译 section 分离: 凭据/模型/限速各自独立.
+ */
+export type AgentConfig = {
+    api_type?: ApiType;
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string;
+    /**
+     * Model
+     */
+    model?: string;
+    thinking?: AgentThinkingMode | null;
+    /**
+     * Max Tokens
+     */
+    max_tokens?: number;
+    /**
+     * Rate Limit
+     */
+    rate_limit?: number;
+    /**
+     * Sql Timeout Ms
+     */
+    sql_timeout_ms?: number;
+    /**
+     * Result Cache Ttl S
+     */
+    result_cache_ttl_s?: number;
+    /**
+     * Result Cache Max Entries
+     */
+    result_cache_max_entries?: number;
+    /**
+     * History Ttl S
+     */
+    history_ttl_s?: number;
+    /**
+     * History Max Sessions
+     */
+    history_max_sessions?: number;
+};
+
+/**
+ * ApiType
+ */
+export type ApiType = 'chat' | 'response' | 'anthropic';
+
+/**
+ * BrowserConfig
+ */
+export type BrowserConfig = {
+    backend?: BrowserBackendName;
+    /**
+     * Bsk Path
+     */
+    bsk_path?: string | null;
+    /**
+     * Timeout
+     */
+    timeout?: number;
+    /**
+     * Solver Url
+     */
+    solver_url?: string;
+};
+
+/**
+ * BrowserMode
+ */
+export type BrowserMode = 'off' | 'auto' | 'always';
+
+/**
+ * LLMConfig
+ *
+ * 凭据放 Hot, 可在 UI 修改并热生效. 与 agent section 隔离.
+ */
+export type LlmConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Translate Fields
+     */
+    translate_fields?: Array<MetadataField>;
+    /**
+     * System Prompt
+     */
+    system_prompt?: string | null;
+    /**
+     * Field Prompts
+     */
+    field_prompts?: {
+        [key in MetadataField]?: string;
+    };
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+    api_type?: ApiType;
+    /**
+     * Base Url
+     */
+    base_url?: string;
+    /**
+     * Model
+     */
+    model?: string;
+    /**
+     * Rate Limit
+     */
+    rate_limit?: number;
+};
+
+/**
+ * Language
+ */
+export type Language = 'zh_cn' | 'zh_tw' | 'jp' | 'en';
+
+/**
+ * LoggingConfig
+ */
+export type LoggingConfig = {
+    /**
+     * Level
+     */
+    level?: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+    /**
+     * Debug Capture
+     */
+    debug_capture?: boolean;
+};
+
+/**
+ * Manufacturer
+ */
+export type Manufacturer = 'attackers' | 'befree' | 'bi' | 'bibian' | 'das' | 'ebody' | 'fitch' | 'hajime_kikaku' | 'honnaka' | 'hunter' | 'idea_pocket' | 'kawaii' | 'kirakira' | 'madonna' | 'miman' | 'mko_labo' | 'moodyz' | 'muku' | 'mvg' | 'nanpa_japan' | 'oppai' | 'opera' | 'premium_beauty' | 'rookie' | 's1' | 'tameikegoro' | 'tosatsu' | 'v' | 'wanz_factory';
+
+/**
+ * MediaServerConfig
+ *
+ * Emby / Jellyfin 人物推送; url 与 api_key 齐备才启用.
+ */
+export type MediaServerConfig = {
+    /**
+     * Kind
+     *
+     * 媒体服务器类型
+     */
+    kind?: 'emby' | 'jellyfin';
+    /**
+     * Url
+     *
+     * 服务器地址, 含协议、端口与可选子路径
+     */
+    url?: string | null;
+    /**
+     * Api Key
+     *
+     * 管理员 API Key
+     */
+    api_key?: string | null;
+    /**
+     * Verify Tls
+     *
+     * 校验 HTTPS 证书; 自签名证书可关闭
+     */
+    verify_tls?: boolean;
+    /**
+     * Auto Refresh
+     *
+     * 整理落盘后自动让媒体服务器重扫媒体库
+     */
+    auto_refresh?: boolean;
+};
+
+/**
+ * NetworkConfig
+ */
+export type NetworkConfig = {
+    /**
+     * Proxy
+     */
+    proxy?: string | null;
+    /**
+     * Timeout
+     */
+    timeout?: number;
+    /**
+     * Max Retries
+     */
+    max_retries?: number;
+    /**
+     * Max Clients
+     */
+    max_clients?: number;
+    browser?: BrowserConfig;
+    /**
+     * Chunked Threshold
+     */
+    chunked_threshold?: number;
+    /**
+     * Chunk Size
+     */
+    chunk_size?: number;
+    /**
+     * Concurrency
+     */
+    concurrency?: number;
+    /**
+     * Rate Limits
+     */
+    rate_limits?: {
+        [key: string]: number;
+    };
+    /**
+     * Default Rate Limit
+     */
+    default_rate_limit?: number;
+};
+
+/**
+ * NotifyConfig
+ *
+ * 通知: 把任务结果与周报推到自建渠道; 地址由使用者填写, 因此不受内网出站限制.
+ */
+export type NotifyConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'webhook' | 'bark' | 'serverchan' | 'telegram';
+    /**
+     * Url
+     *
+     * 渠道地址; 可能含密钥, 导出任务记录时脱敏
+     */
+    url?: string;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+    /**
+     * Max Records
+     */
+    max_records?: number;
+    /**
+     * Sections
+     */
+    sections?: Array<'queue' | 'types' | 'library' | 'wash'>;
+};
+
+/**
+ * R18Config
+ *
+ * 放 Hot: 修改 dsn 经 AppRuntime.apply_rebuild() 重建只读引擎. 未配置 dsn 时整个数据源禁用.
+ * 定时导入不在此节, 须经 Schedule API 创建 r18_import.
+ */
+export type R18Config = {
+    /**
+     * Dsn
+     */
+    dsn?: string | null;
+    /**
+     * Db Name
+     */
+    db_name?: string;
+    /**
+     * Read User
+     */
+    read_user?: string;
+    /**
+     * Read Password
+     */
+    read_password?: string;
+    /**
+     * Read Timeout
+     */
+    read_timeout?: number;
+    /**
+     * Download Url
+     */
+    download_url?: string | null;
+    /**
+     * Psql Path
+     */
+    psql_path?: string;
+};
+
+/**
+ * ScrapingConfig
+ */
+export type ScrapingConfig = {
+    /**
+     * Download Resources
+     *
+     * 刮削时自动下载到 Resource 目录的资源类型
+     */
+    download_resources?: Array<DownloadableResource>;
+    /**
+     * Crop Poster
+     */
+    crop_poster?: boolean;
+    /**
+     * Poster Ratio
+     */
+    poster_ratio?: number;
+    /**
+     * Poster Crop Skip Ratio
+     */
+    poster_crop_skip_ratio?: number;
+    /**
+     * Jpeg Quality
+     */
+    jpeg_quality?: number;
+    /**
+     * Content Routes
+     */
+    content_routes?: {
+        [key in ContentType]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
+    };
+    /**
+     * Field Priority
+     */
+    field_priority?: {
+        [key in MetadataField]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
+    };
+    /**
+     * Field Blacklist
+     */
+    field_blacklist?: {
+        [key in MetadataField]?: Array<'10musume' | '1pondo' | 'airav' | 'avbase' | 'avsox' | 'c0930' | 'caribbeancom' | 'dahlia' | 'dmm' | 'faleno' | 'fc2' | 'fc2club' | 'fc2ppvdb' | 'freejavbt' | 'getchu' | 'giga' | 'h0930' | 'h4610' | 'heyzo' | 'iqqtv' | 'jav321' | 'javbus' | 'javdb' | 'javlibrary' | 'kin8' | 'mgstage' | 'muramura' | 'official' | 'pacopacomama' | 'prestige' | 'r18dev' | 'theporndb' | 'xcity'>;
+    };
+    /**
+     * Field Language
+     */
+    field_language?: {
+        [key in MetadataField]?: Language;
+    };
+    /**
+     * Site Config
+     */
+    site_config?: {
+        [key: string]: SiteConfig;
+    };
+};
+
+/**
+ * SemanticConfig
+ *
+ * 封面与剧照语义检索. 模型身份由 ``semantic/models.py`` 的清单决定, 不随配置变化.
+ */
+export type SemanticConfig = {
+    /**
+     * Auto Maintain
+     *
+     * 条目图片变化后立即增量索引; 打开时视觉模型常驻
+     */
+    auto_maintain?: boolean;
+};
+
+/**
+ * SiteConfig
+ */
+export type SiteConfig = {
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Use Proxy
+     */
+    use_proxy?: boolean;
+    /**
+     * Proxy
+     */
+    proxy?: string | null;
+    use_browser?: BrowserMode;
+    browser_backend?: BrowserBackendName | null;
+    /**
+     * Cookie
+     */
+    cookie?: {
+        [key: string]: string;
+    };
+    /**
+     * Api Token
+     */
+    api_token?: string | null;
+    /**
+     * Official Routes
+     */
+    official_routes?: {
+        [key: string]: Manufacturer;
+    };
+    /**
+     * Rate Limit
+     */
+    rate_limit?: number | null;
+    /**
+     * Languages
+     *
+     * 词条语言优先级, 依序取第一个有正文的词条
+     */
+    languages?: Array<'zh' | 'ja' | 'en'>;
+};
+
+/**
+ * SrConfig
+ */
+export type SrConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Max Dim Threshold
+     */
+    max_dim_threshold?: number;
+    /**
+     * Max Bytes Threshold
+     */
+    max_bytes_threshold?: number;
+    preset?: SrPreset;
+    /**
+     * Output Format
+     */
+    output_format?: 'jpg' | 'png' | 'webp';
+    /**
+     * Tta
+     */
+    tta?: boolean;
+};
+
+/**
+ * SrPreset
+ */
+export type SrPreset = 'realesr-photo-4x' | 'waifu-photo-2x';
+
+/**
+ * StrmPrefer
+ *
+ * STRM 组择一时按哪个维度比. 指针没有画质与体积, 因此与本地文件分开配置.
+ */
+export type StrmPrefer = 'path' | 'definition' | 'newest' | 'oldest';
+
+/**
+ * SubtitleFetchConfig
+ *
+ * 字幕批量下载: 缺凭据时只用免鉴权来源.
+ */
+export type SubtitleFetchConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Providers
+     */
+    providers?: Array<'subtitlecat' | 'avsubtitles'>;
+    /**
+     * Languages
+     *
+     * 优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级
+     */
+    languages?: Array<string>;
+    /**
+     * Max Attempts
+     */
+    max_attempts?: number;
+    generation?: SubtitleGenerateConfig;
+};
+
+/**
+ * SubtitleGenerateConfig
+ *
+ * 转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.
+ *
+ * 转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.
+ * 这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.
+ */
+export type SubtitleGenerateConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Base Url
+     *
+     * OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1
+     */
+    base_url?: string;
+    /**
+     * Api Key
+     *
+     * 端点不需要鉴权时留空
+     */
+    api_key?: string | null;
+    /**
+     * Model
+     */
+    model?: string;
+    /**
+     * Language
+     *
+     * 音轨语言; 转写结果就是这一种
+     */
+    language?: string;
+    /**
+     * Translate
+     */
+    translate?: boolean;
+    /**
+     * Max File Minutes
+     */
+    max_file_minutes?: number;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+    /**
+     * Fallback After Fetch
+     */
+    fallback_after_fetch?: boolean;
+};
+
+/**
+ * WashConfig
+ *
+ * 洗版: 同番号多份文件留最优的一份, 其余移入 `.amane_trash` 回收站.
+ *
+ * 字段顺序即设置页的显示顺序: 本地与 STRM 各成一组, 各自的择一策略紧跟在本类的开关后面,
+ * 共用的回收站保留天数排最后.
+ */
+export type WashConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Local
+     */
+    local?: boolean;
+    /**
+     * Min Size Mb
+     */
+    min_size_mb?: number;
+    /**
+     * Prefer
+     */
+    prefer?: Array<WashPrefer>;
+    /**
+     * Strm
+     */
+    strm?: boolean;
+    strm_prefer?: StrmPrefer;
+    /**
+     * Auto On Ingest
+     */
+    auto_on_ingest?: boolean;
+    /**
+     * Auto Execute
+     */
+    auto_execute?: boolean;
+    /**
+     * Auto Execute Min Gain Percent
+     */
+    auto_execute_min_gain_percent?: number;
+    /**
+     * Keep Days
+     */
+    keep_days?: number;
+};
+
+/**
+ * WashPrefer
+ *
+ * 洗版择一时的比较维度; 配置里按顺序排, 排在前面的先分高下.
+ *
+ * 只有 ``quality`` 内部仍是一组连续判据 (分辨率 → 码率 → 体积), 其余维度都是一个单值:
+ * 让使用者能自己决定「先看分辨率还是先看字幕」, 而不用开发者替他们排定优先级.
+ */
+export type WashPrefer = 'quality' | 'subtitle' | 'largest' | 'newest' | 'oldest';
+
+/**
  * WatcherConfig
  */
 export type WatcherConfig = {
@@ -7499,6 +7462,36 @@ export type WorkerConfig = {
     shutdown_timeout?: number;
 };
 
+/**
+ * HotSettings
+ *
+ * 运行时可更新, 持久化到 TOML. extra=forbid, 未知字段须校验失败.
+ */
+export type HotSettings = {
+    scraping?: ScrapingConfig;
+    media_server?: MediaServerConfig;
+    actor_scraping?: ActorScrapingConfig;
+    agent?: AgentConfig;
+    network?: NetworkConfig;
+    sr?: SrConfig;
+    semantic?: SemanticConfig;
+    watermark?: WatermarkConfig;
+    llm?: LlmConfig;
+    r18?: R18Config;
+    watcher?: WatcherConfig;
+    subtitles?: SubtitleFetchConfig;
+    wash?: WashConfig;
+    notify?: NotifyConfig;
+    worker?: WorkerConfig;
+    logging?: LoggingConfig;
+    /**
+     * Plugins
+     */
+    plugins?: {
+        [key: string]: PluginConfig;
+    };
+};
+
 export type HealthCheckData = {
     body?: never;
     path?: never;
@@ -7540,9 +7533,13 @@ export type GetConfigData = {
 
 export type GetConfigResponses = {
     /**
+     * Response Get Config
+     *
      * Successful Response
      */
-    200: HotSettings;
+    200: {
+        [key: string]: unknown;
+    };
 };
 
 export type GetConfigResponse = GetConfigResponses[keyof GetConfigResponses];
@@ -7570,9 +7567,13 @@ export type UpdateConfigError = UpdateConfigErrors[keyof UpdateConfigErrors];
 
 export type UpdateConfigResponses = {
     /**
+     * Response Update Config
+     *
      * Successful Response
      */
-    200: HotSettings;
+    200: {
+        [key: string]: unknown;
+    };
 };
 
 export type UpdateConfigResponse = UpdateConfigResponses[keyof UpdateConfigResponses];
