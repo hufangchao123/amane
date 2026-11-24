@@ -964,6 +964,10 @@ export type CleanupResult = {
      * Resources Removed
      */
     resources_removed: number;
+    /**
+     * Metadata Removed
+     */
+    metadata_removed?: number;
 };
 
 /**
@@ -982,6 +986,12 @@ export type CleanupSubmission = {
      * 删除不被任何 Metadata URL 字段引用的 Resource (含派生裁剪)
      */
     remove_unreferenced_resources?: boolean;
+    /**
+     * Remove Orphan Metadata
+     *
+     * 删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)
+     */
+    remove_orphan_metadata?: boolean;
     /**
      * Type
      */
@@ -5876,6 +5886,30 @@ export type SubtitleGenerateSubmission = {
      * Type
      */
     type: 'subtitle_generate';
+};
+
+/**
+ * SubtitleGenerationTestResponse
+ *
+ * 转写端点的连通性探测结果: 只报能不能用, 不改任何配置.
+ */
+export type SubtitleGenerationTestResponse = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Latency Ms
+     */
+    latency_ms: number;
+    /**
+     * Detail
+     */
+    detail?: string;
 };
 
 /**
@@ -11247,6 +11281,22 @@ export type SubtitleStatusResponses = {
 };
 
 export type SubtitleStatusResponse2 = SubtitleStatusResponses[keyof SubtitleStatusResponses];
+
+export type TestSubtitleGenerationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/subtitles/generation/test';
+};
+
+export type TestSubtitleGenerationResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleGenerationTestResponse;
+};
+
+export type TestSubtitleGenerationResponse = TestSubtitleGenerationResponses[keyof TestSubtitleGenerationResponses];
 
 export type WashStatusData = {
     body?: never;

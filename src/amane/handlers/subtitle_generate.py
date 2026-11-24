@@ -27,6 +27,7 @@ from ..subtitles.whisper import (
     extract_audio,
     ffmpeg_path,
     format_timestamp,
+    split_long_segments,
     srt_lines,
     to_srt,
     transcribe,
@@ -202,6 +203,8 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             except WhisperError as exc:
                 logger.warning("subtitle transcribe failed", media_file_id=media.id, reason=str(exc))
                 return _TargetOutcome(_Outcome.FAILED, str(exc))
+            # 端点可能在没台词的区间给出一条跨度几十分钟的段: 切开再拼, 免得一条字幕占半部片子.
+            segments = split_long_segments(segments)
             translated = False
             if generate.translate:
                 model = build_model(

@@ -189,7 +189,10 @@
       "autoGroups": "自动执行",
       "multiDisc": "分卷",
       "generated": "已生成",
-      "translated": "已译中文"
+      "translated": "已译中文",
+      "metadataRemoved": "片库条目",
+      "filesRemoved": "删记录",
+      "resourcesRemoved": "删资源"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -237,6 +240,10 @@
       "remove_unreferenced_resources": {
         "label": "移除未引用资源",
         "description": "删除没有任何影片引用的资源文件"
+      },
+      "remove_orphan_metadata": {
+        "label": "同时清掉空片库条目",
+        "description": "文件都不存在时，片库里对应的条目一并删除；关掉则片库留着空条目"
       }
     },
     "organize": {

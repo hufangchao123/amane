@@ -223,7 +223,22 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
         />
       );
     case "refresh":
+      return <EmptyHint visible={!failed} />;
     case "cleanup":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.files"), value: result.files_removed, tone: "gray" },
+            {
+              label: t("result.counts.metadataRemoved"),
+              value: result.metadata_removed ?? 0,
+              tone: "gray",
+            },
+            { label: t("result.counts.removed"), value: result.resources_removed, tone: "gray" },
+          ]}
+        />
+      );
     case "upscale":
     case "r18_import":
     case "rescrape":

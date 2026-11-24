@@ -9,11 +9,13 @@ import pytest
 
 from amane.subtitles import whisper as module
 from amane.subtitles.whisper import (
+    MAX_SEGMENT_SECONDS,
     Segment,
     WhisperError,
     extract_audio,
     format_timestamp,
     parse_segments,
+    split_long_segments,
     srt_lines,
     to_srt,
     transcribe,
@@ -148,3 +150,37 @@ class TestExtractAudio:
         command = seen[0]
         assert command[command.index("-af") + 1] == module._LOUDNESS_FILTER
         assert command[-1] == str(tmp_path / "a.wav")
+
+
+class TestSplitLongSegments:
+    def test_short_segments_are_kept_as_is(self) -> None:
+        segments = [Segment(start=0.0, end=3.0, text="こんにちは")]
+
+        assert split_long_segments(segments) == segments
+
+    def test_long_silence_spanning_segment_is_cut(self) -> None:
+        """没台词的区间会被端点返回成一条跨度几十分钟的段: 必须切开, 否则一条字幕占半部片子."""
+        segments = [Segment(start=95.0, end=1900.0, text="午饭是蛋包饭 我知道了 就这样吧")]
+
+        pieces = split_long_segments(segments)
+
+        assert len(pieces) > 1
+        assert all(piece.end - piece.start <= MAX_SEGMENT_SECONDS + 1e-6 for piece in pieces)
+        assert pieces[0].start == 95.0
+        assert pieces[-1].end <= 1900.0
+        assert "".join(piece.text for piece in pieces).replace(" ", "") == segments[0].text.replace(" ", "")
+
+    def test_short_text_over_a_long_gap_is_clamped(self) -> None:
+        """文字少到切不动时, 让字幕出现在段首几秒内, 而不是拉满整个空档."""
+        segments = [Segment(start=10.0, end=900.0, text="はい")]
+
+        pieces = split_long_segments(segments)
+
+        assert len(pieces) == 1
+        assert pieces[0].start == 10.0
+        assert pieces[0].end == 10.0 + MAX_SEGMENT_SECONDS
+
+    def test_zero_max_seconds_disables_splitting(self) -> None:
+        segments = [Segment(start=0.0, end=600.0, text="あ" * 10)]
+
+        assert split_long_segments(segments, max_seconds=0) == segments

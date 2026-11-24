@@ -31,7 +31,10 @@
     "fetchLibrary": "补全此库",
     "multiDiscHint": "另有 {{parts}} 个分卷不适用",
     "generateLibrary": "转写此库缺字幕的片",
-    "generateStarted": "已排入转写任务"
+    "generateStarted": "已排入转写任务",
+    "testGeneration": "测试转写端点",
+    "testOk": "端点可用：{{model}}，{{ms}} ms",
+    "testFailed": "转写端点不可用"
   },
   "wash": {
     "title": "洗版",

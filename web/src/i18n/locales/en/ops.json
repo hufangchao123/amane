@@ -33,7 +33,10 @@
     "multiDiscHint_one": "ops:subtitles.multiDiscHint",
     "multiDiscHint_other": "ops:subtitles.multiDiscHint",
     "generateLibrary": "Transcribe missing subtitles",
-    "generateStarted": "Transcription queued"
+    "generateStarted": "Transcription queued",
+    "testGeneration": "Test endpoint",
+    "testOk": "Endpoint OK: {{model}} in {{ms}} ms",
+    "testFailed": "Transcription endpoint unavailable"
   },
   "wash": {
     "title": "Wash",

@@ -1,6 +1,11 @@
 import { Badge, Button, Card, Group, Select, SimpleGrid, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconListSearch, IconMicrophone } from "@tabler/icons-react";
+import {
+  IconDownload,
+  IconListSearch,
+  IconMicrophone,
+  IconPlugConnected,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -10,6 +15,7 @@ import {
   subtitleStatusOptions,
   subtitleStatusQueryKey,
   submitTaskMutation,
+  testSubtitleGenerationMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { extractErrorMessage } from "@/lib/api-error";
 
@@ -96,6 +102,26 @@ export function SubtitleStatusCards() {
     onError: (err) =>
       notifications.show({
         message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
+
+  /** 端点探测: 换机器或换端口后先点这里, 不用真跑一部片子才知道通不通. */
+  const probe = useMutation({
+    ...testSubtitleGenerationMutation(),
+    onSuccess: (data) => {
+      if (data.ok) {
+        notifications.show({
+          message: t("ops:subtitles.testOk", { model: data.model, ms: data.latency_ms }),
+          color: "teal",
+        });
+        return;
+      }
+      notifications.show({ message: data.detail || t("ops:subtitles.testFailed"), color: "red" });
+    },
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("ops:subtitles.testFailed")),
         color: "red",
       }),
   });
@@ -189,6 +215,14 @@ export function SubtitleStatusCards() {
             }
           >
             {t("ops:subtitles.fetchLibrary")}
+          </Button>
+          <Button
+            variant="subtle"
+            leftSection={<IconPlugConnected size={16} />}
+            loading={probe.isPending}
+            onClick={() => probe.mutate({})}
+          >
+            {t("ops:subtitles.testGeneration")}
           </Button>
           <Button
             variant="default"

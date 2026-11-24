@@ -264,12 +264,17 @@ class CleanupPayload(BaseModel):
     remove_unreferenced_resources: bool = Field(
         default=True, description="删除不被任何 Metadata URL 字段引用的 Resource (含派生裁剪)"
     )
+    remove_orphan_metadata: bool = Field(
+        default=True, description="删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)"
+    )
 
 
 class CleanupResult(BaseModel):
     type: Literal[TaskType.CLEANUP] = TaskType.CLEANUP
     files_removed: int
     resources_removed: int
+    metadata_removed: int = 0
+    """片库里已经没有文件的行: 文件被删掉后一并清掉."""
 
 
 # --- UPSCALE ---

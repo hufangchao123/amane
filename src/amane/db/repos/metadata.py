@@ -648,6 +648,24 @@ class MetadataRepoMixin(RepositoryMixinBase):
         await self._drop_embeddings(removed)
         return len(removed), missing
 
+    async def delete_orphan_metadata(self) -> int:
+        """删除片库里已经没有对应文件的行 (文件被删掉或被洗版搬走).
+
+        片库是"有这条片子"的目录, 文件全没了还留着条目只会让使用者以为库里还有;
+        返回删掉的条数.
+        """
+        async with self._session() as session:
+            referenced = select(col(MediaFile.metadata_id)).where(col(MediaFile.metadata_id).is_not(None))
+            orphans = list((await session.exec(select(Metadata).where(col(Metadata.id).not_in(referenced)))).all())
+            ids = [metadata.id for metadata in orphans if metadata.id is not None]
+            if not ids:
+                return 0
+            for metadata in orphans:
+                await cascade_delete_metadata(session, metadata)
+            await session.commit()
+        await self._drop_embeddings(ids)
+        return len(ids)
+
     async def _drop_embeddings(self, metadata_ids: list[int]) -> None:
         """主库提交之后清除 sidecar: 跨库没有事务, 先删除向量会在主库回滚时丢弃仍有效的数据.
         清理失败只留下孤儿行: 检索侧回查主库时会将其过滤, 下次全量索引再删除, 因此仅记录日志."""

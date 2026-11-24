@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -24,6 +25,13 @@ _TRANSCRIBE_PATH = "/audio/transcriptions"
 
 _LOUDNESS_FILTER = "loudnorm=I=-16:TP=-1.5:LRA=11"
 """抽轨时把响度拉到 -16 LUFS: 素材普遍录得很轻, 归一后端点的人声检测才判得准."""
+
+MAX_SEGMENT_SECONDS = 8.0
+"""单条字幕最长时长.
+
+人声检测会把"中间几十秒没台词"压缩成一个段, 端点因此会给出跨度几十分钟的段; 直接铺开
+就是一条字幕占满半部片子. 超长的段按字数比例切开, 时间也按比例分配.
+"""
 
 _VAD_FIELDS = {"vad_filter": "true", "condition_on_previous_text": "false"}
 """转写参数: 打开人声检测, 并禁止拿上一段当上下文.
@@ -156,6 +164,62 @@ def parse_segments(body: object) -> list[Segment]:
     if not segments:
         raise WhisperError("转写端点返回的分段全是空的")
     return segments
+
+
+MIN_CHARS_PER_PIECE = 6
+"""一条字幕至少要有这么多字才值得切: 否则宁可把整句压在段首几秒内."""
+
+_BREAK_CHARS = ("。", "、", "！", "？", "!", "?", "…", "\n")
+
+
+def split_long_segments(segments: Sequence[Segment], *, max_seconds: float = MAX_SEGMENT_SECONDS) -> list[Segment]:
+    """把过长的段按字数比例切开, 时间同比例分配; 每条都不超过 max_seconds.
+
+    端点会在没台词的区间上给出跨度几十分钟的段 (人声检测只报一处起始), 直接铺开就是一条
+    字幕占半部片子. 文字太少切不动时宁可让字幕显示在段首 max_seconds 秒内, 也不拉满整个空档.
+    优先在标点处断开; 没有标点就按字数硬切.
+    """
+    if max_seconds <= 0:
+        return list(segments)
+    result: list[Segment] = []
+    for segment in segments:
+        span = segment.end - segment.start
+        text = segment.text
+        if span <= max_seconds:
+            result.append(segment)
+            continue
+        pieces = min(math.ceil(span / max_seconds), max(0, len(text) // MIN_CHARS_PER_PIECE))
+        if pieces < 2 or len(text) < pieces:
+            result.append(Segment(start=segment.start, end=segment.start + max_seconds, text=text))
+            continue
+        chunks = _split_text(text, pieces)
+        total = sum(len(chunk) for chunk in chunks) or 1
+        cursor = segment.start
+        for chunk in chunks:
+            share = min(max_seconds, span * len(chunk) / total)
+            result.append(Segment(start=round(cursor, 3), end=round(cursor + share, 3), text=chunk))
+            cursor += share
+    return result
+
+
+def _split_text(text: str, pieces: int) -> list[str]:
+    """按标点优先把文本切成 pieces 段; 找不到标点就按字数均分."""
+    chunks: list[str] = []
+    remaining = text
+    while remaining:
+        target = max(1, round(len(remaining) / (pieces - len(chunks))))
+        window = remaining[: max(target, 1)]
+        cut = max((window.rfind(char) for char in _BREAK_CHARS), default=-1)
+        if 0 <= cut < len(remaining) - 1:
+            chunks.append(remaining[: cut + 1].strip())
+            remaining = remaining[cut + 1 :].lstrip()
+        else:
+            chunks.append(window.strip())
+            remaining = remaining[len(window) :].lstrip()
+        if len(chunks) == pieces - 1 and remaining:
+            chunks.append(remaining.strip())
+            break
+    return [chunk for chunk in chunks if chunk]
 
 
 def format_timestamp(seconds: float) -> str:

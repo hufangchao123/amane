@@ -1,4 +1,4 @@
-"""CLEANUP handler - 悬空 MediaFile 索引 / 未引用 Resource 回收; 不删 Metadata."""
+"""CLEANUP handler - 悬空 MediaFile 索引 / 未引用 Resource / 空片库条目回收."""
 
 import asyncio
 import time
@@ -52,7 +52,7 @@ async def _seed_resource(store: ResourceStore, url: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_removes_missing_media_files_keeps_metadata(cleanup_env):
+async def test_removes_missing_media_files_and_its_metadata(cleanup_env):
     repo, store, tmp_path = cleanup_env
     (tmp_path / "lib").mkdir()
     lib = await repo.create_library(name="L", path=str(tmp_path / "lib"))
@@ -77,8 +77,10 @@ async def test_removes_missing_media_files_keeps_metadata(cleanup_env):
     assert result.success
     assert result.result is not None
     assert result.result.files_removed == 1
+    assert result.result.metadata_removed == 1
     assert await repo.get_media_file(mf.id) is None
-    assert await repo.get_metadata(meta.id) is not None
+    # 片库里再没有文件对应这条片子, 条目一并删掉, 免得片库显示不存在的作品.
+    assert await repo.get_metadata(meta.id) is None
 
 
 @pytest.mark.asyncio
@@ -116,15 +118,40 @@ async def test_missing_file_exists_does_not_block_event_loop(cleanup_env, monkey
 
 
 @pytest.mark.asyncio
-async def test_does_not_delete_metadata_without_media_files(cleanup_env):
+async def test_keeps_metadata_when_asked(cleanup_env):
+    """关掉开关时片库条目保留: 有人靠片库记住"这部还没下"."""
     repo, store, _tmp = cleanup_env
     meta = await repo.upsert_metadata(number="XYZ-9", title="solo")
     assert meta.id is not None
 
     handler = CleanupHandler(repo, store)
-    result = await handler.handle(CleanupPayload())
+    result = await handler.handle(CleanupPayload(remove_orphan_metadata=False))
     assert result.success
+    assert result.result is not None
+    assert result.result.metadata_removed == 0
     assert await repo.get_metadata(meta.id) is not None
+
+
+@pytest.mark.asyncio
+async def test_removes_orphan_metadata(cleanup_env):
+    repo, store, _tmp = cleanup_env
+    keep = await repo.upsert_metadata(number="KEEP-2", title="has file")
+    gone = await repo.upsert_metadata(number="GONE-2", title="no file")
+    assert keep.id is not None and gone.id is not None
+    lib = await repo.create_library(name="L", path=str(_tmp / "lib2"))
+    assert lib.id is not None
+    (_tmp / "lib2").mkdir(exist_ok=True)
+    real = _tmp / "lib2" / "keep.mp4"
+    real.write_bytes(b"x")
+    await repo.create_media_file(lib.id, path=str(real), number="KEEP-2", metadata_id=keep.id)
+
+    handler = CleanupHandler(repo, store)
+    result = await handler.handle(CleanupPayload(remove_missing_files=False, remove_unreferenced_resources=False))
+    assert result.success
+    assert result.result is not None
+    assert result.result.metadata_removed == 1
+    assert await repo.get_metadata(gone.id) is None
+    assert await repo.get_metadata(keep.id) is not None
 
 
 @pytest.mark.asyncio

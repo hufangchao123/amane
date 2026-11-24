@@ -794,6 +794,7 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
     async def handle(self, payload: CleanupPayload) -> TaskResult[CleanupResult]:
         files_removed = 0
         resources_removed = 0
+        metadata_removed = 0
 
         # 删除磁盘上不存在的 MediaFile 记录.
         if payload.remove_missing_files:
@@ -804,9 +805,25 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
             live_urls, live_hashes = await _collect_live_resource_refs(self._repo)
             resources_removed = await self._resource_store.purge_unreferenced(live_urls, live_hashes)
 
-        logger.info("cleanup completed", files_removed=files_removed, resources_removed=resources_removed)
+        # 片库里文件全没了就一并删掉, 免得片库还显示已经不存在的片子.
+        if payload.remove_orphan_metadata:
+            metadata_removed = await self._repo.delete_orphan_metadata()
 
-        return TaskResult(True, result=CleanupResult(files_removed=files_removed, resources_removed=resources_removed))
+        logger.info(
+            "cleanup completed",
+            files_removed=files_removed,
+            resources_removed=resources_removed,
+            metadata_removed=metadata_removed,
+        )
+
+        return TaskResult(
+            True,
+            result=CleanupResult(
+                files_removed=files_removed,
+                resources_removed=resources_removed,
+                metadata_removed=metadata_removed,
+            ),
+        )
 
     async def _remove_missing_files(self) -> int:
         """按库取锁后删掉确认不存在的行, 返回删掉的条数.

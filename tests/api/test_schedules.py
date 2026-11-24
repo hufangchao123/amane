@@ -114,6 +114,7 @@ class TestSchedules:
             "type": "cleanup",
             "remove_missing_files": True,
             "remove_unreferenced_resources": True,
+            "remove_orphan_metadata": True,
         }
         patched = await client.patch(f"schedules/{sched.id}", json={"name": "updated", "enabled": False})
         assert patched.json()["name"] == "updated"

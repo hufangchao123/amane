@@ -220,7 +220,10 @@
       "autoGroups": "Auto",
       "multiDisc": "Multi-disc",
       "generated": "Generated",
-      "translated": "Translated to Chinese"
+      "translated": "Translated to Chinese",
+      "metadataRemoved": "Library entries",
+      "filesRemoved": "Records removed",
+      "resourcesRemoved": "Resources removed"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -269,6 +272,10 @@
       "remove_unreferenced_resources": {
         "label": "Remove unreferenced resources",
         "description": "Delete resource files that no film references"
+      },
+      "remove_orphan_metadata": {
+        "label": "Drop empty library entries",
+        "description": "Delete the matching library entries when no files are left; keep them when off"
       }
     },
     "organize": {

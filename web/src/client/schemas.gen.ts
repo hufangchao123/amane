@@ -1643,6 +1643,11 @@ export const CleanupResultSchema = {
         resources_removed: {
             type: 'integer',
             title: 'Resources Removed'
+        },
+        metadata_removed: {
+            type: 'integer',
+            title: 'Metadata Removed',
+            default: 0
         }
     },
     type: 'object',
@@ -1665,6 +1670,12 @@ export const CleanupSubmissionSchema = {
             type: 'boolean',
             title: 'Remove Unreferenced Resources',
             description: '删除不被任何 Metadata URL 字段引用的 Resource (含派生裁剪)',
+            default: true
+        },
+        remove_orphan_metadata: {
+            type: 'boolean',
+            title: 'Remove Orphan Metadata',
+            description: '删除片库里已经没有对应文件的条数 (文件删掉后片库不再留着空条目)',
             default: true
         },
         type: {
@@ -11026,6 +11037,36 @@ export const SubtitleGenerateSubmissionSchema = {
     ],
     title: 'SubtitleGenerateSubmission',
     description: '转写生成字幕: 外部站都取不到时的兜底, 一份要跑几十分钟.'
+} as const;
+
+export const SubtitleGenerationTestResponseSchema = {
+    properties: {
+        ok: {
+            type: 'boolean',
+            title: 'Ok'
+        },
+        model: {
+            type: 'string',
+            title: 'Model'
+        },
+        latency_ms: {
+            type: 'integer',
+            title: 'Latency Ms'
+        },
+        detail: {
+            type: 'string',
+            title: 'Detail',
+            default: ''
+        }
+    },
+    type: 'object',
+    required: [
+        'ok',
+        'model',
+        'latency_ms'
+    ],
+    title: 'SubtitleGenerationTestResponse',
+    description: '转写端点的连通性探测结果: 只报能不能用, 不改任何配置.'
 } as const;
 
 export const SubtitleStatusResponseSchema = {
