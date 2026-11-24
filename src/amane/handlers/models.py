@@ -458,6 +458,25 @@ class SubtitleFetchResult(BaseModel):
     failed: int = 0
 
 
+class SubtitleGeneratePayload(BaseModel):
+    """转写生成的范围; 三者都空表示全库按缺口挑."""
+
+    media_file_id: int | None = None
+    library_id: int | None = None
+    limit: int = Field(default=10, ge=1, le=100)
+    """单轮最多转几份: 一份要跑几十分钟, 默认值刻意压得比下载那条链路小."""
+
+
+class SubtitleGenerateResult(BaseModel):
+    """``generated`` 是写完并落位的份数, ``translated`` 是其中译成中文的份数."""
+
+    type: Literal[TaskType.SUBTITLE_GENERATE] = TaskType.SUBTITLE_GENERATE
+    generated: int = 0
+    translated: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+
 class SubtitleAuditPayload(BaseModel):
     """巡检范围; 空表示全部媒体库."""
 

@@ -33,6 +33,7 @@ from amane.handlers.models import (
     SemanticIndexResult,
     SubtitleAuditResult,
     SubtitleFetchResult,
+    SubtitleGenerateResult,
     UpscaleResult,
     WashApplyResult,
     WashScanResult,
@@ -151,6 +152,7 @@ RESULT_CASES = [
         id="semantic_benchmark",
     ),
     pytest.param(SubtitleFetchResult(fetched=3, missing=2, failed=0), id="subtitle_fetch"),
+    pytest.param(SubtitleGenerateResult(generated=1, translated=1, skipped=0, failed=0), id="subtitle_generate"),
     pytest.param(SubtitleAuditResult(libraries=1, videos=3, subtitles=2, missing=1, orphans=1), id="subtitle_audit"),
     pytest.param(
         ScrapeTransferResult(outcome="ok", destination="/media/done", files=3, bytes=2048),

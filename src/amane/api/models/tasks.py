@@ -44,6 +44,8 @@ from ...handlers import (
     SubtitleAuditResult,
     SubtitleFetchPayload,
     SubtitleFetchResult,
+    SubtitleGeneratePayload,
+    SubtitleGenerateResult,
     UpscalePayload,
     UpscaleResult,
     WashApplyPayload,
@@ -80,6 +82,7 @@ TaskResultPayload = Annotated[
     | SemanticBenchmarkResult
     | SubtitleAuditResult
     | SubtitleFetchResult
+    | SubtitleGenerateResult
     | NfoPatchResult
     | NotifyResult
     | AvatarCheckResult
@@ -326,6 +329,12 @@ class SubtitleFetchSubmission(SubtitleFetchPayload):
     type: Literal["subtitle_fetch"]
 
 
+class SubtitleGenerateSubmission(SubtitleGeneratePayload):
+    """转写生成字幕: 外部站都取不到时的兜底, 一份要跑几十分钟."""
+
+    type: Literal["subtitle_generate"]
+
+
 class NfoPatchSubmission(NfoPatchPayload):
     """NFO 修补; 默认只统计不写盘."""
 
@@ -377,6 +386,7 @@ TaskSubmission = Annotated[
     | SemanticBenchmarkSubmission
     | SubtitleAuditSubmission
     | SubtitleFetchSubmission
+    | SubtitleGenerateSubmission
     | WashScanSubmission
     | WashApplySubmission
     | MediaRefreshSubmission

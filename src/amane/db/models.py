@@ -49,6 +49,7 @@ class TaskType(StrEnum):
     ACTOR_PUSH = "actor_push"
     SUBTITLE_FETCH = "subtitle_fetch"
     SUBTITLE_AUDIT = "subtitle_audit"
+    SUBTITLE_GENERATE = "subtitle_generate"
     NFO_PATCH = "nfo_patch"
     NOTIFY = "notify"
     AVATAR_CHECK = "avatar_check"

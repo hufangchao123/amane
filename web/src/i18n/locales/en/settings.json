@@ -924,6 +924,42 @@
       "max_attempts": {
         "label": "Max attempts",
         "description": "Attempts per file"
+      },
+      "generation": {
+        "label": "Transcription",
+        "description": "When no subtitle source has the file, transcribe the audio with an external Whisper service. The image carries ffmpeg only, not a transcription engine.",
+        "enabled": {
+          "label": "Enable transcription",
+          "description": "When off, subtitle fetching only looks at external sources and records a gap otherwise"
+        },
+        "base_url": {
+          "label": "Transcription endpoint",
+          "description": "OpenAI-compatible endpoint such as http://192.168.9.117:8080/v1; must serve /audio/transcriptions with verbose_json segments"
+        },
+        "api_key": {
+          "label": "Endpoint key",
+          "description": "Leave empty when the endpoint needs no authentication"
+        },
+        "model": {
+          "label": "Transcription model",
+          "description": "Model name on that endpoint, e.g. Systran/faster-whisper-medium"
+        },
+        "language": {
+          "label": "Audio language",
+          "description": "The transcription stays in this language; Japanese titles usually use ja"
+        },
+        "translate": {
+          "label": "Translate to Chinese",
+          "description": "Translate each line into Simplified Chinese with the LLM section's endpoint and key"
+        },
+        "max_file_minutes": {
+          "label": "Per-file limit (minutes)",
+          "description": "Files longer than this are skipped: a two hour title takes very long on CPU"
+        },
+        "timeout_seconds": {
+          "label": "Per-file timeout (seconds)",
+          "description": "Separate timeouts for audio extraction and transcription"
+        }
       }
     },
     "wash": {

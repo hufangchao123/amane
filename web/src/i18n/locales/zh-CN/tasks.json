@@ -82,7 +82,8 @@
     "notify": "通知",
     "notify_digest": "摘要推送",
     "avatar_check": "头像校验",
-    "scrape_transfer": "刮削后转移"
+    "scrape_transfer": "刮削后转移",
+    "subtitle_generate": "转写生成字幕"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -186,7 +187,9 @@
       "status": "状态码",
       "size": "占用",
       "autoGroups": "自动执行",
-      "multiDisc": "分卷"
+      "multiDisc": "分卷",
+      "generated": "已生成",
+      "translated": "已译中文"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -224,7 +227,8 @@
       "nfo_patch": "NFO 修补",
       "avatar_check": "头像校验",
       "notify": "通知",
-      "scrape_transfer": "刮削后转移"
+      "scrape_transfer": "刮削后转移",
+      "subtitle_generate": "转写生成字幕"
     },
     "cleanup": {
       "remove_missing_files": {
@@ -601,6 +605,20 @@
       "source_dir": {
         "label": "来源目录",
         "description": "刮削时文件所在的目录; 自动填写, 重试时用来补搬留在原处的附属文件"
+      }
+    },
+    "subtitle_generate": {
+      "media_file_id": {
+        "label": "文件 ID",
+        "description": "只转这一个文件"
+      },
+      "library_id": {
+        "label": "媒体库",
+        "description": "范围内挑没有字幕的文件"
+      },
+      "limit": {
+        "label": "单轮份数",
+        "description": "这一轮最多转几份; 一份要跑几十分钟, 默认值刻意压得小"
       }
     }
   },

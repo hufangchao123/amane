@@ -40,6 +40,7 @@ from ..handlers import (
     SemanticIndexHandler,
     SubtitleAuditHandler,
     SubtitleFetchHandler,
+    SubtitleGenerateHandler,
     UpscaleHandler,
     WashApplyHandler,
     WashScanHandler,
@@ -619,6 +620,7 @@ def build_handlers(
     handlers[TaskType.SCRAPE_TRANSFER] = ScrapeTransferHandler(repo, hot, library_locks, inventory_store)
     handlers[TaskType.SUBTITLE_FETCH] = SubtitleFetchHandler(repo, hot, library_locks)
     handlers[TaskType.SUBTITLE_AUDIT] = SubtitleAuditHandler(repo, hot)
+    handlers[TaskType.SUBTITLE_GENERATE] = SubtitleGenerateHandler(repo, hot, library_locks)
     handlers[TaskType.NFO_PATCH] = NfoPatchHandler(repo, hot, library_locks)
     handlers[TaskType.NOTIFY] = NotifyHandler(repo, hot)
     handlers[TaskType.AVATAR_CHECK] = AvatarCheckHandler(repo, WebAvatarSource(web_client), state_dir=state_dir)

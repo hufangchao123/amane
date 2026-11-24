@@ -1,6 +1,6 @@
 import { Badge, Button, Card, Group, Select, SimpleGrid, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconListSearch } from "@tabler/icons-react";
+import { IconDownload, IconListSearch, IconMicrophone } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -76,6 +76,21 @@ export function SubtitleStatusCards() {
     ...submitTaskMutation(),
     onSuccess: () => {
       notifications.show({ message: t("ops:subtitles.auditStarted"), color: "blue" });
+      void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
+    },
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
+
+  /** 转写生成: 一份要跑几十分钟, 只对选中的库发起, 单轮份数由后端默认值兜住. */
+  const generate = useMutation({
+    ...submitTaskMutation(),
+    onSuccess: () => {
+      notifications.show({ message: t("ops:subtitles.generateStarted"), color: "blue" });
+      void queryClient.invalidateQueries({ queryKey: subtitleStatusQueryKey() });
       void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
     },
     onError: (err) =>
@@ -174,6 +189,17 @@ export function SubtitleStatusCards() {
             }
           >
             {t("ops:subtitles.fetchLibrary")}
+          </Button>
+          <Button
+            variant="default"
+            leftSection={<IconMicrophone size={16} />}
+            loading={generate.isPending}
+            disabled={libraryId === null}
+            onClick={() =>
+              generate.mutate({ body: { type: "subtitle_generate", library_id: libraryId } })
+            }
+          >
+            {t("ops:subtitles.generateLibrary")}
           </Button>
         </Group>
       </Group>

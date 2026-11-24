@@ -94,6 +94,18 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
+    case "subtitle_generate":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.generated"), value: result.generated ?? 0, tone: "teal" },
+            { label: t("result.counts.translated"), value: result.translated ?? 0, tone: "blue" },
+            { label: t("result.counts.skipped"), value: result.skipped ?? 0, tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
     case "subtitle_audit":
       return (
         <CountBadges

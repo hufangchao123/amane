@@ -18,5 +18,6 @@ from .scrape_transfer import *
 from .semantic import *
 from .subtitle_audit import *
 from .subtitle_fetch import *
+from .subtitle_generate import *
 from .upscale import *
 from .wash import *

@@ -924,6 +924,42 @@
       "max_attempts": {
         "label": "最大尝试次数",
         "description": "单个文件最多尝试的次数"
+      },
+      "generation": {
+        "label": "转写生成",
+        "description": "外部字幕站都没有这份字幕时, 用外部的 Whisper 服务把音轨转成文字; 镜像里没有转写引擎, 只放 ffmpeg 抽音轨.",
+        "enabled": {
+          "label": "启用转写生成",
+          "description": "关闭时字幕补全只在外部站找, 找不到就记为缺口"
+        },
+        "base_url": {
+          "label": "转写端点",
+          "description": "OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1; 需要支持 /audio/transcriptions 与 verbose_json 分段"
+        },
+        "api_key": {
+          "label": "端点密钥",
+          "description": "端点不需要鉴权时留空"
+        },
+        "model": {
+          "label": "转写模型",
+          "description": "端点上的模型名, 例如 Systran/faster-whisper-medium"
+        },
+        "language": {
+          "label": "音轨语言",
+          "description": "转写结果就是这一种语言; 日韩片一般填 ja"
+        },
+        "translate": {
+          "label": "译成中文",
+          "description": "转写后逐句译成简体中文, 用大模型那一节的端点与密钥"
+        },
+        "max_file_minutes": {
+          "label": "单份上限 (分钟)",
+          "description": "超过此时长的文件跳过: 一份两小时的片子在 CPU 上要跑很久"
+        },
+        "timeout_seconds": {
+          "label": "单份超时 (秒)",
+          "description": "抽音轨与转写各自的超时; CPU 转写两小时片子要给足"
+        }
       }
     },
     "wash": {

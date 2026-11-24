@@ -29,7 +29,9 @@
     "libraryPlaceholder": "不选则针对全部库",
     "auditLibrary": "巡检此库",
     "fetchLibrary": "补全此库",
-    "multiDiscHint": "另有 {{parts}} 个分卷不适用"
+    "multiDiscHint": "另有 {{parts}} 个分卷不适用",
+    "generateLibrary": "转写此库缺字幕的片",
+    "generateStarted": "已排入转写任务"
   },
   "wash": {
     "title": "洗版",

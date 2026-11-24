@@ -858,6 +858,28 @@ SubtitleProvider = Literal["subtitlecat", "avsubtitles"]
 DEFAULT_SUBTITLE_PROVIDERS: list[SubtitleProvider] = ["subtitlecat", "avsubtitles"]
 
 
+class SubtitleGenerateConfig(BaseModel):
+    """转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.
+
+    转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.
+    这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.
+    """
+
+    enabled: bool = False
+
+    base_url: str = Field(default="", max_length=2000, description="OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1")
+    api_key: str | None = Field(default=None, description="端点不需要鉴权时留空")
+    model: str = Field(default="Systran/faster-whisper-medium", max_length=200)
+    language: str = Field(default="ja", max_length=20, description="音轨语言; 转写结果就是这一种")
+    translate: bool = True
+    """转写后逐句译成简体中文; 依赖大模型那一节的配置."""
+
+    max_file_minutes: int = Field(default=180, ge=1, le=600)
+    """超过此时长的文件跳过: 一份两小时的片子在 CPU 上要跑很久, 排一个任务容易占满整轮."""
+
+    timeout_seconds: int = Field(default=1800, ge=30, le=7200)
+
+
 class SubtitleFetchConfig(BaseModel):
     """字幕批量下载: 缺凭据时只用免鉴权来源."""
 
@@ -869,6 +891,9 @@ class SubtitleFetchConfig(BaseModel):
         description="优先语言: 只认中文 (zh-CN 简体 / zh-TW 繁体), 顺序即优先级",
     )
     max_attempts: int = Field(default=3, ge=1, le=10)
+
+    generation: SubtitleGenerateConfig = SubtitleGenerateConfig()
+    """外部站都取不到时的兜底: 转写音轨再翻译."""
 
     @field_validator("languages")
     @classmethod

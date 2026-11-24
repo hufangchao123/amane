@@ -3945,7 +3945,16 @@ export const HotSettingsSchema = {
                     'zh-CN',
                     'zh-TW'
                 ],
-                max_attempts: 3
+                max_attempts: 3,
+                generation: {
+                    base_url: '',
+                    enabled: false,
+                    language: 'ja',
+                    max_file_minutes: 180,
+                    model: 'Systran/faster-whisper-medium',
+                    timeout_seconds: 1800,
+                    translate: true
+                }
             }
         },
         wash: {
@@ -10784,6 +10793,18 @@ export const SubtitleFetchConfigSchema = {
             minimum: 1,
             title: 'Max Attempts',
             default: 3
+        },
+        generation: {
+            $ref: '#/components/schemas/SubtitleGenerateConfig',
+            default: {
+                enabled: false,
+                base_url: '',
+                model: 'Systran/faster-whisper-medium',
+                language: 'ja',
+                translate: true,
+                max_file_minutes: 180,
+                timeout_seconds: 1800
+            }
         }
     },
     type: 'object',
@@ -10862,6 +10883,149 @@ export const SubtitleFetchSubmissionSchema = {
     ],
     title: 'SubtitleFetchSubmission',
     description: '字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑.'
+} as const;
+
+export const SubtitleGenerateConfigSchema = {
+    properties: {
+        enabled: {
+            type: 'boolean',
+            title: 'Enabled',
+            default: false
+        },
+        base_url: {
+            type: 'string',
+            maxLength: 2000,
+            title: 'Base Url',
+            description: 'OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1',
+            default: ''
+        },
+        api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Api Key',
+            description: '端点不需要鉴权时留空'
+        },
+        model: {
+            type: 'string',
+            maxLength: 200,
+            title: 'Model',
+            default: 'Systran/faster-whisper-medium'
+        },
+        language: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Language',
+            description: '音轨语言; 转写结果就是这一种',
+            default: 'ja'
+        },
+        translate: {
+            type: 'boolean',
+            title: 'Translate',
+            default: true
+        },
+        max_file_minutes: {
+            type: 'integer',
+            maximum: 600,
+            minimum: 1,
+            title: 'Max File Minutes',
+            default: 180
+        },
+        timeout_seconds: {
+            type: 'integer',
+            maximum: 7200,
+            minimum: 30,
+            title: 'Timeout Seconds',
+            default: 1800
+        }
+    },
+    type: 'object',
+    title: 'SubtitleGenerateConfig',
+    description: '转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.\n\n转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.\n这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.'
+} as const;
+
+export const SubtitleGenerateResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'subtitle_generate',
+            title: 'Type',
+            default: 'subtitle_generate'
+        },
+        generated: {
+            type: 'integer',
+            title: 'Generated',
+            default: 0
+        },
+        translated: {
+            type: 'integer',
+            title: 'Translated',
+            default: 0
+        },
+        skipped: {
+            type: 'integer',
+            title: 'Skipped',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'SubtitleGenerateResult',
+    description: '``generated`` 是写完并落位的份数, ``translated`` 是其中译成中文的份数.'
+} as const;
+
+export const SubtitleGenerateSubmissionSchema = {
+    properties: {
+        media_file_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Media File Id'
+        },
+        library_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Library Id'
+        },
+        limit: {
+            type: 'integer',
+            maximum: 100,
+            minimum: 1,
+            title: 'Limit',
+            default: 10
+        },
+        type: {
+            type: 'string',
+            const: 'subtitle_generate',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'SubtitleGenerateSubmission',
+    description: '转写生成字幕: 外部站都取不到时的兜底, 一份要跑几十分钟.'
 } as const;
 
 export const SubtitleStatusResponseSchema = {
@@ -11050,6 +11214,9 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/SubtitleFetchSubmission'
                     },
                     {
+                        $ref: '#/components/schemas/SubtitleGenerateSubmission'
+                    },
+                    {
                         $ref: '#/components/schemas/WashScanSubmission'
                     },
                     {
@@ -11090,6 +11257,7 @@ export const TaskBatchSubmitRequestSchema = {
                         semantic_index: '#/components/schemas/SemanticIndexSubmission',
                         subtitle_audit: '#/components/schemas/SubtitleAuditSubmission',
                         subtitle_fetch: '#/components/schemas/SubtitleFetchSubmission',
+                        subtitle_generate: '#/components/schemas/SubtitleGenerateSubmission',
                         upscale: '#/components/schemas/UpscaleSubmission',
                         wash_apply: '#/components/schemas/WashApplySubmission',
                         wash_scan: '#/components/schemas/WashScanSubmission'
@@ -11658,6 +11826,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/SubtitleFetchResult'
                         },
                         {
+                            $ref: '#/components/schemas/SubtitleGenerateResult'
+                        },
+                        {
                             $ref: '#/components/schemas/NfoPatchResult'
                         },
                         {
@@ -11698,6 +11869,7 @@ export const TaskResponseSchema = {
                             semantic_index: '#/components/schemas/SemanticIndexResult',
                             subtitle_audit: '#/components/schemas/SubtitleAuditResult',
                             subtitle_fetch: '#/components/schemas/SubtitleFetchResult',
+                            subtitle_generate: '#/components/schemas/SubtitleGenerateResult',
                             upscale: '#/components/schemas/UpscaleResult',
                             wash_apply: '#/components/schemas/WashApplyResult',
                             wash_scan: '#/components/schemas/WashScanResult'
@@ -11764,6 +11936,7 @@ export const TaskTypeSchema = {
         'actor_push',
         'subtitle_fetch',
         'subtitle_audit',
+        'subtitle_generate',
         'nfo_patch',
         'notify',
         'avatar_check',

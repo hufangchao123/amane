@@ -94,7 +94,8 @@
     "notify": "Notification",
     "notify_digest": "Digest push",
     "avatar_check": "Avatar check",
-    "scrape_transfer": "Transfer after scrape"
+    "scrape_transfer": "Transfer after scrape",
+    "subtitle_generate": "Generate subtitles"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -217,7 +218,9 @@
       "status": "Status",
       "size": "Size",
       "autoGroups": "Auto",
-      "multiDisc": "Multi-disc"
+      "multiDisc": "Multi-disc",
+      "generated": "Generated",
+      "translated": "Translated to Chinese"
     },
     "mediaServer": {
       "emby": "Emby",
@@ -256,7 +259,8 @@
       "nfo_patch": "NFO patch",
       "avatar_check": "Avatar check",
       "notify": "Notify",
-      "scrape_transfer": "Post-scrape transfer"
+      "scrape_transfer": "Post-scrape transfer",
+      "subtitle_generate": "Generate subtitles"
     },
     "cleanup": {
       "remove_missing_files": {
@@ -632,6 +636,20 @@
       "source_dir": {
         "label": "Source directory",
         "description": "Directory the file was in when scraped; filled automatically, used to move leftover sidecar files on retry"
+      }
+    },
+    "subtitle_generate": {
+      "media_file_id": {
+        "label": "File ID",
+        "description": "Transcribe only this file"
+      },
+      "library_id": {
+        "label": "Library",
+        "description": "Pick files without subtitles in this library"
+      },
+      "limit": {
+        "label": "Files per run",
+        "description": "How many files this run transcribes; one file takes tens of minutes"
       }
     }
   },

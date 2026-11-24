@@ -5728,6 +5728,7 @@ export type SubtitleFetchConfig = {
      * Max Attempts
      */
     max_attempts?: number;
+    generation?: SubtitleGenerateConfig;
 };
 
 /**
@@ -5774,6 +5775,107 @@ export type SubtitleFetchSubmission = {
      * Type
      */
     type: 'subtitle_fetch';
+};
+
+/**
+ * SubtitleGenerateConfig
+ *
+ * 转写生成字幕: 把视频音轨交给外部 Whisper 服务转成原文, 再经 LLM 译成中文.
+ *
+ * 转写引擎不装进镜像: 机型与显存需求差异太大, 且同一份音轨在 CPU 上跑一遍要几十分钟.
+ * 这里只配「怎么连」与「要不要翻译」, 端点用 OpenAI 兼容的 ``/audio/transcriptions``.
+ */
+export type SubtitleGenerateConfig = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Base Url
+     *
+     * OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1
+     */
+    base_url?: string;
+    /**
+     * Api Key
+     *
+     * 端点不需要鉴权时留空
+     */
+    api_key?: string | null;
+    /**
+     * Model
+     */
+    model?: string;
+    /**
+     * Language
+     *
+     * 音轨语言; 转写结果就是这一种
+     */
+    language?: string;
+    /**
+     * Translate
+     */
+    translate?: boolean;
+    /**
+     * Max File Minutes
+     */
+    max_file_minutes?: number;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+};
+
+/**
+ * SubtitleGenerateResult
+ *
+ * ``generated`` 是写完并落位的份数, ``translated`` 是其中译成中文的份数.
+ */
+export type SubtitleGenerateResult = {
+    /**
+     * Type
+     */
+    type?: 'subtitle_generate';
+    /**
+     * Generated
+     */
+    generated?: number;
+    /**
+     * Translated
+     */
+    translated?: number;
+    /**
+     * Skipped
+     */
+    skipped?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+};
+
+/**
+ * SubtitleGenerateSubmission
+ *
+ * 转写生成字幕: 外部站都取不到时的兜底, 一份要跑几十分钟.
+ */
+export type SubtitleGenerateSubmission = {
+    /**
+     * Media File Id
+     */
+    media_file_id?: number | null;
+    /**
+     * Library Id
+     */
+    library_id?: number | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Type
+     */
+    type: 'subtitle_generate';
 };
 
 /**
@@ -5857,7 +5959,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | SubtitleGenerateSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6175,6 +6277,8 @@ export type TaskResponse = {
     } & SubtitleAuditResult) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchResult) | ({
+        type: 'subtitle_generate';
+    } & SubtitleGenerateResult) | ({
         type: 'nfo_patch';
     } & NfoPatchResult) | ({
         type: 'notify';
@@ -6202,7 +6306,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'subtitle_generate' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
 
 /**
  * TaskWorkerResponse
@@ -10074,6 +10178,8 @@ export type SubmitTaskData = {
     } & SubtitleAuditSubmission) | ({
         type: 'subtitle_fetch';
     } & SubtitleFetchSubmission) | ({
+        type: 'subtitle_generate';
+    } & SubtitleGenerateSubmission) | ({
         type: 'wash_scan';
     } & WashScanSubmission) | ({
         type: 'wash_apply';

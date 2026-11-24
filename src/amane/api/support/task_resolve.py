@@ -23,6 +23,7 @@ from ...handlers import (
     SemanticIndexPayload,
     SubtitleAuditPayload,
     SubtitleFetchPayload,
+    SubtitleGeneratePayload,
     UpscalePayload,
     WashApplyPayload,
     WashScanPayload,
@@ -47,6 +48,7 @@ from ..models import (
     SemanticIndexSubmission,
     SubtitleAuditSubmission,
     SubtitleFetchSubmission,
+    SubtitleGenerateSubmission,
     TaskSubmission,
     UpscaleSubmission,
     WashApplySubmission,
@@ -73,6 +75,7 @@ ResolvedPayload = (
     | SemanticBenchmarkPayload
     | SubtitleAuditPayload
     | SubtitleFetchPayload
+    | SubtitleGeneratePayload
     | WashScanPayload
     | NfoPatchPayload
     | AvatarCheckPayload
@@ -126,6 +129,10 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.SUBTITLE_AUDIT, SubtitleAuditPayload(library_id=req.library_id)
         case SubtitleFetchSubmission():
             return TaskType.SUBTITLE_FETCH, SubtitleFetchPayload(
+                media_file_id=req.media_file_id, library_id=req.library_id, limit=req.limit
+            )
+        case SubtitleGenerateSubmission():
+            return TaskType.SUBTITLE_GENERATE, SubtitleGeneratePayload(
                 media_file_id=req.media_file_id, library_id=req.library_id, limit=req.limit
             )
         case WashScanSubmission():
