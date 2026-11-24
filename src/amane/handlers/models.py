@@ -472,6 +472,7 @@ class SubtitleAuditResult(BaseModel):
     videos: int = 0
     subtitles: int = 0
     missing: int = 0
+    multi_disc: int = 0
     orphans: int = 0
     samples: list[str] = []
 

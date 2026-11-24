@@ -29,6 +29,7 @@ from ..subtitles import (
     staging_dir,
     usable_providers,
 )
+from ..subtitles.targets import is_multi_disc
 from ._common import LibraryTaskLocks, media_refresh_followups, refresh_external_subtitle
 from .models import SubtitleFetchPayload, SubtitleFetchResult
 from .protocol import FollowupTask, TaskHandler, TaskResult
@@ -178,6 +179,9 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         path = Path(media.path)
         if not is_video_media(path):
             return _TargetOutcome(_Outcome.SKIPPED, "不是视频文件")
+        if is_multi_disc(path):
+            # 字幕站给的是整片字幕, 与拆开的文件对不齐: 不抓, 也不计入缺口.
+            return _TargetOutcome(_Outcome.SKIPPED, "分卷不补字幕")
 
         library = await self._repo.get_library(media.library_id)
         if library is None:

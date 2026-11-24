@@ -102,6 +102,7 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
             { label: t("result.counts.videos"), value: result.videos ?? 0, tone: "gray" },
             { label: t("result.counts.subtitles"), value: result.subtitles ?? 0, tone: "gray" },
             { label: t("result.counts.missing"), value: result.missing ?? 0, tone: "yellow" },
+            { label: t("result.counts.multiDisc"), value: result.multi_disc ?? 0, tone: "gray" },
             { label: t("result.counts.orphans"), value: result.orphans ?? 0, tone: "yellow" },
           ]}
         />

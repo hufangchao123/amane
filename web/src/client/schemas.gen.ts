@@ -10676,6 +10676,11 @@ export const SubtitleAuditResultSchema = {
             title: 'Missing',
             default: 0
         },
+        multi_disc: {
+            type: 'integer',
+            title: 'Multi Disc',
+            default: 0
+        },
         orphans: {
             type: 'integer',
             title: 'Orphans',
@@ -10868,6 +10873,11 @@ export const SubtitleStatusResponseSchema = {
         missing: {
             type: 'integer',
             title: 'Missing'
+        },
+        multi_disc: {
+            type: 'integer',
+            title: 'Multi Disc',
+            default: 0
         },
         queued: {
             type: 'integer',

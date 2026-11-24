@@ -25,6 +25,23 @@ def _handler(repo: Repository, web: FakeHttp, config: SubtitleFetchConfig) -> Su
 
 class TestTargets:
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_multi_disc_is_skipped_without_network(
+        self, repo: Repository, tmp_path: Path, subtitle_config: SubtitleFetchConfig
+    ):
+        """分卷片的整片字幕与拆开的文件对不齐: 直接跳过, 不发请求."""
+        root = tmp_path / "lib"
+        _, media = await seed_media(repo, root / "CD1", number="AD-1")
+        web = FakeHttp({})
+        assert media.id is not None
+
+        result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(media_file_id=media.id))
+
+        assert result.success is True
+        assert result.result is not None
+        assert result.result.fetched == 0
+        assert web.calls == []
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_strm_video_is_selected_and_placed(
         self,
         repo: Repository,

@@ -5659,6 +5659,10 @@ export type SubtitleAuditResult = {
      */
     missing?: number;
     /**
+     * Multi Disc
+     */
+    multi_disc?: number;
+    /**
      * Orphans
      */
     orphans?: number;
@@ -5784,6 +5788,10 @@ export type SubtitleStatusResponse = {
      * Missing
      */
     missing: number;
+    /**
+     * Multi Disc
+     */
+    multi_disc?: number;
     /**
      * Queued
      */

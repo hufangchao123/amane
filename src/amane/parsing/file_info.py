@@ -190,6 +190,11 @@ _SIX_DIGIT_CATALOG = re.compile(r"(?<!\d)\d{6}[-_]\d{2,4}(?!\d)")
 _WESTERN_PROBE = re.compile(r"([A-Z0-9_]{2,})[-.]2?0?(\d{2}[-.]\d{2}[-.]\d{2})")
 _WESTERN_PARSE = re.compile(r"([A-Z0-9-]{2,})[-_.]2?0?(\d{2}[-.]\d{2}[-.]\d{2})")
 
+#: 下载源塞在真实番号前面的随机前缀. 不是厂牌, 留在番号里会让解析与刮削同时失准
+#: (``YRNKNKJDVAJ-683.mkv`` 会被读成 ``YRNKNKJDVAJ-683``). 只认逐个列出的值, 不做猜测式剥离:
+#: 厂牌名长度与形态差异太大 (``300MIUM`` 含数字, ``MBRBN`` 五个字母), 自动剥离必然误伤.
+_JUNK_PREFIXES = ("YRNKNKJ",)
+
 _ESCAPE_MARKERS = (
     "4K",
     "4KS",
@@ -482,8 +487,16 @@ def _prepare(basename: str, escape_strings: list[str]) -> _Prepared:
     return _Prepared(escaped=escaped, dated=dated, catalog=catalog)
 
 
+def _strip_junk_prefixes(text: str) -> str:
+    """剥掉文件开头列在 ``_JUNK_PREFIXES`` 里的下载源前缀."""
+    for prefix in _JUNK_PREFIXES:
+        if text.startswith(prefix) and len(text) > len(prefix):
+            return text[len(prefix) :].lstrip("-_ .")
+    return text
+
+
 def _remove_escape_strings(filename: str, escape_strings: list[str]) -> str:
-    upper = filename.upper()
+    upper = _strip_junk_prefixes(filename.upper())
     for string in escape_strings:
         if string:
             upper = upper.replace(string.upper(), "")

@@ -100,7 +100,11 @@ export function SubtitleStatusCards() {
         <StatCard
           label={t("ops:subtitles.missingLabel")}
           value={status ? String(status.missing) : "-"}
-          hint={t("ops:subtitles.missingHint")}
+          hint={
+            status && status.multi_disc
+              ? `${t("ops:subtitles.missingHint")} · ${t("ops:subtitles.multiDiscHint", { parts: status.multi_disc })}`
+              : t("ops:subtitles.missingHint")
+          }
         />
         <StatCard
           label={t("ops:subtitles.queuedLabel")}

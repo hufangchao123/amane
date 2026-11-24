@@ -28,7 +28,8 @@
     "libraryHint": "选一个库后, 下面两个按钮只处理这个库.",
     "libraryPlaceholder": "不选则针对全部库",
     "auditLibrary": "巡检此库",
-    "fetchLibrary": "补全此库"
+    "fetchLibrary": "补全此库",
+    "multiDiscHint": "另有 {{parts}} 个分卷不适用"
   },
   "wash": {
     "title": "洗版",

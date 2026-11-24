@@ -28,7 +28,10 @@
     "libraryHint": "With a library selected, the two buttons below only touch it.",
     "libraryPlaceholder": "Leave empty for every library",
     "auditLibrary": "Audit this library",
-    "fetchLibrary": "Fill this library"
+    "fetchLibrary": "Fill this library",
+    "multiDiscHint": "{{parts}} multi-disc parts skipped",
+    "multiDiscHint_one": "ops:subtitles.multiDiscHint",
+    "multiDiscHint_other": "ops:subtitles.multiDiscHint"
   },
   "wash": {
     "title": "Wash",

@@ -670,3 +670,20 @@ def test_is_vr(tags: list[str], expected: bool) -> None:
 )
 def test_canonical_definition(value: str, expected: str | None) -> None:
     assert canonical_definition(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # 下载源塞的随机前缀要剥掉, 否则刮削与字幕搜索都拿错番号
+        ("YRNKNKJDVAJ-683-有码.mkv", "DVAJ-683"),
+        ("YRNKNKJDVAJ-683", "DVAJ-683"),
+        # 合法番号不被误伤: 含数字的厂牌、五字母厂牌、纯数字尾号
+        ("DVAJ-683.mkv", "DVAJ-683"),
+        ("MBRBN-005-有码.mp4", "MBRBN-005"),
+        ("300MIUM-123.mkv", "300MIUM-123"),
+        ("AD-1.mp4", "AD-1"),
+    ],
+)
+def test_junk_prefix_is_stripped(text: str, expected: str) -> None:
+    assert parse_file_info(text).number == expected

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from ..db import TaskType
 from ..db.models import MediaFileStatus
 from ..subtitles.audit import SubtitleFinding, scan_library
+from ..subtitles.targets import is_multi_disc
 from .models import SubtitleAuditPayload, SubtitleAuditResult, SubtitleFetchPayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
@@ -42,6 +43,7 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
         videos = 0
         subtitles = 0
         missing = 0
+        multi_disc = 0
         findings: list[SubtitleFinding] = []
         for index, library in enumerate(libraries, start=1):
             await self.report_progress(index - 1, len(libraries) + 1, library.name)
@@ -51,9 +53,13 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
             subtitles += scan.subtitles
             findings.extend(scan.findings)
             # 只算已刮削的行: 未刮削与失败的行本来就不在补全目标里.
-            missing += await self._repo.count_media_files(
-                library_id=library.id, status=[MediaFileStatus.SCRAPED], has_subtitle=False
-            )
+            for file in files:
+                if file.status is not MediaFileStatus.SCRAPED or file.has_subtitle:
+                    continue
+                if is_multi_disc(file.path):
+                    multi_disc += 1
+                else:
+                    missing += 1
 
         await self.report_progress(len(libraries) + 1, len(libraries) + 1, "done")
         return TaskResult(
@@ -63,6 +69,7 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
                 videos=videos,
                 subtitles=subtitles,
                 missing=missing,
+                multi_disc=multi_disc,
                 orphans=len(findings),
                 samples=[finding.path for finding in findings[:20]],
             ),

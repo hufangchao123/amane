@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from ..db.models import MediaFileStatus, TaskStatus, TaskType
 from . import avsubtitles, subtitlecat
 from .models import SubtitleDownload, SubtitleSourceError
+from .targets import is_multi_disc
 from .transport import SubtitleHttp
 
 if TYPE_CHECKING:
@@ -28,7 +29,9 @@ _RETRY_BACKOFF_SECONDS: Final[float] = 0.5
 
 class SubtitleFetchSummary(BaseModel):
     missing: int = 0
-    """库内成片没有外挂字幕的份数."""
+    """库内成片没有外挂字幕的份数 (不含分卷)."""
+    multi_disc: int = 0
+    """分卷 (``cd`` 非空) 里没有外挂字幕的份数: 整片字幕与拆开的文件对不齐, 不算缺口也不抓."""
     queued: int = 0
     """排队中的 ``SUBTITLE_FETCH`` 任务数."""
 
@@ -116,9 +119,11 @@ class SubtitleFetcher:
 
     async def summary(self) -> SubtitleFetchSummary:
         """缺口按"已刮削但没有任何字幕"计: 未刮削的条目连番号都未必有, 抓也抓不到."""
-        missing = await self._repo.count_media_files(status=[MediaFileStatus.SCRAPED], has_subtitle=False)
+        gaps = await self._repo.list_media_files(status=[MediaFileStatus.SCRAPED], has_subtitle=False, limit=None)
+        missing = sum(1 for media in gaps if not is_multi_disc(media.path))
+        multi_disc = len(gaps) - missing
         queued = await self._repo.count_tasks(
             statuses=[TaskStatus.QUEUED, TaskStatus.RUNNING],
             task_types=[TaskType.SUBTITLE_FETCH],
         )
-        return SubtitleFetchSummary(missing=missing, queued=queued)
+        return SubtitleFetchSummary(missing=missing, multi_disc=multi_disc, queued=queued)

@@ -216,7 +216,8 @@
       "channel": "Channel",
       "status": "Status",
       "size": "Size",
-      "autoGroups": "Auto"
+      "autoGroups": "Auto",
+      "multiDisc": "Multi-disc"
     },
     "mediaServer": {
       "emby": "Emby",
