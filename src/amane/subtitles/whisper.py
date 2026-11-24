@@ -22,6 +22,16 @@ SAMPLE_RATE = 16000
 
 _TRANSCRIBE_PATH = "/audio/transcriptions"
 
+_LOUDNESS_FILTER = "loudnorm=I=-16:TP=-1.5:LRA=11"
+"""抽轨时把响度拉到 -16 LUFS: 素材普遍录得很轻, 归一后端点的人声检测才判得准."""
+
+_VAD_FIELDS = {"vad_filter": "true", "condition_on_previous_text": "false"}
+"""转写参数: 打开人声检测, 并禁止拿上一段当上下文.
+
+片子里大量气声与喘息, 不检测人声时模型会在这类段落上反复吐同一个词; 关掉上下文继承,
+一段吐坏也不会传染后面.
+"""
+
 
 class WhisperError(Exception):
     """转写失败: 端点不可达、返回格式不对、ffmpeg 抽轨失败."""
@@ -64,6 +74,8 @@ async def extract_audio(video: Path, dest: Path, *, timeout: float) -> None:
         str(SAMPLE_RATE),
         "-c:a",
         "pcm_s16le",
+        "-af",
+        _LOUDNESS_FILTER,
         str(dest),
     ]
     process = await asyncio.create_subprocess_exec(
@@ -99,7 +111,13 @@ async def transcribe(
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     payload = await asyncio.to_thread(audio.read_bytes)
     files = {"file": (audio.name, payload, "audio/wav")}
-    data = {"model": model, "language": language, "response_format": "verbose_json", "temperature": "0"}
+    data = {
+        "model": model,
+        "language": language,
+        "response_format": "verbose_json",
+        "temperature": "0",
+        **_VAD_FIELDS,
+    }
     try:
         response = await client.post(url, files=files, data=data, headers=headers, timeout=timeout)
     except httpx2.HTTPError as exc:

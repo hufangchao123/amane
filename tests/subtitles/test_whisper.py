@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
+from typing import TYPE_CHECKING, Any
+
 import pytest
 
+from amane.subtitles import whisper as module
 from amane.subtitles.whisper import (
     Segment,
     WhisperError,
+    extract_audio,
     format_timestamp,
     parse_segments,
     srt_lines,
     to_srt,
+    transcribe,
     with_texts,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestParseSegments:
@@ -69,3 +78,73 @@ class TestSrt:
 
     def test_srt_lines_extracts_text(self) -> None:
         assert srt_lines([Segment(0.0, 1.0, "a"), Segment(1.0, 2.0, "b")]) == ["a", "b"]
+
+
+class _FakeResponse:
+    status_code = 200
+
+    def json(self) -> dict[str, Any]:
+        return {"segments": [{"start": 0.0, "end": 1.0, "text": "こんにちは"}]}
+
+
+class _FakeClient:
+    """只记下 POST 的参数: 这里验的是请求契约, 不连网."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    async def post(self, url: str, **kwargs: Any) -> _FakeResponse:
+        self.calls.append({"url": url, **kwargs})
+        return _FakeResponse()
+
+
+class TestTranscribeRequest:
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_asks_for_vad_without_context(self, tmp_path: Path) -> None:
+        """气声段会让模型反复吐同一个词: 必须开人声检测并关掉上下文继承."""
+        audio = tmp_path / "a.wav"
+        audio.write_bytes(b"RIFF")
+        client = _FakeClient()
+
+        await transcribe(
+            client,  # type: ignore[arg-type]
+            base_url="http://whisper.local/v1/",
+            api_key=None,
+            model="medium",
+            language="ja",
+            audio=audio,
+            timeout=30.0,
+        )
+
+        data = client.calls[0]["data"]
+        assert client.calls[0]["url"] == "http://whisper.local/v1/audio/transcriptions"
+        assert data["response_format"] == "verbose_json"
+        assert data["vad_filter"] == "true"
+        assert data["condition_on_previous_text"] == "false"
+        assert data["temperature"] == "0"
+
+
+class TestExtractAudio:
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_normalizes_loudness(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """素材录得轻时人声检测判不出, 抽轨阶段先拉到 -16 LUFS."""
+        seen: list[list[str]] = []
+
+        class _FakeProcess:
+            returncode = 0
+
+            async def communicate(self) -> tuple[bytes, bytes]:
+                return b"", b""
+
+        async def fake_exec(*args: str, **kwargs: Any) -> _FakeProcess:
+            seen.append(list(args))
+            return _FakeProcess()
+
+        monkeypatch.setattr(module, "ffmpeg_path", lambda: "/usr/bin/ffmpeg")
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+
+        await extract_audio(tmp_path / "v.mp4", tmp_path / "a.wav", timeout=30.0)
+
+        command = seen[0]
+        assert command[command.index("-af") + 1] == module._LOUDNESS_FILTER
+        assert command[-1] == str(tmp_path / "a.wav")
