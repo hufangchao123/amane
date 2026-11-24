@@ -4,6 +4,7 @@ import os
 import stat
 import unicodedata
 from pathlib import Path
+from typing import NamedTuple
 
 #: 重解析点 tag 的 name surrogate 位: 置位表示该目录项代表系统里另一个命名对象.
 NAME_SURROGATE = 0x20000000
@@ -109,6 +110,34 @@ def existing_disk_path(path: str | Path, *, follow_symlinks: bool = True) -> Pat
         if candidate.exists(follow_symlinks=follow_symlinks):
             return candidate
     return None
+
+
+class DiskProbe(NamedTuple):
+    """磁盘查询结果: ``path`` 是命中的形式, ``unreadable`` 表示查询本身出错."""
+
+    path: Path | None
+    unreadable: bool
+
+
+def disk_probe(path: str | Path, *, follow_symlinks: bool = True) -> DiskProbe:
+    """区分「不存在」与「读不到」.
+
+    ``Path.exists()`` 把 EACCES / ESTALE / EIO 一并吞成 False, 用它判断「文件消失」会在挂载
+    抖动或权限变更时删掉整库索引行. 这里只看 errno: ENOENT / ENOTDIR 才算真的不存在, 其余
+    OSError 记成 ``unreadable``, 由调用方决定保留.
+    """
+    unreadable = False
+    for candidate in path_forms(path):
+        try:
+            candidate.stat(follow_symlinks=follow_symlinks)
+        except FileNotFoundError, NotADirectoryError:
+            continue
+        except OSError:
+            unreadable = True
+            continue
+        else:
+            return DiskProbe(candidate, False)
+    return DiskProbe(None, unreadable)
 
 
 def is_name_surrogate(st: os.stat_result) -> bool:

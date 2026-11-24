@@ -8,6 +8,8 @@ from functools import update_wrapper
 from pathlib import Path
 from typing import Any
 
+from .path import DiskProbe
+from .path import disk_probe as _disk_probe
 from .path import existing_disk_path as _existing_disk_path
 
 
@@ -28,6 +30,12 @@ class in_thread[**P, R]:
 def existing_disk_path(path: Path, *, follow_symlinks: bool = True) -> Path | None:
     """先试传入路径, 不存在再试规范等价的 NFC / NFD."""
     return _existing_disk_path(path, follow_symlinks=follow_symlinks)
+
+
+@in_thread
+def disk_probe(path: Path, *, follow_symlinks: bool = True) -> DiskProbe:
+    """区分「不存在」与「读不到」; 见 :func:`amane.utils.path.disk_probe`."""
+    return _disk_probe(path, follow_symlinks=follow_symlinks)
 
 
 @in_thread

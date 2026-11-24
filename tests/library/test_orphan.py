@@ -25,6 +25,7 @@ from amane.library import (
     scan_inventory,
 )
 from amane.library.cleanup import inventory as inventory_module
+from amane.library.cleanup.footprint import _add_tree_contents
 from amane.library.cleanup.orphan import JunkKind, classify_junk
 from tests.helpers import make_junction
 
@@ -753,3 +754,28 @@ class TestPartialDownloadIsVetoed:
     )
     def test_partial_download_is_not_cleanable(self, name: str) -> None:
         assert classify_junk(Path("/lib") / name, is_dir=False) is JunkKind.VETO
+
+
+class TestFootprintSkipsRecycleDirs:
+    """按目录展开时不能把回收站与下载残件列进删除集合."""
+
+    def test_recycle_dirs_and_partial_files_are_skipped(self, tmp_path: Path) -> None:
+        work = tmp_path / "ABC-123"
+        (work / "sub").mkdir(parents=True)
+        (work / "keep.mkv").write_bytes(b"x")
+        (work / "half.mkv.!qB").write_bytes(b"x")
+        wash = work / ".amane_wash" / "ABC-123"
+        wash.mkdir(parents=True)
+        (wash / "restorable.mkv").write_bytes(b"x")
+        legacy = work / ".amane_trash"
+        legacy.mkdir()
+        (legacy / "old.mkv").write_bytes(b"x")
+
+        added: list[Path] = []
+        _add_tree_contents(work, add=added.append)
+        names = sorted(path.name for path in added)
+
+        assert "keep.mkv" in names
+        assert "half.mkv.!qB" not in names
+        assert "restorable.mkv" not in names
+        assert "old.mkv" not in names

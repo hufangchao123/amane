@@ -12,11 +12,12 @@ from ..library import (
     LibraryScan,
     OrphanScan,
     is_under_any,
+    landing_roots,
     scan_inventory,
 )
 from ..parsing import parse_file_info
 from ..utils.path import nfc_path
-from ..utils.threads import path_exists, path_is_dir
+from ..utils.threads import disk_probe, path_is_dir
 from ._common import LibraryTaskLocks, register_media_file
 from .models import RefreshPayload, RefreshResult, ScanMode, ScrapePayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
@@ -83,7 +84,7 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
             subtitle_extensions=library.subtitle_extensions if library is not None else None,
         )
 
-        added = removed = scrape = subtitles = 0
+        added = removed = scrape = subtitles = unreadable = 0
 
         existing = await self._repo.list_media_files(library_id=payload.library_id, limit=None)
         existing_by_path = {nfc_path(f.path): f for f in existing}
@@ -174,32 +175,34 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
 
             # 删除索引中已不存在的记录.
             if want_remove:
-                if seen is not None:
-                    # 后转移目的目录不在扫描范围内, 记录仍属于本库.
-                    # 后转移目的目录与输入目录都不在本次扫描范围内, 它们里面的记录仍属于本库:
-                    # 输入目录读不到 (网络挂载还没就绪) 时更要靠这一条把在册行留住.
-                    landing = (
-                        [
-                            Path(dir_)
-                            for dir_ in (
-                                library.scrape_input_dir,
-                                library.scrape_ok_dir,
-                                library.scrape_fail_dir,
-                            )
-                            if dir_
-                        ]
-                        if library is not None
-                        else []
+                # 刮削后转移的三个落点目录不在本次扫描范围内, 但里面的记录仍属于本库;
+                # 输入目录读不到 (网络挂载还没就绪) 时更要靠这一条把在册行留住.
+                landing = (
+                    landing_roots(
+                        input_dir=library.scrape_input_dir,
+                        ok_dir=library.scrape_ok_dir,
+                        fail_dir=library.scrape_fail_dir,
                     )
-                    missing = [
+                    if library is not None
+                    else []
+                )
+                if seen is not None:
+                    candidates = [
                         f for f in existing if nfc_path(f.path) not in seen and not is_under_any(f.path, landing)
                     ]
                 else:
-                    missing = []
-                    for f in existing:
-                        still_there = await path_exists(Path(f.path))
-                        if not still_there:
-                            missing.append(f)
+                    candidates = list(existing)
+                # 「读不到」不算「消失」: 权限 / IO 错误的行保留并计数, 下一趟再判.
+                # 有 taken 集合时按集合差判 (能读到却不在结果里 = 被黑名单 / 体积阈值排除, 索引里不该留);
+                # 只做 remove 时没有扫描结果可差, 按库里的路径逐个探, 只有确认不存在才删.
+                missing: list[MediaFile] = []
+                for media in candidates:
+                    probe = await disk_probe(Path(media.path), follow_symlinks=False)
+                    if probe.unreadable:
+                        unreadable += 1
+                        continue
+                    if seen is not None or probe.path is None:
+                        missing.append(media)
                 if missing:
                     logger.info("remove invalid db entries", count=len(missing))
                     for media in missing:
@@ -235,7 +238,11 @@ class RefreshHandler(TaskHandler[RefreshPayload, RefreshResult]):
             "scan completed", path=payload.path, added=added, removed=removed, scrape=scrape, subtitles=subtitles
         )
 
-        return TaskResult(True, result=RefreshResult(added=added, removed=removed, scrape=scrape), followups=followups)
+        return TaskResult(
+            True,
+            result=RefreshResult(added=added, removed=removed, scrape=scrape, unreadable=unreadable),
+            followups=followups,
+        )
 
     async def _sync_external_subtitle(self, media: MediaFile, hit: LibraryHit) -> int:
         """按本次遍历所见回写已登记行的外挂字幕标记; 未变化返回 0.

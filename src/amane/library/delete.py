@@ -23,7 +23,7 @@ import structlog
 
 from ..utils.path import existing_disk_path, path_is_under, resolved_path
 from ..utils.threads import in_thread
-from .rules import TRASH_DIRNAME
+from .rules import TRASH_DIRNAME, WASH_TRASH_DIRNAME
 
 logger = structlog.get_logger()
 
@@ -152,10 +152,9 @@ def ancestor_dirs(path: Path, *, library_root: Path, bases: Sequence[Path] = ())
         return []
     if not any(path_is_under(path, root) for root in roots):
         return []
-    trash_roots = {str(root / TRASH_DIRNAME) for root in roots}
     out: list[Path] = []
     for parent in Path(path).parents:
-        if same_path(parent, library_root) or str(parent) in trash_roots:
+        if same_path(parent, library_root) or _is_recycle_dir(parent):
             break
         if not any(same_path(parent, root) for root in roots):
             out.append(parent)
@@ -175,11 +174,9 @@ def prune_empty_dirs(directories: Iterable[Path], *, library_root: Path, bases: 
     removed = 0
     failed = 0
     roots = (library_root, *bases)
-    trash_roots = {str(root / TRASH_DIRNAME) for root in roots}
-    skip = {str(root) for root in roots} | trash_roots
     candidates = sorted({Path(directory) for directory in directories}, key=_depth, reverse=True)
     for directory in candidates:
-        if str(directory) in skip:
+        if any(same_path(directory, root) for root in roots) or _is_recycle_dir(directory):
             continue
         if not any(path_is_under(directory, root) for root in roots):
             continue
@@ -197,6 +194,20 @@ def prune_empty_dirs(directories: Iterable[Path], *, library_root: Path, bases: 
 
 def _depth(path: Path) -> int:
     return len(path.parts)
+
+
+def _is_wash_dir(path: Path, library_root: Path) -> bool:
+    """是否落在洗版回收站里: ``<库根父目录>/.amane_wash/<库名>/...``."""
+    return WASH_TRASH_DIRNAME in path.parts and path_is_under(path, library_root)
+
+
+def _is_recycle_dir(path: Path) -> bool:
+    """是否是回收站目录本身 (``.amane_trash`` 或 ``.amane_wash``).
+
+    洗版的回收站挂在库根父目录 (``.amane_wash/<库名>``), 嵌套库的布局下它会落进外层库,
+    因此按目录名拦, 不只看库根直属的那一个. 剪枝与祖先列表都到此为止.
+    """
+    return path.name in (TRASH_DIRNAME, WASH_TRASH_DIRNAME)
 
 
 def _remove_file(path: Path, files: list[DeletedFile]) -> None:
@@ -258,6 +269,9 @@ def _refuse_reason(target: Path, *, library_root: Path) -> str | None:
         return f"refuse to delete library root: {target}"
     if same_path(target, library_root / TRASH_DIRNAME):
         return f"refuse to delete trash root: {target}"
+    if _is_wash_dir(target, library_root):
+        # 洗版回收站还在可还原窗口里, 删掉会让 wash_records 指向不存在的文件.
+        return f"refuse to delete wash trash: {target}"
     if path_is_under(target, library_root):
         return None
     return f"outside library root: {target}"

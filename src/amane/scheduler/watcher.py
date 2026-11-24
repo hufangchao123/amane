@@ -162,10 +162,13 @@ class _Handler(FileSystemEventHandler):
             return True
         try:
             size = Path(path_str).stat().st_size
-        except OSError:
-            # 文件没了: 不在这一步判死, 交给后续注册流程报错.
+        except FileNotFoundError:
+            # 文件没了: 不拦, 交给后续注册流程报错并丢掉待处理项.
             self._observed_sizes.pop(path_str, None)
             return True
+        except OSError:
+            # 读不到 (权限 / IO）不等于没在写: 继续等, 下一轮再判.
+            return False
         now = time.time()
         previous = self._observed_sizes.get(path_str)
         if previous is None:

@@ -1,6 +1,9 @@
+import errno
+import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from uuid import uuid4
 
 import structlog
 
@@ -73,6 +76,29 @@ def video_dest(target_dir: Path, target_stem: str, source: Path, suffix: str | N
     return target_dir / f"{target_stem}{source.suffix if suffix is None else suffix}"
 
 
+def _move(source: Path, dest: Path) -> None:
+    """移动文件; 跨文件系统时先写临时文件再改名.
+
+    ``Path.move`` 在 EXDEV 时回退「直接 copy 到目标路径 + 删源」, 中途失败 (空间不足 / 网络断)
+    会在库里留下半截的同名文件: 之后每次整理都判「目标已占用」, 永远修不好, 媒体服务器还会把它
+    当成品扫进去. 这里自己实现: 复制到同目录的随机临时名, 成功后再 ``os.replace``, 失败清掉临时文件.
+    """
+    try:
+        source.replace(dest)
+        return
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+    temporary = dest.with_name(f".{dest.name}.{uuid4().hex}.tmp")
+    try:
+        shutil.copy2(source, temporary)
+        temporary.replace(dest)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    source.unlink(missing_ok=True)
+
+
 @in_thread
 def execute_organize(
     source: Path,
@@ -113,7 +139,7 @@ def execute_organize(
 
         match mode:
             case MoveMode.MOVE:
-                disk_source.move(dest)
+                _move(disk_source, dest)
             case MoveMode.COPY:
                 disk_source.copy(dest)
             case MoveMode.HARDLINK:

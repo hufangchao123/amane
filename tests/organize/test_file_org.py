@@ -1,5 +1,6 @@
 """测试文件整理 - 文件操作"""
 
+import errno
 from pathlib import Path
 
 import pytest
@@ -410,3 +411,54 @@ class TestCreateVideoLink:
         result = create_video_link.sync(target, occupied, LinkMode.SYMLINK)
         assert result.outcome is PlaceOutcome.FAILED
         assert occupied.read_text() == "other"
+
+
+class TestCrossFilesystemMove:
+    """跨文件系统移动: 先写临时文件再改名, 失败不留半截目标文件."""
+
+    def test_falls_back_to_copy_and_rename(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        source = tmp_path / "a.mkv"
+        source.write_bytes(b"payload")
+        target_dir = tmp_path / "lib"
+        target_dir.mkdir()
+        real_replace = Path.replace
+
+        def fake_replace(self: Path, destination: Path | str, *args: object, **kwargs: object) -> Path:
+            if self == source:
+                raise OSError(errno.EXDEV, "Invalid cross-device link", str(self))
+            return real_replace(self, destination, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "replace", fake_replace)
+
+        result = execute_organize.sync(source=source, target_dir=target_dir, target_stem="a")
+
+        assert result.outcome is PlaceOutcome.PLACED
+        assert result.dest is not None
+        assert result.dest.read_bytes() == b"payload"
+        assert not source.exists()
+        assert not list(target_dir.glob(".*.tmp"))
+
+    def test_failed_copy_leaves_no_half_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        source = tmp_path / "a.mkv"
+        source.write_bytes(b"payload")
+        target_dir = tmp_path / "lib"
+        target_dir.mkdir()
+        real_replace = Path.replace
+
+        def fake_replace(self: Path, destination: Path | str, *args: object, **kwargs: object) -> Path:
+            if self == source:
+                raise OSError(errno.EXDEV, "Invalid cross-device link", str(self))
+            return real_replace(self, destination, *args, **kwargs)
+
+        def broken_copy2(src: object, dst: object, **kwargs: object) -> object:
+            Path(dst).write_bytes(b"half")
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        monkeypatch.setattr(Path, "replace", fake_replace)
+        monkeypatch.setattr("amane.organize.file.shutil.copy2", broken_copy2)
+
+        result = execute_organize.sync(source=source, target_dir=target_dir, target_stem="a")
+
+        assert result.outcome is PlaceOutcome.FAILED
+        assert list(target_dir.iterdir()) == []
+        assert source.exists()

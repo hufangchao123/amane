@@ -3927,6 +3927,10 @@ export type OrganizeResult = {
      */
     pruned_dirs: number;
     /**
+     * Unreadable
+     */
+    unreadable?: number;
+    /**
      * Conflicts
      */
     conflicts: Array<OrganizeConflict>;
@@ -4322,6 +4326,10 @@ export type RefreshResult = {
      * Scrape
      */
     scrape: number;
+    /**
+     * Unreadable
+     */
+    unreadable?: number;
 };
 
 /**

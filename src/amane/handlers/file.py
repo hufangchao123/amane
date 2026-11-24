@@ -17,6 +17,7 @@ from ..library import (
     LibraryScan,
     ancestor_dirs,
     is_under_any,
+    landing_roots,
     prune_empty_dirs,
     same_path,
     scope_roots,
@@ -45,9 +46,8 @@ from ..organize import (
 )
 from ..organize.link import create_video_link
 from ..parsing import ContentType, FileInfo, parse_file_info
-from ..utils.path import existing_disk_path as existing_disk_path_sync
 from ..utils.path import is_descendant, nfc_path, path_is_under
-from ..utils.threads import existing_disk_path, in_thread, path_is_dir
+from ..utils.threads import disk_probe, existing_disk_path, in_thread, path_is_dir
 from ._common import (
     LibraryTaskLocks,
     media_refresh_followups,
@@ -553,16 +553,24 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
             media_extensions=media_extensions,
         )
         live: list[MediaFile] = []
+        unreadable = 0
         prune_total = len(indexed)
         if prune_total:
             await self.report_progress(0, prune_total, "prune")
             for i, mf in enumerate(indexed, start=1):
                 if mf.id is not None:
                     mf_path = Path(mf.path)
-                    missing = await existing_disk_path(mf_path, follow_symlinks=False) is None
+                    probe = await disk_probe(mf_path, follow_symlinks=False)
+                    missing = probe.path is None
                     # 刮削后转移会把记录指到库根之外 (输入/成功/失败目录), 这些仍属于本库.
                     tracked = is_under_any(mf_path, tracked_roots)
-                    if missing or not tracked or is_in_trash(mf_path):
+                    if not tracked or is_in_trash(mf_path):
+                        await self._repo.delete_media_file(mf.id)
+                    elif missing and probe.unreadable:
+                        # 权限 / IO 错误不等于文件消失: 保留索引行, 下一趟再判.
+                        unreadable += 1
+                        logger.warning("indexed file unreadable, row kept", path=str(mf_path))
+                    elif missing:
                         await self._repo.delete_media_file(mf.id)
                     else:
                         kind = await _classify_indexed(mf_path, scan)
@@ -604,25 +612,31 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
 
                 write_nfo = library.write_nfo if payload.write_nfo is None else payload.write_nfo
                 copy_resources = library.copy_resources if payload.copy_resources is None else payload.copy_resources
-                fop_result = await apply_file_operations(
-                    self._repo,
-                    media_file.id,
-                    metadata,
-                    self._config,
-                    self._resource_store,
-                    write_nfo=write_nfo,
-                    copy_resources=copy_resources,
-                    web_client=self._web_client,
-                    safe_dirs=self._safe_dirs,
-                    watermark_dir=self._watermark_dir,
-                )
+                try:
+                    fop_result = await apply_file_operations(
+                        self._repo,
+                        media_file.id,
+                        metadata,
+                        self._config,
+                        self._resource_store,
+                        write_nfo=write_nfo,
+                        copy_resources=copy_resources,
+                        web_client=self._web_client,
+                        safe_dirs=self._safe_dirs,
+                        watermark_dir=self._watermark_dir,
+                    )
+                    if fop_result is not None and fop_result.dest and media_file.id is not None:
+                        await commit_organized_media_file(self._repo, media_file, fop_result.dest, library_root)
+                except Exception:
+                    # 单个文件的模板越界 / 解析异常不该让整批失败, 记账后继续下一个.
+                    logger.exception("organize failed on one file", path=path_str)
+                    failed += 1
+                    await self.report_progress(i, total, file_path.name)
+                    continue
                 if fop_result is None:
                     skipped += 1
                     await self.report_progress(i, total, file_path.name)
                     continue
-
-                if fop_result.dest and media_file.id is not None:
-                    await commit_organized_media_file(self._repo, media_file, fop_result.dest, library_root)
                 match fop_result.outcome:
                     case PlaceOutcome.PLACED:
                         organized += 1
@@ -675,6 +689,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
             conflicted=conflicted,
             failed=failed,
             pruned_dirs=pruned_dirs,
+            unreadable=unreadable,
         )
 
         return TaskResult(
@@ -685,6 +700,7 @@ class OrganizeHandler(TaskHandler[OrganizePayload, OrganizeResult]):
                 conflicted=conflicted,
                 failed=failed,
                 pruned_dirs=pruned_dirs,
+                unreadable=unreadable,
                 conflicts=conflicts,
             ),
             followups=self._media_server_followups(library, organized),
@@ -751,8 +767,13 @@ async def _collect_live_resource_refs(repo: Repository) -> tuple[set[str], set[s
 
 @in_thread
 def _missing_media_ids(rows: Sequence[tuple[int, str]]) -> list[int]:
-    """不跟随符号链接判断存在."""
-    return [media_id for media_id, path in rows if existing_disk_path_sync(path, follow_symlinks=False) is None]
+    """只把「确认不存在」当缺失; 权限或 IO 错误算读不到, 索引行保留."""
+    missing: list[int] = []
+    for media_id, path in rows:
+        probe = disk_probe.sync(Path(path), follow_symlinks=False)
+        if probe.path is None and not probe.unreadable:
+            missing.append(media_id)
+    return missing
 
 
 class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
@@ -788,12 +809,25 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
         return TaskResult(True, result=CleanupResult(files_removed=files_removed, resources_removed=resources_removed))
 
     async def _remove_missing_files(self) -> int:
-        """按库取锁后删掉磁盘上已不存在的行, 返回删掉的条数.
+        """按库取锁后删掉确认不存在的行, 返回删掉的条数.
 
-        必须持库锁: 转移与洗版是「先搬文件, 后改/删行」两步, 中间有毫秒级窗口源路径已经空了.
-        不取锁的清理会把这行当「文件消失」删掉, 而新落点又不在任何扫描范围内, 文件就此在库里失踪.
-        分批按库取锁, 一个库一把, 与刷新 / 整理 / 转移共用同一个 ``LibraryTaskLocks`` 实例.
+        三条边界:
+        1. 库根不是目录 (掉盘、挂载未就绪、路径写错) 时整库跳过 —— 否则一次例行清理就能把整库
+           索引清空, 而 ``Path.exists`` 恰好把 EACCES / EIO 报成「不存在」.
+        2. 进锁后按 id 重读路径: 等锁期间转移 / 整理 / 洗版可能已经改了这条行的 path, 用锁外
+           取的旧路径判存在会误删.
+        3. 刮削后转移的落点目录里的行留给刷新处理, 与 ``REFRESH`` 用同一份判据.
         """
+        libraries = {library.id: library for library in await self._repo.list_libraries() if library.id is not None}
+        usable: set[int] = set()
+        for library_id, library in libraries.items():
+            if await path_is_dir(Path(library.path)):
+                usable.add(library_id)
+            else:
+                logger.warning("cleanup skipped unreadable library", library_id=library_id, path=library.path)
+        if not usable:
+            return 0
+
         removed = 0
         offset = 0
         page = 500
@@ -803,15 +837,33 @@ class CleanupHandler(TaskHandler[CleanupPayload, CleanupResult]):
                 break
             by_library: dict[int, list[tuple[int, str]]] = {}
             for media_file in batch:
-                if media_file.id is None:
+                if media_file.id is None or media_file.library_id not in usable:
+                    continue
+                library = libraries[media_file.library_id]
+                if is_under_any(
+                    media_file.path,
+                    landing_roots(
+                        input_dir=library.scrape_input_dir,
+                        ok_dir=library.scrape_ok_dir,
+                        fail_dir=library.scrape_fail_dir,
+                    ),
+                ):
                     continue
                 by_library.setdefault(media_file.library_id, []).append((media_file.id, media_file.path))
+            removed_in_batch = 0
             for library_id, rows in by_library.items():
                 async with await self._library_locks.get(library_id):
-                    for media_id in await _missing_media_ids(rows):
-                        await self._repo.delete_media_file(media_id)
-                        removed += 1
-            offset += len(batch)
+                    fresh: list[tuple[int, str]] = []
+                    for media_id, _ in rows:
+                        current = await self._repo.get_media_file(media_id)
+                        if current is not None:
+                            fresh.append((media_id, current.path))
+                    for media_id in await _missing_media_ids(fresh):
+                        if await self._repo.delete_media_file(media_id):
+                            removed += 1
+                            removed_in_batch += 1
+            # 删掉的行会让后面的记录整体前移, 只前进实际留下的条数, 否则每批漏检已删的行数.
+            offset += len(batch) - removed_in_batch
             if len(batch) < page:
                 break
         return removed

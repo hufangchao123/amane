@@ -78,3 +78,68 @@ async def test_refresh_remove_keeps_records_in_landing_dirs(repo: Repository, tm
     assert result.result.removed == 0
     kept = await repo.list_media_files(library_id=library_id, limit=None)
     assert [row.path for row in kept] == [str(media_path)]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_refresh_remove_keeps_unreadable_rows(
+    repo: Repository, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """权限 / IO 错误不等于文件消失: 只在确认 ENOENT 时删行, 读不到的留到下一趟."""
+    lib_root = tmp_path / "lib"
+    lib_root.mkdir()
+    target = lib_root / "ABC-123.mp4"
+    target.write_bytes(b"x" * 64)
+    lib = await repo.create_library(name="t", path=str(lib_root))
+    assert lib.id is not None
+    await repo.create_media_file(lib.id, path=str(target), number="ABC-123")
+
+    real_stat = Path.stat
+
+    def deny(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "ABC-123.mp4":
+            raise PermissionError(13, "Permission denied", self)
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", deny)
+
+    handler = RefreshHandler(repo=repo)
+    result = await handler.handle(RefreshPayload(library_id=lib.id, path=str(lib_root), scan={ScanMode.remove}))
+
+    assert result.success is True
+    assert result.result is not None
+    assert result.result.removed == 0
+    assert result.result.unreadable == 1
+    assert await repo.list_media_files(library_id=lib.id, limit=None)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_organize_prune_keeps_unreadable_rows(
+    repo: Repository, resource_store: ResourceStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """整理前的剪枝同样只信 ENOENT, 读不到的行留到下一趟."""
+    lib_root = tmp_path / "lib"
+    lib_root.mkdir()
+    target = lib_root / "ABC-123.mp4"
+    target.write_bytes(b"x" * 64)
+    lib = await repo.create_library(name="t", path=str(lib_root))
+    assert lib.id is not None
+    await repo.create_media_file(lib.id, path=str(target), number="ABC-123", status=MediaFileStatus.SCRAPED)
+
+    real_stat = Path.stat
+
+    def deny(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "ABC-123.mp4":
+            raise PermissionError(13, "Permission denied", self)
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", deny)
+
+    handler = OrganizeHandler(repo, HotSettings(), resource_store)
+    payload = OrganizePayload(library_id=lib.id)
+    await payload.resolve(repo)
+    result = await handler.handle(payload)
+
+    assert result.success is True
+    assert result.result is not None
+    assert result.result.unreadable == 1
+    assert await repo.list_media_files(library_id=lib.id, limit=None)

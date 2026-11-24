@@ -120,7 +120,11 @@ class DeleteHandler(TaskHandler[DeletePayload, DeleteResult]):
             patterns=inventory.patterns,
         )
         # 复验的探测按目录记忆: 同一目录下的条目走的是同一趟路, 网络盘上这是删除的主要开销.
-        probe = _MediaProbe(orphan_scan=orphan_scan) if orphan_scan is not None else None
+        probe = (
+            _MediaProbe(orphan_scan=orphan_scan, min_file_size=library.min_file_size)
+            if orphan_scan is not None
+            else None
+        )
         tally = DeleteTally()
         removed_paths: list[Path] = []
         reverify_rejected = 0
@@ -295,6 +299,8 @@ class _MediaProbe:
     """
 
     orphan_scan: OrphanScan
+    min_file_size: int = 0
+    """库当前的最小视频大小: 复验「体积过小」条目时用它重算."""
     levels: dict[Path, _LevelFacts] = field(default_factory=dict)
     subtrees: dict[Path, str | None] = field(default_factory=dict)
 
@@ -347,6 +353,23 @@ def _host_container(path: Path, containers: dict[str, Path]) -> Path | None:
     return None
 
 
+def _reverify_undersized(path: Path, *, min_file_size: int) -> str | None:
+    """「体积过小」条目复验: 文件可能在扫描之后才写完.
+
+    清单有 24 小时有效期, 期间文件长到正常大小是常事 (rsync / 直接写 / 云盘客户端落盘都不带
+    临时后缀). 体积达到最小视频大小即不再成立, 拒绝删除; 读不到大小同样拒绝.
+    """
+    try:
+        size = path.stat().st_size
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        return f"读不到文件大小: {exc}"
+    if min_file_size > 0 and size >= min_file_size:
+        return f"文件已长到 {size} 字节, 不再小于最小视频大小 {min_file_size}"
+    return None
+
+
 @in_thread
 def _reverify(entry: InventoryEntry, *, probe: _MediaProbe, container: Path | None) -> str | None:
     """条目是否仍然成立; 不成立时返回原因.
@@ -363,6 +386,8 @@ def _reverify(entry: InventoryEntry, *, probe: _MediaProbe, container: Path | No
     """
     if entry.reason is InventoryReason.EMPTY_DIR:
         return _reverify_empty_dir(entry.path)
+    if entry.reason is InventoryReason.UNDERSIZED:
+        return _reverify_undersized(entry.path, min_file_size=probe.min_file_size)
     if entry.reason is not InventoryReason.ORPHAN:
         return None
     if container is not None:

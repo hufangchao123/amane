@@ -95,6 +95,8 @@ class RefreshResult(BaseModel):
     added: int
     removed: int
     scrape: int
+    unreadable: int = 0
+    """索引行读不到 (权限 / IO 错误), 这些行没有被当成文件消失."""
 
 
 # --- SCRAPE ---
@@ -187,6 +189,8 @@ class OrganizeResult(BaseModel):
     conflicted: int
     failed: int
     pruned_dirs: int
+    unreadable: int = 0
+    """索引行指向的文件读不到 (权限 / IO 错误), 这些行被保留, 没有参与本趟整理."""
     conflicts: list[OrganizeConflict]
     """未处理的条目, 最多 ORGANIZE_CONFLICT_LIMIT 条; 恒为 conflicted 条目的前缀, 差额只留在任务日志里."""
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from sqlalchemy.exc import IntegrityError
 
 from ..db.models import Library, TaskType
 from ..enums import LibraryAutomation, LibraryIngest
@@ -483,7 +484,15 @@ class WatcherService:
             return
 
         library = await self._repo.get_library(library_id)
-        media = await register_media_file(self._repo, library_id, path, library=library)
+        try:
+            media = await register_media_file(self._repo, library_id, path, library=library)
+        except IntegrityError:
+            # path 有唯一约束: 刷新 / 洗版 / 另一条发现回调同时登记了同一个文件.
+            media = await self._repo.get_media_file_by_path(path_str)
+            if media is None:
+                logger.warning("file registration conflict without winner", path=path_str, library_id=library_id)
+                return
+            logger.debug("file registered concurrently", path=path_str, media_file_id=media.id)
         assert media.id is not None
         logger.info("file discovered", path=path_str, media_file_id=media.id, library_id=library_id)
 

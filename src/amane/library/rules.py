@@ -76,6 +76,17 @@ def scope_roots(
     return [Path(path), *(Path(extra) for extra in extras if extra)]
 
 
+def landing_roots(
+    *, input_dir: str | None = None, ok_dir: str | None = None, fail_dir: str | None = None
+) -> list[Path]:
+    """刮削后转移的三个落点目录 (不含库根).
+
+    这些目录里的记录仍属于本库, 但目录可能整块读不到 (网络盘未就绪); 判「文件消失」时要排除,
+    否则会把在册记录当孤儿删掉.
+    """
+    return [Path(extra) for extra in (input_dir, ok_dir, fail_dir) if extra]
+
+
 def publish_roots(*, path: str, ok_dir: str | None = None) -> list[Path]:
     """成品所在目录: 库根与成功目录.
 

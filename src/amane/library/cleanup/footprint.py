@@ -22,7 +22,7 @@ from ...organize.path_templates import resolve_paths
 from ...parsing import parse_file_info
 from ...utils.path import existing_disk_path, is_name_surrogate_dir, path_is_under, path_key
 from ...utils.threads import in_thread
-from ..rules import DEFAULT_SUBTITLE_EXTENSIONS
+from ..rules import DEFAULT_SUBTITLE_EXTENSIONS, TRASH_DIRNAME, WASH_TRASH_DIRNAME, is_partial_download
 from .inventory import (
     MAX_INVENTORY_ENTRIES,
     CleanupInventory,
@@ -253,6 +253,12 @@ def _add_tree_contents(directory: Path, *, add: _Add) -> None:
                 # 目录链接 (Windows 的 junction 与挂载点): 不展开也不删除 — 它由用户布置,
                 # 而展开会把库外内容列进删除集合.
                 continue
+            if child.name in (TRASH_DIRNAME, WASH_TRASH_DIRNAME):
+                # 回收站在这里按内容展开就等于「清空回收站」: 洗版那份还在可还原窗口内.
+                continue
             _add_tree_contents(child, add=add)
+            continue
+        if is_partial_download(child):
+            # 下载残件由清单扫描侧否决, 与这里同一口径, 避免两条入口的删除集合不一致.
             continue
         add(child)

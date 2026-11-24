@@ -69,20 +69,25 @@ def place_subtitles(
     """失败与冲突只记日志, 不抛异常; 返回被占用而跳过的字幕源与其目标."""
     conflicted: list[SubtitleConflict] = []
     for sub in sources:
-        dest = resolve_subtitle_path(
-            library,
-            metadata,
-            sub,
-            video_dir=video_dest.parent,
-            link_dir=link_dir,
-            video_name=video_dest.stem,
-            video_dest=video_dest,
-            link_name=link_name,
-            source_path=video_source,
-            file_info=file_info,
-            safe_dirs=safe_dirs,
-            actor_genders=actor_genders,
-        )
+        try:
+            dest = resolve_subtitle_path(
+                library,
+                metadata,
+                sub,
+                video_dir=video_dest.parent,
+                link_dir=link_dir,
+                video_name=video_dest.stem,
+                video_dest=video_dest,
+                link_name=link_name,
+                source_path=video_source,
+                file_info=file_info,
+                safe_dirs=safe_dirs,
+                actor_genders=actor_genders,
+            )
+        except Exception:
+            # 模板越界 / 自定义占位解析失败: 跳过这份字幕, 不让整批整理失败.
+            logger.warning("subtitle path unresolved", source=str(sub))
+            continue
         result = execute_organize.sync(
             source=sub,
             target_dir=dest.parent,

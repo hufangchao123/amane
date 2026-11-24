@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from amane.utils.path import (
+    disk_probe,
     existing_disk_path,
     is_descendant,
     is_name_surrogate,
@@ -218,3 +219,36 @@ class TestNameSurrogate:
 
         assert is_name_surrogate(link.lstat()) is True
         assert is_name_surrogate_dir(link) is True
+
+
+class TestDiskProbe:
+    """「不存在」与「读不到」必须分开: 前者的行可以删, 后者要保留."""
+
+    def test_present_file_is_reported_with_its_form(self, tmp_path: Path) -> None:
+        target = tmp_path / "a.mkv"
+        target.write_bytes(b"x")
+
+        probe = disk_probe(target)
+
+        assert probe.path == target
+        assert probe.unreadable is False
+
+    def test_missing_file_is_not_unreadable(self, tmp_path: Path) -> None:
+        probe = disk_probe(tmp_path / "gone.mkv")
+
+        assert probe.path is None
+        assert probe.unreadable is False
+
+    def test_permission_error_is_unreadable(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        target = tmp_path / "a.mkv"
+        target.write_bytes(b"x")
+
+        def deny(self: Path, *args: object, **kwargs: object) -> object:
+            raise PermissionError(13, "Permission denied", self)
+
+        monkeypatch.setattr(Path, "stat", deny)
+
+        probe = disk_probe(target)
+
+        assert probe.path is None
+        assert probe.unreadable is True

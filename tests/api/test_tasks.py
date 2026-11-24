@@ -329,6 +329,7 @@ class TestTaskResult:
                     "conflicted": 1,
                     "failed": 0,
                     "pruned_dirs": 0,
+                    "unreadable": 0,
                     "conflicts": [
                         {
                             "path": "/lib/incoming/NSFS-039.mp4",
@@ -348,7 +349,7 @@ class TestTaskResult:
                     "outcomes": [],
                 },
             ),
-            (TaskType.REFRESH, {"type": "refresh", "added": 2, "removed": 0, "scrape": 1}),
+            (TaskType.REFRESH, {"type": "refresh", "added": 2, "removed": 0, "scrape": 1, "unreadable": 0}),
             (
                 TaskType.ACTOR_SCRAPE,
                 {
@@ -449,7 +450,7 @@ class TestTaskResult:
         """结果成员的类型与任务类型不一致时置空."""
         task = await repo.create_task(task_type=TaskType.ORGANIZE, payload={"library_id": 1})
         assert task.id is not None
-        await finish_task(repo, task.id, {"type": "refresh", "added": 1, "removed": 0, "scrape": 0})
+        await finish_task(repo, task.id, {"type": "refresh", "added": 1, "removed": 0, "scrape": 0, "unreadable": 0})
 
         body = (await client.get(f"tasks/{task.id}")).json()
         assert body["result"] is None

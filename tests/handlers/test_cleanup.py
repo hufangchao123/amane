@@ -54,6 +54,7 @@ async def _seed_resource(store: ResourceStore, url: str) -> None:
 @pytest.mark.asyncio
 async def test_removes_missing_media_files_keeps_metadata(cleanup_env):
     repo, store, tmp_path = cleanup_env
+    (tmp_path / "lib").mkdir()
     lib = await repo.create_library(name="L", path=str(tmp_path / "lib"))
     assert lib.id is not None
 
@@ -82,23 +83,24 @@ async def test_removes_missing_media_files_keeps_metadata(cleanup_env):
 
 @pytest.mark.asyncio
 async def test_missing_file_exists_does_not_block_event_loop(cleanup_env, monkeypatch):
-    """exists 在线程池: 库路径在 FUSE 上时 CLEANUP 不能阻塞事件循环."""
+    """磁盘探测在线程池: 库路径在 FUSE 上时 CLEANUP 不能阻塞事件循环."""
     repo, store, tmp_path = cleanup_env
+    (tmp_path / "lib").mkdir()
     lib = await repo.create_library(name="L", path=str(tmp_path / "lib"))
     assert lib.id is not None
     ghost = tmp_path / "gone.mp4"
     await repo.create_media_file(lib.id, path=str(ghost))
 
     order: list[str] = []
-    real_exists = Path.exists
+    real_stat = Path.stat
 
-    def slow_exists(self, *args, **kwargs):
-        order.append("exists_start")
+    def slow_stat(self, *args, **kwargs):
+        order.append("stat_start")
         time.sleep(0.2)
-        order.append("exists_end")
-        return real_exists(self, *args, **kwargs)
+        order.append("stat_end")
+        return real_stat(self, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "exists", slow_exists)
+    monkeypatch.setattr(Path, "stat", slow_stat)
 
     async def marker() -> None:
         await asyncio.sleep(0.05)
@@ -110,7 +112,7 @@ async def test_missing_file_exists_does_not_block_event_loop(cleanup_env, monkey
     )
     assert result.success
     assert "marker" in order
-    assert order.index("marker") < order.index("exists_end")
+    assert order.index("marker") < order.index("stat_end")
 
 
 @pytest.mark.asyncio
@@ -197,3 +199,80 @@ async def test_resource_gc_disabled(cleanup_env):
     assert result.result is not None
     assert result.result.resources_removed == 0
     assert len(await store.list_all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_unreadable_file_keeps_the_row(cleanup_env, monkeypatch):
+    """权限 / IO 错误不等于文件消失: 行必须留着, 否则挂载抖动会清空整库索引."""
+    repo, store, tmp_path = cleanup_env
+    (tmp_path / "lib").mkdir()
+    lib = await repo.create_library(name="L", path=str(tmp_path / "lib"))
+    assert lib.id is not None
+    target = tmp_path / "lib" / "a.mkv"
+    target.write_bytes(b"x")
+    media = await repo.create_media_file(lib.id, path=str(target))
+    assert media.id is not None
+
+    real_stat = Path.stat
+
+    def deny(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "a.mkv":
+            raise PermissionError(13, "Permission denied", self)
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", deny)
+
+    handler = CleanupHandler(repo, store)
+    result = await handler.handle(CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False))
+
+    assert result.success
+    assert result.result is not None
+    assert result.result.files_removed == 0
+    assert await repo.get_media_file(media.id) is not None
+
+
+@pytest.mark.asyncio
+async def test_missing_library_root_skips_the_whole_library(cleanup_env):
+    """库根读不到时整库跳过: 掉盘 / 挂载没起来不该清空索引."""
+    repo, store, tmp_path = cleanup_env
+    lib = await repo.create_library(name="L", path=str(tmp_path / "not-mounted"))
+    assert lib.id is not None
+    media = await repo.create_media_file(lib.id, path=str(tmp_path / "not-mounted" / "a.mkv"))
+    assert media.id is not None
+
+    handler = CleanupHandler(repo, store)
+    result = await handler.handle(CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False))
+
+    assert result.success
+    assert result.result is not None
+    assert result.result.files_removed == 0
+    assert await repo.get_media_file(media.id) is not None
+
+
+@pytest.mark.asyncio
+async def test_paging_does_not_skip_rows_after_deletion(cleanup_env):
+    """边删边翻页: 删掉的行不能让后面的记录被跳过."""
+    repo, store, tmp_path = cleanup_env
+    lib_root = tmp_path / "lib"
+    lib_root.mkdir()
+    lib = await repo.create_library(name="L", path=str(lib_root))
+    assert lib.id is not None
+    for index in range(5):
+        gone = await repo.create_media_file(lib.id, path=str(lib_root / f"gone-{index}.mkv"))
+        assert gone.id is not None
+    for index in range(5):
+        kept = lib_root / f"keep-{index}.mkv"
+        kept.write_bytes(b"x")
+        row = await repo.create_media_file(lib.id, path=str(kept))
+        assert row.id is not None
+
+    handler = CleanupHandler(repo, store)
+    payload = CleanupPayload(remove_missing_files=True, remove_unreferenced_resources=False)
+    result = await handler.handle(payload)
+
+    assert result.success
+    assert result.result is not None
+    assert result.result.files_removed == 5
+    kept_rows = await repo.list_media_files(library_id=lib.id, limit=None)
+    assert len(kept_rows) == 5
+    assert all("keep-" in row.path for row in kept_rows)

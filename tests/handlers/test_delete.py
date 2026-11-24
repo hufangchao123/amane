@@ -15,6 +15,7 @@ import pytest
 from amane.config import HotSettings
 from amane.handlers import DeleteHandler, DeletePayload, ScanInvalidHandler, ScanInvalidPayload
 from amane.handlers import delete as delete_module
+from amane.handlers.delete import _reverify_undersized
 from amane.library import ORPHAN_COOLDOWN_SECONDS, InventoryStore, OrphanScan
 
 if TYPE_CHECKING:
@@ -782,3 +783,27 @@ async def test_delete_keeps_source_dir_when_library_asks(repo: Repository, tmp_p
     assert result.result.pruned_dirs == 0
     assert not ad.exists()
     assert (lib_root / "work").is_dir()
+
+
+def test_undersized_entry_is_rejected_once_the_file_grew(tmp_path: Path) -> None:
+    """清单有 24 小时有效期: 期间文件写完长到正常大小, 条目即不再成立."""
+    target = tmp_path / "a.mkv"
+    target.write_bytes(b"x" * 4096)
+
+    assert _reverify_undersized(target, min_file_size=1024) == ("文件已长到 4096 字节, 不再小于最小视频大小 1024")
+    assert _reverify_undersized(target, min_file_size=8192) is None
+
+
+def test_undersized_entry_with_unreadable_file_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "a.mkv"
+    target.write_bytes(b"x")
+
+    def deny(self: Path, *args: object, **kwargs: object) -> object:
+        raise PermissionError(13, "Permission denied", self)
+
+    monkeypatch.setattr(Path, "stat", deny)
+
+    refusal = _reverify_undersized(target, min_file_size=1024)
+
+    assert refusal is not None
+    assert "读不到文件大小" in refusal

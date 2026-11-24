@@ -7688,6 +7688,11 @@ export const OrganizeResultSchema = {
             type: 'integer',
             title: 'Pruned Dirs'
         },
+        unreadable: {
+            type: 'integer',
+            title: 'Unreadable',
+            default: 0
+        },
         conflicts: {
             items: {
                 $ref: '#/components/schemas/OrganizeConflict'
@@ -8294,6 +8299,11 @@ export const RefreshResultSchema = {
         scrape: {
             type: 'integer',
             title: 'Scrape'
+        },
+        unreadable: {
+            type: 'integer',
+            title: 'Unreadable',
+            default: 0
         }
     },
     type: 'object',
