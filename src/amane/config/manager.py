@@ -879,6 +879,12 @@ class SubtitleGenerateConfig(BaseModel):
 
     timeout_seconds: int = Field(default=1800, ge=30, le=7200)
 
+    fallback_after_fetch: bool = False
+    """字幕站都没找到时, 自动对同一份文件转写生成.
+
+    转写很吃 CPU, 所以默认关闭: 打开后「字幕补全」这一轮会把缺口变成转写任务.
+    """
+
 
 class SubtitleFetchConfig(BaseModel):
     """字幕批量下载: 缺凭据时只用免鉴权来源."""

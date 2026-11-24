@@ -238,6 +238,24 @@ class TestGetTask:
         cleanup = await repo.create_task(task_type=TaskType.CLEANUP, payload={})
         assert (await client.get(f"tasks/{cleanup.id}")).json()["title"] is None
 
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_media_tasks_show_the_number(
+        self, client: AsyncClient, repo: Repository, stop_worker: None, safe_path
+    ):
+        """单文件任务只带 media_file_id, 列表里要能看出是哪一部."""
+        library = await repo.create_library(name="m", path=str(safe_path))
+        assert library.id is not None
+        media = await repo.create_media_file(
+            library_id=library.id, path=str(safe_path / "MIDV-123.mp4"), number="MIDV-123"
+        )
+        assert media.id is not None
+        generated = await client.post("tasks", json={"type": "subtitle_generate", "media_file_id": media.id})
+        assert generated.json()["title"] == "MIDV-123"
+        fetched = await client.post("tasks", json={"type": "subtitle_fetch", "media_file_id": media.id})
+        assert fetched.json()["title"] == "MIDV-123"
+        listed = await client.get("tasks")
+        assert sum(1 for item in listed.json()["items"] if item["title"] == "MIDV-123") >= 2
+
 
 class TestBatchTasks:
     """POST /tasks/batch 接线. 计数/跳过链/重试见 tests/db/test_task_batch.py."""

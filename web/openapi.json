@@ -11293,6 +11293,7 @@
               "generation": {
                 "base_url": "",
                 "enabled": false,
+                "fallback_after_fetch": false,
                 "language": "ja",
                 "max_file_minutes": 180,
                 "model": "Systran/faster-whisper-medium",
@@ -18010,7 +18011,8 @@
               "language": "ja",
               "translate": true,
               "max_file_minutes": 180,
-              "timeout_seconds": 1800
+              "timeout_seconds": 1800,
+              "fallback_after_fetch": false
             }
           }
         },
@@ -18146,6 +18148,11 @@
             "minimum": 30.0,
             "title": "Timeout Seconds",
             "default": 1800
+          },
+          "fallback_after_fetch": {
+            "type": "boolean",
+            "title": "Fallback After Fetch",
+            "default": false
           }
         },
         "type": "object",

@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 from typing import NamedTuple, Unpack
 
 from sqlalchemy import delete as sqla_delete
@@ -57,6 +58,22 @@ class MediaRepoMixin(RepositoryMixinBase):
     async def get_media_file(self, media_id: int) -> MediaFile | None:
         async with self._session() as session:
             return await session.get(MediaFile, media_id)
+
+    async def get_media_labels(self, media_ids: Sequence[int]) -> dict[int, str]:
+        """任务列表显示用: 有番号用番号, 没有就退回文件名 (去掉扩展名)."""
+        ids = unique_ids([int(i) for i in media_ids if i])
+        if not ids:
+            return {}
+        async with self._session() as session:
+            stmt = select(MediaFile.id, MediaFile.number, MediaFile.path).where(col(MediaFile.id).in_(ids))
+            rows = (await session.exec(stmt)).all()
+        labels: dict[int, str] = {}
+        for media_id, number, path in rows:
+            if media_id is None:
+                continue
+            name = str(number or "").strip()
+            labels[int(media_id)] = name or Path(str(path)).stem
+        return labels
 
     async def get_media_file_by_path(self, path: str) -> MediaFile | None:
         async with self._session() as session:

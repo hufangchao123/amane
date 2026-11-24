@@ -959,6 +959,10 @@
         "timeout_seconds": {
           "label": "Per-file timeout (seconds)",
           "description": "Separate timeouts for audio extraction and transcription"
+        },
+        "fallback_after_fetch": {
+          "label": "Transcribe on miss",
+          "description": "Transcribe the file when no subtitle source has it. Costs CPU, off by default"
         }
       }
     },

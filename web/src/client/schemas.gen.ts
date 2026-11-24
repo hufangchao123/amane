@@ -3960,6 +3960,7 @@ export const HotSettingsSchema = {
                 generation: {
                     base_url: '',
                     enabled: false,
+                    fallback_after_fetch: false,
                     language: 'ja',
                     max_file_minutes: 180,
                     model: 'Systran/faster-whisper-medium',
@@ -10814,7 +10815,8 @@ export const SubtitleFetchConfigSchema = {
                 language: 'ja',
                 translate: true,
                 max_file_minutes: 180,
-                timeout_seconds: 1800
+                timeout_seconds: 1800,
+                fallback_after_fetch: false
             }
         }
     },
@@ -10953,6 +10955,11 @@ export const SubtitleGenerateConfigSchema = {
             minimum: 30,
             title: 'Timeout Seconds',
             default: 1800
+        },
+        fallback_after_fetch: {
+            type: 'boolean',
+            title: 'Fallback After Fetch',
+            default: false
         }
     },
     type: 'object',

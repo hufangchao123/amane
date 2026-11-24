@@ -36,9 +36,13 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 # 标题取库名的任务类型: payload 带 `library_id` 的库内任务.
 _LIBRARY_TASK_TYPES = (TaskType.REFRESH, TaskType.ORGANIZE, TaskType.SCAN_INVALID, TaskType.DELETE)
 
+# 标题取番号的任务类型: payload 带 `media_file_id` 的单文件任务. 否则列表里只剩一个 id,
+# 看不出补的是哪一部.
+_MEDIA_TASK_TYPES = (TaskType.SUBTITLE_FETCH, TaskType.SUBTITLE_GENERATE)
+
 
 async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | None]:
-    """scrape→番号, actor_scrape→演员名, 库内任务→库名. 批量查库, 避免列表 N+1."""
+    """scrape→番号, actor_scrape→演员名, 库内任务→库名, 单文件任务→番号. 批量查库, 避免列表 N+1."""
     actor_ids = {
         int(p["actor_id"])
         for t in tasks
@@ -49,8 +53,14 @@ async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | 
         for t in tasks
         if t.type in _LIBRARY_TASK_TYPES and isinstance((p := t.payload or {}).get("library_id"), int)
     }
+    media_ids = {
+        int(p["media_file_id"])
+        for t in tasks
+        if t.type in _MEDIA_TASK_TYPES and isinstance((p := t.payload or {}).get("media_file_id"), int)
+    }
     actor_names = await repo.get_actor_names(list(actor_ids))
     library_names = await repo.get_library_names(list(library_ids))
+    media_labels = await repo.get_media_labels(list(media_ids))
     out: dict[int, str | None] = {}
     for t in tasks:
         if t.id is None:
@@ -63,6 +73,9 @@ async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | 
         elif t.type == TaskType.ACTOR_SCRAPE:
             actor_id = payload.get("actor_id")
             title = actor_names.get(int(actor_id)) if isinstance(actor_id, int) else None
+        elif t.type in _MEDIA_TASK_TYPES:
+            media_id = payload.get("media_file_id")
+            title = media_labels.get(int(media_id)) if isinstance(media_id, int) else None
         elif t.type in _LIBRARY_TASK_TYPES:
             library_id = payload.get("library_id")
             title = library_names.get(int(library_id)) if isinstance(library_id, int) else None

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from amane.config.manager import HotSettings, SubtitleFetchConfig
-from amane.db.models import MediaFileStatus
+from amane.db.models import MediaFileStatus, TaskType
 from amane.handlers import subtitle_fetch as module
 from amane.handlers.models import SubtitleFetchPayload
 from amane.handlers.subtitle_fetch import SubtitleFetchHandler
@@ -21,6 +21,49 @@ if TYPE_CHECKING:
 
 def _handler(repo: Repository, web: FakeHttp, config: SubtitleFetchConfig) -> SubtitleFetchHandler:
     return SubtitleFetchHandler(repo, HotSettings(subtitles=config), web=web)
+
+
+class TestGenerateFallback:
+    """字幕站都没找到时, 可选地改用转写生成; 默认关闭."""
+
+    @staticmethod
+    def _config(**generation: object) -> SubtitleFetchConfig:
+        return SubtitleFetchConfig(
+            enabled=True,
+            providers=["subtitlecat"],
+            languages=["zh-CN"],
+            generation={"enabled": False, **generation},  # type: ignore[arg-type]
+        )
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_no_followup_by_default(self, repo: Repository, tmp_path: Path):
+        _, media = await seed_media(repo, tmp_path / "g1", number="AD-1")
+        assert media.id is not None
+        web = FakeHttp(texts={"https://www.subtitlecat.com/index.php?search=AD-1": "<html></html>"})
+        handler = _handler(repo, web, self._config(enabled=True))
+        result = await handler.handle(SubtitleFetchPayload(media_file_id=media.id))
+        assert [f.task_type for f in result.followups] == []
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_missed_file_chains_generation_when_asked(self, repo: Repository, tmp_path: Path):
+        _, media = await seed_media(repo, tmp_path / "g2", number="AD-1")
+        assert media.id is not None
+        web = FakeHttp(texts={"https://www.subtitlecat.com/index.php?search=AD-1": "<html></html>"})
+        handler = _handler(repo, web, self._config(enabled=True, fallback_after_fetch=True))
+        result = await handler.handle(SubtitleFetchPayload(media_file_id=media.id))
+        chain = [f for f in result.followups if f.task_type is TaskType.SUBTITLE_GENERATE]
+        assert len(chain) == 1
+        assert chain[0].payload["media_file_id"] == media.id
+        assert chain[0].key == f"subtitle-generate:{media.id}"
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_fallback_needs_generation_enabled(self, repo: Repository, tmp_path: Path):
+        _, media = await seed_media(repo, tmp_path / "g3", number="AD-1")
+        assert media.id is not None
+        web = FakeHttp(texts={"https://www.subtitlecat.com/index.php?search=AD-1": "<html></html>"})
+        handler = _handler(repo, web, self._config(enabled=False, fallback_after_fetch=True))
+        result = await handler.handle(SubtitleFetchPayload(media_file_id=media.id))
+        assert [f for f in result.followups if f.task_type is TaskType.SUBTITLE_GENERATE] == []
 
 
 class TestTargets:

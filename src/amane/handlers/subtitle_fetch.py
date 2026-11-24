@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -15,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from ..db.models import MediaFileStatus
+from ..db.models import MediaFileStatus, TaskType
 from ..enums import MoveMode
 from ..library.rules import has_companion_subtitle, is_under_any, is_video_media, publish_roots
 from ..organize.path_templates import resolve_subtitle_path
@@ -31,7 +32,7 @@ from ..subtitles import (
 )
 from ..subtitles.targets import is_multi_disc
 from ._common import LibraryTaskLocks, media_refresh_followups, refresh_external_subtitle
-from .models import SubtitleFetchPayload, SubtitleFetchResult
+from .models import SubtitleFetchPayload, SubtitleFetchResult, SubtitleGeneratePayload
 from .protocol import FollowupTask, TaskHandler, TaskResult
 
 if TYPE_CHECKING:
@@ -113,7 +114,31 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
 
         # success 表示「这一轮跑完了」: 单份取不到的计数在结果里, 由页面显示, 不把整轮标失败.
         result = self._summarize(outcomes)
-        return TaskResult(success=True, result=result, followups=await self._refresh_followups(payload, result))
+        missed = [
+            media.id
+            for media, item in zip(targets, outcomes, strict=False)
+            if item.outcome is _Outcome.MISSING and media.id
+        ]
+        followups = [*await self._refresh_followups(payload, result), *self._generate_followups(missed)]
+        return TaskResult(success=True, result=result, followups=followups)
+
+    def _generate_followups(self, missed: Sequence[int]) -> list[FollowupTask]:
+        """字幕站都没有这份字幕时, 可选地改用转写生成.
+
+        默认关闭: 转写吃 CPU, 一份两小时的片子要跑几分钟到几十分钟, 不该由「补字幕」偷偷带起来.
+        """
+        generation = self._hot.subtitles.generation
+        if not missed or not generation.enabled or not generation.fallback_after_fetch:
+            return []
+        return [
+            FollowupTask(
+                key=f"subtitle-generate:{media_id}",
+                task_type=TaskType.SUBTITLE_GENERATE,
+                payload=SubtitleGeneratePayload(media_file_id=media_id).model_dump(mode="json"),
+                priority=-1,
+            )
+            for media_id in dict.fromkeys(missed)
+        ]
 
     async def _refresh_followups(
         self, payload: SubtitleFetchPayload, result: SubtitleFetchResult

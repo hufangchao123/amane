@@ -5834,6 +5834,10 @@ export type SubtitleGenerateConfig = {
      * Timeout Seconds
      */
     timeout_seconds?: number;
+    /**
+     * Fallback After Fetch
+     */
+    fallback_after_fetch?: boolean;
 };
 
 /**
