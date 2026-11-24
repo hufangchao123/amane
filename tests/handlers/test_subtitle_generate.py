@@ -210,7 +210,7 @@ class TestGeneration:
         async def dead_translate(model: object, lines: object, **kwargs: object) -> object:
             from amane.subtitles.translate import TranslationOutcome
 
-            return TranslationOutcome(lines=list(lines), failed_batches=1, total_batches=1)
+            return TranslationOutcome(lines=list(lines), failed_batches=1, total_batches=1, request_failures=1)
 
         monkeypatch.setattr(module, "translate_lines", dead_translate)
         root = tmp_path / "lib"
@@ -223,6 +223,31 @@ class TestGeneration:
         assert result.result is not None
         assert (result.result.generated, result.result.failed) == (0, 1)
         assert not list(root.glob("*.srt"))
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_short_translation_still_writes(
+        self, repo: Repository, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """模型少回一行只是它自己的毛病: 端点可用就按原文补齐并落盘, 不算失败."""
+        _stub_pipeline(monkeypatch)
+
+        async def short_translate(model: object, lines: list[str], **kwargs: object) -> object:
+            from amane.subtitles.translate import TranslationOutcome
+
+            padded = [*lines[:-1], "补位"] if lines else []
+            return TranslationOutcome(lines=padded, failed_batches=1, total_batches=1, request_failures=0)
+
+        monkeypatch.setattr(module, "translate_lines", short_translate)
+        root = tmp_path / "lib"
+        _, media = await seed_media(repo, root, number="AD-1")
+        assert media.id is not None
+        handler = SubtitleGenerateHandler(repo, _hot(_config()))
+
+        result = await handler.handle(SubtitleGeneratePayload(media_file_id=media.id))
+
+        assert result.result is not None
+        assert (result.result.generated, result.result.failed) == (1, 0)
+        assert (root / "AD-1.zh.srt").exists()
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_transcription_failure_counts_as_failed(

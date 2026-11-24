@@ -44,7 +44,10 @@ class TranslationOutcome:
 
     lines: list[str]
     failed_batches: int
+    """回退原文的批数, 等于请求失败与行数对不上两类之和."""
     total_batches: int
+    request_failures: int = 0
+    """请求本身失败 (端点不可达、鉴权被拒) 的批数."""
 
     @property
     def complete(self) -> bool:
@@ -53,8 +56,12 @@ class TranslationOutcome:
 
     @property
     def nothing_translated(self) -> bool:
-        """一批都没译成: 端点整体不可用, 落盘只会得到一份日文字幕."""
-        return self.total_batches > 0 and self.failed_batches == self.total_batches
+        """每一批的请求都失败: 端点整体不可用, 落盘只会得到一份日文字幕.
+
+        只看请求失败, 不看行数对不上: 模型少回一行是它自己的毛病, 端点仍是好的,
+        这时整片按原文补齐即可, 不该把一份能用的字幕判成失败.
+        """
+        return self.total_batches > 0 and self.request_failures == self.total_batches
 
 
 def parse_lines(text: str) -> list[str]:
@@ -80,6 +87,7 @@ async def translate_lines(
     """逐批翻译; 单批失败保留原文并继续, 不让一行砸掉整片字幕."""
     translated: list[str] = []
     failed = 0
+    request_failures = 0
     for start in range(0, len(lines), batch_size):
         batch = list(lines[start : start + batch_size])
         payload = json.dumps(batch, ensure_ascii=False)
@@ -98,6 +106,7 @@ async def translate_lines(
             logger.warning("subtitle translate failed", batch_start=start, error=str(exc))
             translated.extend(batch)
             failed += 1
+            request_failures += 1
             continue
         if len(got) != len(batch):
             logger.warning("subtitle translate line count off", expected=len(batch), got=len(got))
@@ -108,4 +117,5 @@ async def translate_lines(
         lines=translated,
         failed_batches=failed,
         total_batches=(len(lines) + batch_size - 1) // batch_size,
+        request_failures=request_failures,
     )

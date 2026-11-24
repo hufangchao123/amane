@@ -225,6 +225,7 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
                         "subtitle translate partially fell back",
                         media_file_id=media.id,
                         failed_batches=outcome.failed_batches,
+                        request_failures=outcome.request_failures,
                         total_batches=outcome.total_batches,
                     )
                 segments = with_texts(segments, outcome.lines)
