@@ -34,7 +34,8 @@
     "generateStarted": "已排入转写任务",
     "testGeneration": "测试转写端点",
     "testOk": "端点可用：{{model}}，{{ms}} ms",
-    "testFailed": "转写端点不可用"
+    "testFailed": "转写端点不可用",
+    "pointerHint": "另有 {{parts}} 个 .strm 指针没有音轨, 只能手动上传字幕"
   },
   "wash": {
     "title": "洗版",

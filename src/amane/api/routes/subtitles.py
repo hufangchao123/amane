@@ -5,16 +5,74 @@ import time
 import wave
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Annotated
 
 import httpx2
-from fastapi import APIRouter
+import structlog
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from ...handlers._common import refresh_external_subtitle
 from ...subtitles import SubtitleFetcher
 from ...subtitles.whisper import SAMPLE_RATE, WhisperError, transcribe
 from ..deps import ConfigDep, RepoDep
-from ..models.subtitles import SubtitleGenerationTestResponse, SubtitleStatusResponse
+from ..models.subtitles import (
+    SubtitleGenerationTestResponse,
+    SubtitleStatusResponse,
+    SubtitleUploadResponse,
+)
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/subtitles", tags=["subtitles"])
+
+
+_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+def _subtitle_target(video: Path, language: str, suffix: str) -> Path:
+    """与视频同目录的字幕名: ``<视频名>.<语言><扩展名>``; 播放器与库的发现都认这个形态."""
+    return video.with_suffix("").with_name(f"{video.stem}.{language}{suffix}")
+
+
+@router.post("/upload", response_model=SubtitleUploadResponse)
+async def upload_subtitle(
+    repo: RepoDep,
+    media_file_id: Annotated[int, Form(description="媒体文件的 id")],
+    file: Annotated[UploadFile, File(description="字幕文件 (srt/ass/ssa/vtt/sub)")],
+    language: Annotated[str, Form(description="语言标记, 用于文件名")] = "zh",
+) -> SubtitleUploadResponse:
+    """手动上传一份字幕, 落在视频旁边.
+
+    ``.strm`` 这类指针文件也接受: 字幕放在 ``.strm`` 旁边, 播放器与库都能认出来,
+    这是本地没有音轨时唯一能补字幕的路子.
+    """
+    media = await repo.get_media_file(media_file_id)
+    if media is None:
+        raise HTTPException(status_code=404, detail="媒体文件不存在")
+    library = await repo.get_library(media.library_id) if media.library_id is not None else None
+    if library is None:
+        raise HTTPException(status_code=422, detail="媒体文件不属于任何媒体库")
+    suffix = Path(file.filename or "").suffix.lower()
+    allowed = {item.lower() for item in library.subtitle_extensions}
+    if suffix not in allowed:
+        wanted = ", ".join(sorted(allowed)) or "未配置"
+        raise HTTPException(status_code=422, detail=f"字幕格式不支持: {suffix or '无扩展名'} (库接受 {wanted})")
+    video = Path(media.path)
+    if not video.parent.is_dir():
+        raise HTTPException(status_code=422, detail=f"视频所在目录不存在: {video.parent}")
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=422, detail="上传的文件是空的")
+    if len(payload) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="字幕文件超过 20 MB")
+    language = language.strip() or "zh"
+    target = _subtitle_target(video, language, suffix)
+    temporary = target.with_name(f".{target.name}.upload-tmp")
+    temporary.write_bytes(payload)
+    temporary.replace(target)
+    await refresh_external_subtitle(repo, media, library)
+    logger.info("subtitle uploaded", media_id=media_file_id, path=str(target), bytes=len(payload))
+    return SubtitleUploadResponse(path=str(target), bytes_written=len(payload), language=language)
 
 
 @router.get("/status", response_model=SubtitleStatusResponse)

@@ -36,7 +36,8 @@
     "generateStarted": "Transcription queued",
     "testGeneration": "Test endpoint",
     "testOk": "Endpoint OK: {{model}} in {{ms}} ms",
-    "testFailed": "Transcription endpoint unavailable"
+    "testFailed": "Transcription endpoint unavailable",
+    "pointerHint": "{{parts}} .strm pointers have no audio; upload subtitles by hand"
   },
   "wash": {
     "title": "Wash",

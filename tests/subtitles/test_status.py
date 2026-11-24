@@ -51,6 +51,19 @@ class TestSummary:
         assert summary.multi_disc == 2
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_pointer_files_are_counted_apart(self, repo: Repository, tmp_path: Path):
+        """.strm 没有本地音轨, 转写跳过, 因此单独计数不算缺口."""
+        library, _ = await seed_media(repo, tmp_path / "lib" / "A", number="AD-1")
+        await seed_media(repo, tmp_path / "lib" / "S", number="AD-2", library=library, suffix=".strm")
+
+        fetcher = SubtitleFetcher(repo, SubtitleFetchConfig(enabled=True, providers=["subtitlecat"]))
+        summary = await fetcher.summary()
+
+        assert summary.missing == 1
+        assert summary.pointer == 1
+        assert summary.multi_disc == 0
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_counts_queued_tasks(self, repo: Repository):
         await repo.create_task(TaskType.SUBTITLE_FETCH, {})
         await repo.create_task(TaskType.SUBTITLE_FETCH, {"library_id": 1})

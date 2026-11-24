@@ -828,6 +828,30 @@ export type BodyInstallPlugin = {
 };
 
 /**
+ * Body_upload_subtitle
+ */
+export type BodyUploadSubtitle = {
+    /**
+     * Media File Id
+     *
+     * 媒体文件的 id
+     */
+    media_file_id: number;
+    /**
+     * File
+     *
+     * 字幕文件 (srt/ass/ssa/vtt/sub)
+     */
+    file: Blob | File;
+    /**
+     * Language
+     *
+     * 语言标记, 用于文件名
+     */
+    language?: string;
+};
+
+/**
  * BrowserBackendItemResponse
  *
  * 一个后端的可用性.
@@ -5751,6 +5775,10 @@ export type SubtitleAuditResult = {
      */
     multi_disc?: number;
     /**
+     * Pointer
+     */
+    pointer?: number;
+    /**
      * Orphans
      */
     orphans?: number;
@@ -6011,9 +6039,33 @@ export type SubtitleStatusResponse = {
      */
     multi_disc?: number;
     /**
+     * Pointer
+     */
+    pointer?: number;
+    /**
      * Queued
      */
     queued: number;
+};
+
+/**
+ * SubtitleUploadResponse
+ *
+ * 手动上传的字幕落盘位置.
+ */
+export type SubtitleUploadResponse = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Bytes Written
+     */
+    bytes_written: number;
+    /**
+     * Language
+     */
+    language: string;
 };
 
 /**
@@ -11351,6 +11403,31 @@ export type ReleaseSemanticResponses = {
 };
 
 export type ReleaseSemanticResponse = ReleaseSemanticResponses[keyof ReleaseSemanticResponses];
+
+export type UploadSubtitleData = {
+    body: BodyUploadSubtitle;
+    path?: never;
+    query?: never;
+    url: '/api/subtitles/upload';
+};
+
+export type UploadSubtitleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadSubtitleError = UploadSubtitleErrors[keyof UploadSubtitleErrors];
+
+export type UploadSubtitleResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleUploadResponse;
+};
+
+export type UploadSubtitleResponse = UploadSubtitleResponses[keyof UploadSubtitleResponses];
 
 export type SubtitleStatusData = {
     body?: never;

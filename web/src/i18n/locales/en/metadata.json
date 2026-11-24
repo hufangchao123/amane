@@ -437,5 +437,10 @@
     "confirm": "This deletes {{files}} file(s) of {{id}} and the catalog entry. It cannot be undone.",
     "queued": "Purge task submitted #{{id}}",
     "noFiles": "This entry has no files; deleting the entry alone is enough"
+  },
+  "upload": {
+    "action": "Upload subtitle",
+    "done": "Subtitle uploaded",
+    "failed": "Upload failed"
   }
 }

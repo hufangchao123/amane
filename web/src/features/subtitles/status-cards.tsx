@@ -141,11 +141,15 @@ export function SubtitleStatusCards() {
         <StatCard
           label={t("ops:subtitles.missingLabel")}
           value={status ? String(status.missing) : "-"}
-          hint={
-            status && status.multi_disc
-              ? `${t("ops:subtitles.missingHint")} · ${t("ops:subtitles.multiDiscHint", { parts: status.multi_disc })}`
-              : t("ops:subtitles.missingHint")
-          }
+          hint={[
+            t("ops:subtitles.missingHint"),
+            status?.multi_disc
+              ? t("ops:subtitles.multiDiscHint", { parts: status.multi_disc })
+              : "",
+            status?.pointer ? t("ops:subtitles.pointerHint", { parts: status.pointer }) : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         />
         <StatCard
           label={t("ops:subtitles.queuedLabel")}

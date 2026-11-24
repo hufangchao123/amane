@@ -3,10 +3,12 @@
 只读: 不移动文件, 不写库, 不发网络. 清理由回收站运维另行处理 —— 巡检给出路径, 不替人决定删除.
 """
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..db import TaskType
 from ..db.models import MediaFileStatus
+from ..library.rules import is_pointer_media
 from ..subtitles.audit import SubtitleFinding, scan_library
 from ..subtitles.targets import is_multi_disc
 from .models import SubtitleAuditPayload, SubtitleAuditResult, SubtitleFetchPayload
@@ -44,6 +46,7 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
         subtitles = 0
         missing = 0
         multi_disc = 0
+        pointer = 0
         findings: list[SubtitleFinding] = []
         for index, library in enumerate(libraries, start=1):
             await self.report_progress(index - 1, len(libraries) + 1, library.name)
@@ -58,6 +61,8 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
                     continue
                 if is_multi_disc(file.path):
                     multi_disc += 1
+                elif is_pointer_media(Path(file.path)):
+                    pointer += 1
                 else:
                     missing += 1
 
@@ -70,6 +75,7 @@ class SubtitleAuditHandler(TaskHandler[SubtitleAuditPayload, SubtitleAuditResult
                 subtitles=subtitles,
                 missing=missing,
                 multi_disc=multi_disc,
+                pointer=pointer,
                 orphans=len(findings),
                 samples=[finding.path for finding in findings[:20]],
             ),

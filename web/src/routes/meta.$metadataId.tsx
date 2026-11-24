@@ -34,6 +34,7 @@ import {
   IconRefresh,
   IconStar,
   IconTrash,
+  IconUpload,
   IconX,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,6 +69,7 @@ import { MergeDialog } from "@/components/metadata/merge-dialog";
 import { type JSONSchemaObject, resolveSchema } from "@/components/schema-form/schema";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { extractErrorMessage } from "@/lib/api-error";
+import { apiFetch } from "@/lib/api-token";
 import { confirm } from "@/lib/confirm";
 import { USER_TAG_FACET_LIST } from "@/lib/facets";
 import { FIELD_LABEL_KEY, LOCKABLE_FIELDS } from "@/lib/media/metadata-fields";
@@ -240,6 +242,32 @@ function TitleDetailPage() {
     });
     if (!ok) return;
     deleteMutation.mutate({ path: { metadata_id: id } });
+  }
+
+  const uploadInput = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<number | null>(null);
+
+  /** 手动上传字幕: 后端落在视频（或 .strm 指针）旁边, 并点亮外挂字幕角标. */
+  async function handleUpload(file: File) {
+    const mediaId = uploadTarget;
+    if (mediaId === null) return;
+    const form = new FormData();
+    form.append("media_file_id", String(mediaId));
+    form.append("file", file);
+    const resp = await apiFetch("/api/subtitles/upload", { method: "POST", body: form });
+    if (!resp.ok) {
+      const detail = await resp
+        .json()
+        .then((body: { detail?: string }) => body.detail ?? "")
+        .catch(() => "");
+      notifications.show({
+        message: detail || t("upload.failed"),
+        color: "red",
+      });
+      return;
+    }
+    notifications.show({ message: t("upload.done"), color: "teal" });
+    await queryClient.invalidateQueries();
   }
 
   const purgeMutation = useMutation({
@@ -961,6 +989,20 @@ function TitleDetailPage() {
                   <Badge size="sm" variant="light">
                     {f.status}
                   </Badge>
+                  {/* 缺字幕时的手动补救: 本地没有音轨的 .strm 也能这样补. */}
+                  <Tooltip label={t("upload.action")}>
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      aria-label={t("upload.action")}
+                      onClick={() => {
+                        setUploadTarget(f.id);
+                        uploadInput.current?.click();
+                      }}
+                    >
+                      <IconUpload size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                   {/* 逐文件的删除只在媒体库详情页做: 这里只把人送过去, 并按该文件的路径过滤列表. */}
                   <ActionIcon
                     variant="subtle"
@@ -989,6 +1031,18 @@ function TitleDetailPage() {
           onSeek={requestSeek}
         />
       </SimpleGrid>
+
+      <input
+        ref={uploadInput}
+        type="file"
+        accept=".srt,.ass,.ssa,.vtt,.sub"
+        style={{ display: "none" }}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          if (file) void handleUpload(file);
+        }}
+      />
 
       <Modal
         opened={editOpen}

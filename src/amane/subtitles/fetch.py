@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel
 
 from ..db.models import MediaFileStatus, TaskStatus, TaskType
+from ..library.rules import is_pointer_media
 from . import avsubtitles, subtitlecat
 from .models import SubtitleDownload, SubtitleSourceError
 from .targets import is_multi_disc
@@ -32,6 +34,8 @@ class SubtitleFetchSummary(BaseModel):
     """库内成片没有外挂字幕的份数 (不含分卷)."""
     multi_disc: int = 0
     """分卷 (``cd`` 非空) 里没有外挂字幕的份数: 整片字幕与拆开的文件对不齐, 不算缺口也不抓."""
+    pointer: int = 0
+    """指针文件 (``.strm``) 没有外挂字幕的份数: 本地没有音轨, 转写跳过, 只能手动上传."""
     queued: int = 0
     """排队中的 ``SUBTITLE_FETCH`` 任务数."""
 
@@ -120,10 +124,11 @@ class SubtitleFetcher:
     async def summary(self) -> SubtitleFetchSummary:
         """缺口按"已刮削但没有任何字幕"计: 未刮削的条目连番号都未必有, 抓也抓不到."""
         gaps = await self._repo.list_media_files(status=[MediaFileStatus.SCRAPED], has_subtitle=False, limit=None)
-        missing = sum(1 for media in gaps if not is_multi_disc(media.path))
-        multi_disc = len(gaps) - missing
+        multi_disc = sum(1 for media in gaps if is_multi_disc(media.path))
+        pointer = sum(1 for media in gaps if is_pointer_media(Path(media.path)))
+        missing = len(gaps) - multi_disc - pointer
         queued = await self._repo.count_tasks(
             statuses=[TaskStatus.QUEUED, TaskStatus.RUNNING],
             task_types=[TaskType.SUBTITLE_FETCH],
         )
-        return SubtitleFetchSummary(missing=missing, multi_disc=multi_disc, queued=queued)
+        return SubtitleFetchSummary(missing=missing, multi_disc=multi_disc, pointer=pointer, queued=queued)

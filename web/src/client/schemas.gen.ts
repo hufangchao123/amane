@@ -1419,6 +1419,34 @@ export const Body_install_pluginSchema = {
     title: 'Body_install_plugin'
 } as const;
 
+export const Body_upload_subtitleSchema = {
+    properties: {
+        media_file_id: {
+            type: 'integer',
+            title: 'Media File Id',
+            description: '媒体文件的 id'
+        },
+        file: {
+            type: 'string',
+            contentMediaType: 'application/octet-stream',
+            title: 'File',
+            description: '字幕文件 (srt/ass/ssa/vtt/sub)'
+        },
+        language: {
+            type: 'string',
+            title: 'Language',
+            description: '语言标记, 用于文件名',
+            default: 'zh'
+        }
+    },
+    type: 'object',
+    required: [
+        'media_file_id',
+        'file'
+    ],
+    title: 'Body_upload_subtitle'
+} as const;
+
 export const BrowserBackendItemResponseSchema = {
     properties: {
         backend: {
@@ -10800,6 +10828,11 @@ export const SubtitleAuditResultSchema = {
             title: 'Multi Disc',
             default: 0
         },
+        pointer: {
+            type: 'integer',
+            title: 'Pointer',
+            default: 0
+        },
         orphans: {
             type: 'integer',
             title: 'Orphans',
@@ -11189,6 +11222,11 @@ export const SubtitleStatusResponseSchema = {
             title: 'Multi Disc',
             default: 0
         },
+        pointer: {
+            type: 'integer',
+            title: 'Pointer',
+            default: 0
+        },
         queued: {
             type: 'integer',
             title: 'Queued'
@@ -11201,6 +11239,31 @@ export const SubtitleStatusResponseSchema = {
         'queued'
     ],
     title: 'SubtitleStatusResponse'
+} as const;
+
+export const SubtitleUploadResponseSchema = {
+    properties: {
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        bytes_written: {
+            type: 'integer',
+            title: 'Bytes Written'
+        },
+        language: {
+            type: 'string',
+            title: 'Language'
+        }
+    },
+    type: 'object',
+    required: [
+        'path',
+        'bytes_written',
+        'language'
+    ],
+    title: 'SubtitleUploadResponse',
+    description: '手动上传的字幕落盘位置.'
 } as const;
 
 export const TaskBatchActionSchema = {

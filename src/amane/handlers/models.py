@@ -527,6 +527,7 @@ class SubtitleAuditResult(BaseModel):
     subtitles: int = 0
     missing: int = 0
     multi_disc: int = 0
+    pointer: int = 0
     orphans: int = 0
     samples: list[str] = []
 
