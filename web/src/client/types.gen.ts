@@ -5703,15 +5703,9 @@ export type SubtitleFetchConfig = {
      */
     enabled?: boolean;
     /**
-     * Assrt Token
-     *
-     * Assrt API Token
-     */
-    assrt_token?: string | null;
-    /**
      * Providers
      */
-    providers?: Array<'assrt' | 'subtitlecat'>;
+    providers?: Array<'subtitlecat' | 'avsubtitles'>;
     /**
      * Languages
      *

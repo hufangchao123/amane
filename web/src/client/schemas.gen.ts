@@ -3938,8 +3938,8 @@ export const HotSettingsSchema = {
             default: {
                 enabled: false,
                 providers: [
-                    'assrt',
-                    'subtitlecat'
+                    'subtitlecat',
+                    'avsubtitles'
                 ],
                 languages: [
                     'zh-CN',
@@ -10744,24 +10744,12 @@ export const SubtitleFetchConfigSchema = {
             title: 'Enabled',
             default: false
         },
-        assrt_token: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Assrt Token',
-            description: 'Assrt API Token'
-        },
         providers: {
             items: {
                 type: 'string',
                 enum: [
-                    'assrt',
-                    'subtitlecat'
+                    'subtitlecat',
+                    'avsubtitles'
                 ]
             },
             type: 'array',

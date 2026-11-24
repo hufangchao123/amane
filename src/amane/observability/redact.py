@@ -52,9 +52,6 @@ def needs_secrets_file(hot_dump: dict[str, Any]) -> bool:
     r18 = hot_dump.get("r18")
     if isinstance(r18, dict) and r18.get("dsn"):
         return True
-    subtitles = hot_dump.get("subtitles")
-    if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
-        return True
     # notify.url 是风险最低的一类密钥 (Bark 设备键 / Server 酱 SENDKEY): 它为真不该把整份含站点
     # cookie 与 LLM 密钥的配置搬进明文旁路文件, 因此不再参与这个判定; 它本身仍进脱敏名单.
     plugins = hot_dump.get("plugins")
@@ -120,10 +117,6 @@ def redact_hot(data: dict[str, Any]) -> dict[str, Any]:
                 plugin["config"] = _redact_secret_values(plugin.get("config"))
 
     # 媒体运维的密钥: 顶层 section 不走 _redact_secret_values 递归, 只能逐字段登记
-    subtitles = out.get("subtitles")
-    if isinstance(subtitles, dict) and subtitles.get("assrt_token"):
-        subtitles["assrt_token"] = REDACTION_PLACEHOLDER
-
     notify = out.get("notify")
     if isinstance(notify, dict) and notify.get("url"):
         notify["url"] = REDACTION_PLACEHOLDER

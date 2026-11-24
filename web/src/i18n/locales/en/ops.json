@@ -5,7 +5,7 @@
     "statusLabel": "Source status",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "disabledHint": "Enable subtitle fetching and configure at least one usable source (assrt needs a token).",
+    "disabledHint": "Enable subtitle fetching and pick at least one source.",
     "missingLabel": "Missing",
     "missingHint": "Scraped files without any external subtitle.",
     "queuedLabel": "Queued",

@@ -35,7 +35,7 @@ class TestEgress:
         """被拒的地址一个字节都不下载: 报错文案要能被用户看懂, 且给出拒绝原因."""
         web = FakeHttp()
         with pytest.raises(SubtitleSourceError) as excinfo:
-            await download_subtitle(web, url, provider="assrt", description="AD-1")
+            await download_subtitle(web, url, provider="subtitlecat", description="AD-1")
         assert "下载地址被拒绝" in str(excinfo.value)
         assert excinfo.value.transient is False
         assert web.download_calls == []
@@ -45,14 +45,14 @@ class TestSizeLimit:
     @pytest.mark.asyncio(loop_scope="function")
     async def test_download_always_carries_byte_cap(self, public_dns: None):
         web = FakeHttp()
-        await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="assrt", description="AD-1")
+        await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="subtitlecat", description="AD-1")
         assert web.download_calls[0][1] == MAX_SUBTITLE_BYTES
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_oversized_payload_is_rejected(self, public_dns: None):
         web = FakeHttp(payload=b"1\n" + b"x" * (MAX_SUBTITLE_BYTES + 1))
         with pytest.raises(SubtitleSourceError) as excinfo:
-            await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="assrt", description="AD-1")
+            await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="subtitlecat", description="AD-1")
         assert "大小上限" in str(excinfo.value)
         assert excinfo.value.transient is False
 
@@ -61,7 +61,7 @@ class TestSizeLimit:
         """传输中断值得用 ``max_attempts`` 重试, 因此必须标成临时失败."""
         web = FakeHttp(download_ok=False)
         with pytest.raises(SubtitleSourceError) as excinfo:
-            await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="assrt", description="AD-1")
+            await download_subtitle(web, "https://cdn.example.com/AD-1.srt", provider="subtitlecat", description="AD-1")
         assert excinfo.value.transient is True
 
     @pytest.mark.asyncio(loop_scope="function")

@@ -907,17 +907,13 @@
         "label": "Enabled",
         "description": "Skip subtitle tasks while off"
       },
-      "assrt_token": {
-        "label": "Assrt token",
-        "description": "Assrt API token; leave empty to use unauthenticated sources only"
-      },
       "providers": {
         "label": "Providers",
         "description": "Subtitle sites tried in order",
         "$": {
           "options": {
-            "assrt": "Assrt",
-            "subtitlecat": "SubtitleCat"
+            "subtitlecat": "SubtitleCat",
+            "avsubtitles": "AVSubtitles (Chinese)"
           }
         }
       },

@@ -907,17 +907,13 @@
         "label": "启用",
         "description": "关闭后字幕任务直接跳过"
       },
-      "assrt_token": {
-        "label": "Assrt Token",
-        "description": "Assrt API Token; 留空时只用免鉴权来源"
-      },
       "providers": {
         "label": "来源",
         "description": "按顺序尝试的字幕站",
         "$": {
           "options": {
-            "assrt": "Assrt",
-            "subtitlecat": "SubtitleCat"
+            "subtitlecat": "SubtitleCat",
+            "avsubtitles": "AVSubtitles（中文）"
           }
         }
       },

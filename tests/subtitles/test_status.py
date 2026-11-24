@@ -55,15 +55,16 @@ class TestEnabled:
         assert SubtitleFetcher(repo, _config(enabled=False, providers=["subtitlecat"])).enabled is False
         assert SubtitleFetcher(repo, _config(enabled=True, providers=[])).enabled is False
 
-    def test_assrt_without_token_is_not_usable(self, repo: Repository):
-        """缺 token 时 assrt 被剔除: 一个来源都不剩就是未启用."""
-        config = _config(enabled=True, providers=["assrt"])
+    def test_providers_are_kept_in_configured_order(self):
+        """两个来源都不要凭据, 可用性就是配置顺序本身; 重复项去重."""
+        config = SubtitleFetchConfig(enabled=True, providers=["avsubtitles", "subtitlecat", "avsubtitles"])
+        assert usable_providers(config) == ("avsubtitles", "subtitlecat")
+
+    def test_empty_provider_list_is_not_enabled(self, repo: Repository):
+        """勾掉所有来源等于未启用: 任务不该白跑一轮."""
+        config = SubtitleFetchConfig(enabled=True, providers=[])
         assert usable_providers(config) == ()
         assert SubtitleFetcher(repo, config).enabled is False
-
-    def test_assrt_with_token_is_usable(self):
-        config = SubtitleFetchConfig(enabled=True, providers=["assrt"], assrt_token="tok")
-        assert usable_providers(config) == ("assrt",)
 
 
 def _config(*, enabled: bool, providers: Sequence[SubtitleProvider]) -> SubtitleFetchConfig:

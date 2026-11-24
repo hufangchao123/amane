@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Final
 from pydantic import BaseModel
 
 from ..db.models import MediaFileStatus, TaskStatus, TaskType
-from . import assrt, subtitlecat
+from . import avsubtitles, subtitlecat
 from .models import SubtitleDownload, SubtitleSourceError
 from .transport import SubtitleHttp
 
@@ -34,15 +34,13 @@ class SubtitleFetchSummary(BaseModel):
 
 
 def usable_providers(config: SubtitleFetchConfig) -> tuple[SubtitleProvider, ...]:
-    """当前配置下真正能用的来源.
+    """配置里勾选且去重后的来源顺序.
 
-    ``enabled`` 与实际可用要分开: 勾了 assrt 但没填 token 时, 该来源被剔除而不是让整轮任务
-    半途失败; 一个都不剩才算未启用.
+    两个来源都不需要凭据, 因此"能用"就等于"勾了"。保留这个函数是为了把"启用"与"有来源"
+    分开判定 —— 勾了来源但总开关关着时, 整轮任务不该跑。
     """
     providers: list[SubtitleProvider] = []
     for provider in config.providers:
-        if provider == "assrt" and not (config.assrt_token or "").strip():
-            continue
         if provider not in providers:
             providers.append(provider)
     return tuple(providers)
@@ -92,14 +90,8 @@ async def _fetch_from(
     *,
     preferred_suffixes: Sequence[str] = (),
 ) -> SubtitleDownload:
-    if provider == "assrt":
-        token = (config.assrt_token or "").strip()
-        if not token:
-            # usable_providers 已经剔除过; 这里只是类型上的收窄, 顺手给出可读原因.
-            raise SubtitleSourceError("assrt 未配置 token", transient=False)
-        return await assrt.fetch(
-            web, number, token=token, languages=config.languages, preferred_suffixes=preferred_suffixes
-        )
+    if provider == "avsubtitles":
+        return await avsubtitles.fetch(web, number, languages=config.languages, preferred_suffixes=preferred_suffixes)
     return await subtitlecat.fetch(web, number, languages=config.languages, preferred_suffixes=preferred_suffixes)
 
 

@@ -852,10 +852,10 @@ class SemanticConfig(BaseModel):
     auto_maintain: bool = Field(default=False, description="条目图片变化后立即增量索引; 打开时视觉模型常驻")
 
 
-SubtitleProvider = Literal["assrt", "subtitlecat"]
-"""字幕站: assrt 需 Token, subtitlecat 免鉴权."""
+SubtitleProvider = Literal["subtitlecat", "avsubtitles"]
+"""字幕站: 都不用凭据, 靠番号在站点上搜索."""
 
-DEFAULT_SUBTITLE_PROVIDERS: list[SubtitleProvider] = ["assrt", "subtitlecat"]
+DEFAULT_SUBTITLE_PROVIDERS: list[SubtitleProvider] = ["subtitlecat", "avsubtitles"]
 
 
 class SubtitleFetchConfig(BaseModel):
@@ -863,7 +863,6 @@ class SubtitleFetchConfig(BaseModel):
 
     enabled: bool = False
 
-    assrt_token: str | None = Field(default=None, description="Assrt API Token")
     providers: list[SubtitleProvider] = Field(default_factory=lambda: list(DEFAULT_SUBTITLE_PROVIDERS))
     languages: list[str] = Field(
         default_factory=lambda: ["zh-CN", "zh-TW"],

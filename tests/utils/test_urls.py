@@ -10,8 +10,8 @@ from amane.utils.urls import redact_url
     ("url", "expected"),
     [
         pytest.param(
-            "https://api.assrt.net/v1/sub/search?q=ABC-123&token=s3cret",
-            "https://api.assrt.net/v1/sub/search?q=ABC-123&token=***",
+            "https://sub.example.com/v1/sub/search?q=ABC-123&token=s3cret",
+            "https://sub.example.com/v1/sub/search?q=ABC-123&token=***",
             id="query-token",
         ),
         pytest.param("https://host/a?api_key=k&page=2", "https://host/a?api_key=***&page=2", id="query-api-key"),
@@ -45,7 +45,7 @@ def test_redact_url(url: str, expected: str) -> None:
 def test_request_error_str_hides_token() -> None:
     """异常文案会进日志与任务记录, 不能带明文 token."""
     exc = RequestError(
-        "https://api.assrt.net/v1/sub/search?q=ABC-123&token=s3cret",
+        "https://sub.example.com/v1/sub/search?q=ABC-123&token=s3cret",
         RequestFailure(kind=FailureKind.TIMEOUT, message="timeout"),
     )
     assert "s3cret" not in str(exc)

@@ -5,7 +5,7 @@
     "statusLabel": "来源状态",
     "enabled": "已启用",
     "disabled": "未启用",
-    "disabledHint": "请启用字幕补全, 并至少配置一个可用来源 (assrt 需要 token).",
+    "disabledHint": "请启用字幕补全, 并至少勾选一个来源。",
     "missingLabel": "缺字幕",
     "missingHint": "已刮削但没有外挂字幕的份数.",
     "queuedLabel": "排队中",

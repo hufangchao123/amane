@@ -223,9 +223,9 @@ class TestEnablement:
         assert result.error == "字幕补全未启用"
 
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_assrt_without_token_means_no_usable_source(self, repo: Repository):
-        """勾了 assrt 却没 token: 报未启用, 而不是让任务跑到一半才失败."""
-        config = SubtitleFetchConfig(enabled=True, providers=["assrt"], assrt_token=None)
+    async def test_no_provider_means_no_usable_source(self, repo: Repository):
+        """来源全勾掉: 报没有可用来源, 而不是让任务跑到一半才失败."""
+        config = SubtitleFetchConfig(enabled=True, providers=[])
         result = await _handler(repo, FakeHttp(), config).handle(SubtitleFetchPayload())
 
         assert result.success is False

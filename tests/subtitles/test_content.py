@@ -30,7 +30,7 @@ class TestUnwrap:
         assert unwrap_subtitle(SRT, name_hint="AD-1") == (SRT, ".srt")
 
     def test_archive_yields_first_playable_entry(self):
-        """assrt 常回压缩包: 取第一个可落位的条目, 跳过目录与说明文件."""
+        """avsubtitles 常回压缩包: 取第一个可落位的条目, 跳过目录与说明文件."""
         payload = _zip({"readme.txt": b"hi", "AD-1.zh.srt": SRT})
         assert unwrap_subtitle(payload) == (SRT, ".srt")
 
