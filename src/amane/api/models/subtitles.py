@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -28,3 +30,25 @@ class SubtitleUploadResponse(BaseModel):
     """落盘后的绝对路径: 与视频同目录, 名字为 ``<视频名>.<语言>.<扩展名>``."""
     bytes_written: int
     language: str
+
+
+class SubtitleFileEntry(BaseModel):
+    """视频旁边的一份字幕文件."""
+
+    name: str
+    path: str
+    extension: str
+    size: int
+    language: str | None = None
+    """从文件名里认出 ``<视频名>.<语言><扩展名>`` 的语言段, 认不出为空."""
+    modified_at: datetime | None = None
+
+
+class SubtitleFilesResponse(BaseModel):
+    """某个视频旁边现有的字幕清单."""
+
+    media_file_id: int
+    video_path: str
+    extensions: list[str]
+    """媒体库认可的扩展名; 上传只接受这些."""
+    files: list[SubtitleFileEntry]

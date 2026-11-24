@@ -166,3 +166,109 @@ class TestUpload:
 
         assert response.status_code == 200
         assert Path(response.json()["path"]).name == "AD-2.zh.srt"
+
+
+class TestSubtitleFiles:
+    """列出 / 删除视频旁边的字幕: 替换错版字幕用."""
+
+    async def _seed(self, repo: Repository, root: Path) -> MediaFile:
+        root.mkdir(parents=True, exist_ok=True)
+        library = await repo.create_library(
+            name="字幕库", path=str(root), subtitle_extensions=[".srt", ".ass"], write_nfo=False
+        )
+        video = root / "AD-1.mp4"
+        video.write_bytes(b"x")
+        media = await repo.create_media_file(library_id=library.id, path=str(video), number="AD-1")
+        (root / "AD-1.zh.srt").write_text("1\n")
+        (root / "AD-1.机翻.srt").write_text("2\n")
+        (root / "poster.jpg").write_bytes(b"jpg")
+        return media
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_lists_only_subtitles(self, client: AsyncClient, repo: Repository, tmp_path: Path):
+        media = await self._seed(repo, tmp_path / "lib")
+
+        response = await client.get("subtitles/files", params={"media_file_id": media.id})
+
+        assert response.status_code == 200
+        body = response.json()
+        names = sorted(item["name"] for item in body["files"])
+        assert names == ["AD-1.zh.srt", "AD-1.机翻.srt"]
+        assert body["extensions"] == [".ass", ".srt"]
+        languages = {item["name"]: item["language"] for item in body["files"]}
+        assert languages["AD-1.zh.srt"] == "zh"
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_delete_removes_the_file_and_clears_the_badge(
+        self, client: AsyncClient, repo: Repository, tmp_path: Path
+    ):
+        media = await self._seed(repo, tmp_path / "lib")
+        await repo.update_media_file(media.id, has_external_subtitle=True)
+
+        response = await client.post(
+            "subtitles/delete",
+            data={"media_file_id": str(media.id), "path": str(tmp_path / "lib" / "AD-1.zh.srt")},
+        )
+
+        assert response.status_code == 200
+        remaining = [item["name"] for item in response.json()["files"]]
+        assert remaining == ["AD-1.机翻.srt"]
+        refreshed = await repo.get_media_file(media.id)
+        assert refreshed is not None and refreshed.has_external_subtitle is True
+
+        last = await client.post(
+            "subtitles/delete",
+            data={"media_file_id": str(media.id), "path": str(tmp_path / "lib" / "AD-1.机翻.srt")},
+        )
+        assert last.status_code == 200
+        assert last.json()["files"] == []
+        refreshed = await repo.get_media_file(media.id)
+        assert refreshed is not None and refreshed.has_external_subtitle is False
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_delete_refuses_paths_outside_the_video_dir(
+        self, client: AsyncClient, repo: Repository, tmp_path: Path
+    ):
+        media = await self._seed(repo, tmp_path / "lib")
+        stray = tmp_path / "elsewhere.srt"
+        stray.write_text("1\n")
+
+        response = await client.post(
+            "subtitles/delete",
+            data={"media_file_id": str(media.id), "path": str(stray)},
+        )
+
+        assert response.status_code == 422
+        assert "同目录" in response.json()["detail"]
+        assert stray.is_file()
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_upload_accepts_a_custom_name(self, client: AsyncClient, repo: Repository, tmp_path: Path):
+        media = await self._seed(repo, tmp_path / "lib")
+
+        response = await client.post(
+            "subtitles/upload",
+            data={"media_file_id": str(media.id), "filename": "AD-1.人工校对.srt"},
+            files={"file": ("x.srt", b"1\n", "text/plain")},
+        )
+
+        assert response.status_code == 200
+        assert Path(response.json()["path"]).name == "AD-1.人工校对.srt"
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_upload_refuses_bad_custom_names(self, client: AsyncClient, repo: Repository, tmp_path: Path):
+        media = await self._seed(repo, tmp_path / "lib")
+
+        separator = await client.post(
+            "subtitles/upload",
+            data={"media_file_id": str(media.id), "filename": "../evil.srt"},
+            files={"file": ("x.srt", b"1\n", "text/plain")},
+        )
+        mismatch = await client.post(
+            "subtitles/upload",
+            data={"media_file_id": str(media.id), "filename": "AD-1.srt"},
+            files={"file": ("x.ass", b"1\n", "text/plain")},
+        )
+
+        assert separator.status_code == 422
+        assert mismatch.status_code == 422

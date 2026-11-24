@@ -3,6 +3,7 @@
 import io
 import time
 import wave
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Annotated
@@ -16,6 +17,8 @@ from ...subtitles import SubtitleFetcher
 from ...subtitles.whisper import SAMPLE_RATE, WhisperError, transcribe
 from ..deps import ConfigDep, RepoDep
 from ..models.subtitles import (
+    SubtitleFileEntry,
+    SubtitleFilesResponse,
     SubtitleGenerationTestResponse,
     SubtitleStatusResponse,
     SubtitleUploadResponse,
@@ -34,12 +37,102 @@ def _subtitle_target(video: Path, language: str, suffix: str) -> Path:
     return video.with_suffix("").with_name(f"{video.stem}.{language}{suffix}")
 
 
+def _language_of_name(video: Path, name: str) -> str | None:
+    """从 ``<视频名>.<语言><扩展名>`` 里取语言段; 形态对不上就返回空."""
+    stem = Path(name).stem
+    prefix = f"{video.stem}."
+    if not stem.startswith(prefix):
+        return None
+    language = stem[len(prefix) :]
+    if not language or len(language) > 8:
+        return None
+    if not all(part.isalnum() for part in language.split("-")):
+        return None
+    return language
+
+
+async def _media_and_library(repo: RepoDep, media_file_id: int):
+    media = await repo.get_media_file(media_file_id)
+    if media is None:
+        raise HTTPException(status_code=404, detail="媒体文件不存在")
+    library = await repo.get_library(media.library_id) if media.library_id is not None else None
+    if library is None:
+        raise HTTPException(status_code=422, detail="媒体文件不属于任何媒体库")
+    return media, library
+
+
+def _allowed_extensions(library) -> set[str]:
+    return {item.lower() for item in library.subtitle_extensions}
+
+
+@router.get("/files", response_model=SubtitleFilesResponse)
+async def list_subtitle_files(
+    repo: RepoDep,
+    media_file_id: int,
+) -> SubtitleFilesResponse:
+    """列出视频旁边现有的字幕, 供替换或删除."""
+    media, library = await _media_and_library(repo, media_file_id)
+    video = Path(media.path)
+    allowed = _allowed_extensions(library)
+    files: list[SubtitleFileEntry] = []
+    if video.parent.is_dir() and allowed:
+        for entry in sorted(video.parent.iterdir()):
+            if not entry.is_file() or entry.suffix.lower() not in allowed:
+                continue
+            try:
+                stat = entry.stat()
+            except OSError:
+                continue
+            files.append(
+                SubtitleFileEntry(
+                    name=entry.name,
+                    path=str(entry),
+                    extension=entry.suffix.lower(),
+                    size=stat.st_size,
+                    language=_language_of_name(video, entry.name),
+                    modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
+                )
+            )
+    return SubtitleFilesResponse(
+        media_file_id=media_file_id,
+        video_path=str(video),
+        extensions=sorted(allowed),
+        files=files,
+    )
+
+
+@router.post("/delete", response_model=SubtitleFilesResponse)
+async def delete_subtitle_file(
+    repo: RepoDep,
+    media_file_id: Annotated[int, Form(description="媒体文件的 id")],
+    path: Annotated[str, Form(description="要删除的字幕文件路径")],
+) -> SubtitleFilesResponse:
+    """删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里."""
+    media, library = await _media_and_library(repo, media_file_id)
+    video = Path(media.path)
+    target = Path(path)
+    if target.parent.resolve() != video.parent.resolve():
+        raise HTTPException(status_code=422, detail="只能删除与该视频同目录的字幕")
+    if target.suffix.lower() not in _allowed_extensions(library):
+        raise HTTPException(status_code=422, detail=f"不是字幕文件: {target.name}")
+    try:
+        target.unlink()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="字幕文件已不存在") from None
+    except OSError as error:
+        raise HTTPException(status_code=422, detail=f"删除失败: {error.strerror or error}") from error
+    await refresh_external_subtitle(repo, media, library)
+    logger.info("subtitle deleted", media_id=media_file_id, path=str(target))
+    return await list_subtitle_files(repo, media_file_id)
+
+
 @router.post("/upload", response_model=SubtitleUploadResponse)
 async def upload_subtitle(
     repo: RepoDep,
     media_file_id: Annotated[int, Form(description="媒体文件的 id")],
     file: Annotated[UploadFile, File(description="字幕文件 (srt/ass/ssa/vtt/sub)")],
     language: Annotated[str, Form(description="语言标记, 用于文件名")] = "zh",
+    filename: Annotated[str, Form(description="自定义文件名; 留空按 <视频名>.<语言><扩展名> 命名")] = "",
 ) -> SubtitleUploadResponse:
     """手动上传一份字幕, 落在视频旁边.
 
@@ -66,7 +159,15 @@ async def upload_subtitle(
     if len(payload) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="字幕文件超过 20 MB")
     language = language.strip() or "zh"
-    target = _subtitle_target(video, language, suffix)
+    custom = filename.strip()
+    if custom:
+        if Path(custom).name != custom or custom in {".", ".."}:
+            raise HTTPException(status_code=422, detail="文件名里不能带路径分隔符")
+        if Path(custom).suffix.lower() != suffix:
+            raise HTTPException(status_code=422, detail=f"自定义文件名的扩展名要和上传的文件一致: {suffix}")
+        target = video.parent / custom
+    else:
+        target = _subtitle_target(video, language, suffix)
     temporary = target.with_name(f".{target.name}.upload-tmp")
     temporary.write_bytes(payload)
     temporary.replace(target)

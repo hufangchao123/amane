@@ -6813,6 +6813,91 @@
         }
       }
     },
+    "/api/subtitles/files": {
+      "get": {
+        "tags": [
+          "subtitles"
+        ],
+        "summary": "List Subtitle Files",
+        "description": "列出视频旁边现有的字幕, 供替换或删除.",
+        "operationId": "list_subtitle_files",
+        "parameters": [
+          {
+            "name": "media_file_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Media File Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubtitleFilesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subtitles/delete": {
+      "post": {
+        "tags": [
+          "subtitles"
+        ],
+        "summary": "Delete Subtitle File",
+        "description": "删掉视频旁边的一份字幕, 路径必须就在该视频所在目录里.",
+        "operationId": "delete_subtitle_file",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_delete_subtitle_file"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubtitleFilesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/subtitles/upload": {
       "post": {
         "tags": [
@@ -8824,6 +8909,26 @@
         "type": "object",
         "title": "AvatarCheckSubmission"
       },
+      "Body_delete_subtitle_file": {
+        "properties": {
+          "media_file_id": {
+            "type": "integer",
+            "title": "Media File Id",
+            "description": "媒体文件的 id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "要删除的字幕文件路径"
+          }
+        },
+        "type": "object",
+        "required": [
+          "media_file_id",
+          "path"
+        ],
+        "title": "Body_delete_subtitle_file"
+      },
       "Body_install_plugin": {
         "properties": {
           "file": {
@@ -8873,6 +8978,12 @@
             "title": "Language",
             "description": "语言标记, 用于文件名",
             "default": "zh"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename",
+            "description": "自定义文件名; 留空按 <视频名>.<语言><扩展名> 命名",
+            "default": ""
           }
         },
         "type": "object",
@@ -18264,6 +18375,93 @@
         ],
         "title": "SubtitleFetchSubmission",
         "description": "字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑."
+      },
+      "SubtitleFileEntry": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "extension": {
+            "type": "string",
+            "title": "Extension"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "modified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "extension",
+          "size"
+        ],
+        "title": "SubtitleFileEntry",
+        "description": "视频旁边的一份字幕文件."
+      },
+      "SubtitleFilesResponse": {
+        "properties": {
+          "media_file_id": {
+            "type": "integer",
+            "title": "Media File Id"
+          },
+          "video_path": {
+            "type": "string",
+            "title": "Video Path"
+          },
+          "extensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Extensions"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/SubtitleFileEntry"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "media_file_id",
+          "video_path",
+          "extensions",
+          "files"
+        ],
+        "title": "SubtitleFilesResponse",
+        "description": "某个视频旁边现有的字幕清单."
       },
       "SubtitleGenerateConfig": {
         "properties": {

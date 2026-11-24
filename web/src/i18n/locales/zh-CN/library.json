@@ -272,5 +272,30 @@
   "keepSourceDirs": {
     "label": "搬空后保留来源目录",
     "hint": "默认把搬空的目录逐层删掉（库根始终保留）。打开后整理与刮削后转移都不删空目录，适合下载器复用固定目录的场景。"
+  },
+  "upload": {
+    "action": "上传字幕",
+    "done": "字幕已上传",
+    "failed": "上传失败"
+  },
+  "subtitles": {
+    "title": "字幕文件",
+    "empty": "这个视频旁边还没有字幕",
+    "loadFailed": "读取字幕清单失败",
+    "deleteTitle": "删除字幕",
+    "deleteConfirm": "确定删除 {{name}} 吗？删掉之后要重新上传才能恢复。",
+    "deleteAction": "删除",
+    "deleteFailed": "删除失败",
+    "columns": {
+      "name": "文件名",
+      "language": "语言",
+      "size": "大小",
+      "modified": "修改时间"
+    },
+    "uploadNameLabel": "自定义文件名（可选）",
+    "uploadNameHint": "留空则命名成 <视频名>.<语言>.srt；想保留两份对比时填个不同的名字",
+    "uploadNamePlaceholder": "例如 AD-1.人工校对.srt",
+    "action": "字幕",
+    "uploadAction": "上传字幕"
   }
 }

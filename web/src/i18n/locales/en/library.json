@@ -284,5 +284,30 @@
   "keepSourceDirs": {
     "label": "Keep emptied source dirs",
     "hint": "By default emptied directories are removed level by level (the library root always stays). With this on, organize and scrape transfer leave empty directories in place, which suits downloaders that reuse a fixed folder."
+  },
+  "upload": {
+    "action": "Upload subtitle",
+    "done": "Subtitle uploaded",
+    "failed": "Upload failed"
+  },
+  "subtitles": {
+    "title": "Subtitle files",
+    "empty": "No subtitle next to this video yet",
+    "loadFailed": "Failed to read subtitle files",
+    "deleteTitle": "Delete subtitle",
+    "deleteConfirm": "Delete {{name}}? You have to upload it again to restore.",
+    "deleteAction": "Delete",
+    "deleteFailed": "Delete failed",
+    "columns": {
+      "name": "File",
+      "language": "Language",
+      "size": "Size",
+      "modified": "Modified"
+    },
+    "uploadNameLabel": "Custom file name (optional)",
+    "uploadNameHint": "Leave empty to name it <video>.<language>.srt; pick a different name to keep two copies",
+    "uploadNamePlaceholder": "e.g. AD-1.reviewed.srt",
+    "action": "Subtitles",
+    "uploadAction": "Upload"
   }
 }

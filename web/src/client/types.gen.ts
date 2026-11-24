@@ -810,6 +810,24 @@ export type AvatarCheckSubmission = {
 };
 
 /**
+ * Body_delete_subtitle_file
+ */
+export type BodyDeleteSubtitleFile = {
+    /**
+     * Media File Id
+     *
+     * 媒体文件的 id
+     */
+    media_file_id: number;
+    /**
+     * Path
+     *
+     * 要删除的字幕文件路径
+     */
+    path: string;
+};
+
+/**
  * Body_install_plugin
  */
 export type BodyInstallPlugin = {
@@ -849,6 +867,12 @@ export type BodyUploadSubtitle = {
      * 语言标记, 用于文件名
      */
     language?: string;
+    /**
+     * Filename
+     *
+     * 自定义文件名; 留空按 <视频名>.<语言><扩展名> 命名
+     */
+    filename?: string;
 };
 
 /**
@@ -5891,6 +5915,62 @@ export type SubtitleFetchSubmission = {
      * Type
      */
     type: 'subtitle_fetch';
+};
+
+/**
+ * SubtitleFileEntry
+ *
+ * 视频旁边的一份字幕文件.
+ */
+export type SubtitleFileEntry = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Language
+     */
+    language?: string | null;
+    /**
+     * Modified At
+     */
+    modified_at?: string | null;
+};
+
+/**
+ * SubtitleFilesResponse
+ *
+ * 某个视频旁边现有的字幕清单.
+ */
+export type SubtitleFilesResponse = {
+    /**
+     * Media File Id
+     */
+    media_file_id: number;
+    /**
+     * Video Path
+     */
+    video_path: string;
+    /**
+     * Extensions
+     */
+    extensions: Array<string>;
+    /**
+     * Files
+     */
+    files: Array<SubtitleFileEntry>;
 };
 
 /**
@@ -11403,6 +11483,61 @@ export type ReleaseSemanticResponses = {
 };
 
 export type ReleaseSemanticResponse = ReleaseSemanticResponses[keyof ReleaseSemanticResponses];
+
+export type ListSubtitleFilesData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Media File Id
+         */
+        media_file_id: number;
+    };
+    url: '/api/subtitles/files';
+};
+
+export type ListSubtitleFilesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSubtitleFilesError = ListSubtitleFilesErrors[keyof ListSubtitleFilesErrors];
+
+export type ListSubtitleFilesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleFilesResponse;
+};
+
+export type ListSubtitleFilesResponse = ListSubtitleFilesResponses[keyof ListSubtitleFilesResponses];
+
+export type DeleteSubtitleFileData = {
+    body: BodyDeleteSubtitleFile;
+    path?: never;
+    query?: never;
+    url: '/api/subtitles/delete';
+};
+
+export type DeleteSubtitleFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteSubtitleFileError = DeleteSubtitleFileErrors[keyof DeleteSubtitleFileErrors];
+
+export type DeleteSubtitleFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleFilesResponse;
+};
+
+export type DeleteSubtitleFileResponse = DeleteSubtitleFileResponses[keyof DeleteSubtitleFileResponses];
 
 export type UploadSubtitleData = {
     body: BodyUploadSubtitle;

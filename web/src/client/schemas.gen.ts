@@ -1387,6 +1387,27 @@ export const AvatarCheckSubmissionSchema = {
     title: 'AvatarCheckSubmission'
 } as const;
 
+export const Body_delete_subtitle_fileSchema = {
+    properties: {
+        media_file_id: {
+            type: 'integer',
+            title: 'Media File Id',
+            description: '媒体文件的 id'
+        },
+        path: {
+            type: 'string',
+            title: 'Path',
+            description: '要删除的字幕文件路径'
+        }
+    },
+    type: 'object',
+    required: [
+        'media_file_id',
+        'path'
+    ],
+    title: 'Body_delete_subtitle_file'
+} as const;
+
 export const Body_install_pluginSchema = {
     properties: {
         file: {
@@ -1437,6 +1458,12 @@ export const Body_upload_subtitleSchema = {
             title: 'Language',
             description: '语言标记, 用于文件名',
             default: 'zh'
+        },
+        filename: {
+            type: 'string',
+            title: 'Filename',
+            description: '自定义文件名; 留空按 <视频名>.<语言><扩展名> 命名',
+            default: ''
         }
     },
     type: 'object',
@@ -11027,6 +11054,95 @@ export const SubtitleFetchSubmissionSchema = {
     ],
     title: 'SubtitleFetchSubmission',
     description: '字幕批量下载: 不指定范围时按字幕覆盖缺口全量挑.'
+} as const;
+
+export const SubtitleFileEntrySchema = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        extension: {
+            type: 'string',
+            title: 'Extension'
+        },
+        size: {
+            type: 'integer',
+            title: 'Size'
+        },
+        language: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Language'
+        },
+        modified_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Modified At'
+        }
+    },
+    type: 'object',
+    required: [
+        'name',
+        'path',
+        'extension',
+        'size'
+    ],
+    title: 'SubtitleFileEntry',
+    description: '视频旁边的一份字幕文件.'
+} as const;
+
+export const SubtitleFilesResponseSchema = {
+    properties: {
+        media_file_id: {
+            type: 'integer',
+            title: 'Media File Id'
+        },
+        video_path: {
+            type: 'string',
+            title: 'Video Path'
+        },
+        extensions: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Extensions'
+        },
+        files: {
+            items: {
+                $ref: '#/components/schemas/SubtitleFileEntry'
+            },
+            type: 'array',
+            title: 'Files'
+        }
+    },
+    type: 'object',
+    required: [
+        'media_file_id',
+        'video_path',
+        'extensions',
+        'files'
+    ],
+    title: 'SubtitleFilesResponse',
+    description: '某个视频旁边现有的字幕清单.'
 } as const;
 
 export const SubtitleGenerateConfigSchema = {

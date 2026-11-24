@@ -62,6 +62,7 @@ import { FacetBadge } from "@/components/media/facet-badge";
 import { LockChip, LockToggle, type LockProps } from "@/components/media/field-lock";
 import { UserTagActions } from "@/components/media/user-tag-add";
 import { VrBadge } from "@/components/media/vr-badge";
+import { SubtitleFilesDialog } from "@/components/library/subtitle-files-dialog";
 import { FanartLightbox, FanartStrip } from "@/components/media/fanart-lightbox";
 import { FilePhaseBadges, FilePhaseOverlay } from "@/components/media/file-phase-badges";
 import { PosterCropDialog } from "@/components/media/poster-crop-dialog";
@@ -69,7 +70,6 @@ import { MergeDialog } from "@/components/metadata/merge-dialog";
 import { type JSONSchemaObject, resolveSchema } from "@/components/schema-form/schema";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { extractErrorMessage } from "@/lib/api-error";
-import { apiFetch } from "@/lib/api-token";
 import { confirm } from "@/lib/confirm";
 import { USER_TAG_FACET_LIST } from "@/lib/facets";
 import { FIELD_LABEL_KEY, LOCKABLE_FIELDS } from "@/lib/media/metadata-fields";
@@ -244,31 +244,7 @@ function TitleDetailPage() {
     deleteMutation.mutate({ path: { metadata_id: id } });
   }
 
-  const uploadInput = useRef<HTMLInputElement>(null);
-  const [uploadTarget, setUploadTarget] = useState<number | null>(null);
-
-  /** 手动上传字幕: 后端落在视频（或 .strm 指针）旁边, 并点亮外挂字幕角标. */
-  async function handleUpload(file: File) {
-    const mediaId = uploadTarget;
-    if (mediaId === null) return;
-    const form = new FormData();
-    form.append("media_file_id", String(mediaId));
-    form.append("file", file);
-    const resp = await apiFetch("/api/subtitles/upload", { method: "POST", body: form });
-    if (!resp.ok) {
-      const detail = await resp
-        .json()
-        .then((body: { detail?: string }) => body.detail ?? "")
-        .catch(() => "");
-      notifications.show({
-        message: detail || t("upload.failed"),
-        color: "red",
-      });
-      return;
-    }
-    notifications.show({ message: t("upload.done"), color: "teal" });
-    await queryClient.invalidateQueries();
-  }
+  const [subtitleTarget, setSubtitleTarget] = useState<{ id: number; name: string } | null>(null);
 
   const purgeMutation = useMutation({
     ...submitTaskMutation(),
@@ -990,15 +966,12 @@ function TitleDetailPage() {
                     {f.status}
                   </Badge>
                   {/* 缺字幕时的手动补救: 本地没有音轨的 .strm 也能这样补. */}
-                  <Tooltip label={t("upload.action")}>
+                  <Tooltip label={t("library:subtitles.action")}>
                     <ActionIcon
                       variant="subtle"
                       size="sm"
-                      aria-label={t("upload.action")}
-                      onClick={() => {
-                        setUploadTarget(f.id);
-                        uploadInput.current?.click();
-                      }}
+                      aria-label={t("library:subtitles.action")}
+                      onClick={() => setSubtitleTarget({ id: f.id, name: f.path })}
                     >
                       <IconUpload size={16} />
                     </ActionIcon>
@@ -1032,16 +1005,12 @@ function TitleDetailPage() {
         />
       </SimpleGrid>
 
-      <input
-        ref={uploadInput}
-        type="file"
-        accept=".srt,.ass,.ssa,.vtt,.sub"
-        style={{ display: "none" }}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          event.currentTarget.value = "";
-          if (file) void handleUpload(file);
-        }}
+      <SubtitleFilesDialog
+        key={subtitleTarget?.id ?? "none"}
+        mediaFileId={subtitleTarget?.id ?? null}
+        videoName={subtitleTarget?.name}
+        onClose={() => setSubtitleTarget(null)}
+        onChanged={() => void queryClient.invalidateQueries()}
       />
 
       <Modal

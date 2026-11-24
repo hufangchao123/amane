@@ -12,7 +12,14 @@ import {
   type MantineBreakpoint,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconFolderDown, IconForms, IconRefresh, IconTrash } from "@tabler/icons-react";
+import {
+  IconDots,
+  IconFolderDown,
+  IconForms,
+  IconRefresh,
+  IconTrash,
+  IconUpload,
+} from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
@@ -26,6 +33,7 @@ import type {
   MediaSortField,
   SortOrder,
 } from "@/client/types.gen";
+import { SubtitleFilesDialog } from "@/components/library/subtitle-files-dialog";
 import { HintedActionIcon } from "@/components/common/hinted-action-icon";
 import { FilePhaseBadges } from "@/components/media/file-phase-badges";
 import { ListToolbar } from "@/components/common/list-toolbar";
@@ -169,6 +177,7 @@ export function LibraryMediaTable({
     null,
   );
   const [overrideTarget, setOverrideTarget] = useState<MediaFileResponse | null>(null);
+  const [subtitleTarget, setSubtitleTarget] = useState<{ id: number; name: string } | null>(null);
   const [overrideSaving, setOverrideSaving] = useState(false);
 
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: listMediaQueryKey() });
@@ -316,295 +325,317 @@ export function LibraryMediaTable({
   }
 
   return (
-    <ListToolbar
-      totalPages={totalPages}
-      page={page}
-      onChange={handlePageChange}
-      header={
-        <SelectionBar count={selected.size}>
-          {/* 窄屏三个批量按钮分成多行, 占用表体高度: sm 以下改由菜单提供, 选中数仍由 Badge 常驻呈现. */}
-          <Group gap="xs" wrap="wrap" visibleFrom="sm">
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<IconRefresh size={14} />}
-              loading={busy}
-              disabled={selected.size === 0}
-              onClick={() => void handleBatchScrape()}
-            >
-              {t("actions.batchScrape")}
-            </Button>
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<IconFolderDown size={14} />}
-              loading={busy}
-              disabled={selected.size === 0}
-              onClick={() => void handleBatchOrganize()}
-            >
-              {t("actions.batchOrganize")}
-            </Button>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconTrash size={14} />}
-                  loading={busy}
-                  disabled={selected.size === 0}
-                >
-                  {t("cleanup.deleteMenu")}
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <DeleteMenuItems
-                  onDeleteRecord={() => void handleBatchDelete()}
-                  onDeleteFiles={() => openMediaDelete(selectedIds, false)}
-                  onDeleteWorkDir={() => openMediaDelete(selectedIds, true)}
-                />
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-          <Box hiddenFrom="sm">
-            <Menu position="bottom-start" withinPortal>
-              <Menu.Target>
-                <Button size="xs" variant="light" loading={busy} disabled={selected.size === 0}>
-                  {t("columns.actions")}
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconRefresh size={14} />}
-                  disabled={busy}
-                  onClick={() => void handleBatchScrape()}
-                >
-                  {t("actions.batchScrape")}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<IconFolderDown size={14} />}
-                  disabled={busy}
-                  onClick={() => void handleBatchOrganize()}
-                >
-                  {t("actions.batchOrganize")}
-                </Menu.Item>
-                <Menu.Divider />
-                <DeleteMenuItems
-                  disabled={busy}
-                  onDeleteRecord={() => void handleBatchDelete()}
-                  onDeleteFiles={() => openMediaDelete(selectedIds, false)}
-                  onDeleteWorkDir={() => openMediaDelete(selectedIds, true)}
-                />
-              </Menu.Dropdown>
-            </Menu>
-          </Box>
-        </SelectionBar>
-      }
-      trailing={trailing}
-    >
-      <Table
-        stickyHeader
-        highlightOnHover
-        verticalSpacing="sm"
-        layout="fixed"
-        w="100%"
-        className={classes.table}
-      >
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th w={40}>
-              <Checkbox checked={allSelected} onChange={() => toggleAll(pageIds)} />
-            </Table.Th>
-            <Table.Th w={120} visibleFrom={METADATA_VISIBLE_FROM}>
-              {t("columns.metadata")}
-            </Table.Th>
-            {SORTABLE_COLUMNS.map((field) => (
-              <SortableTh
-                key={field}
-                field={field}
-                label={t(`columns.${COLUMN_I18N_KEY[field]}`)}
-                sortBy={effectiveSortBy}
-                order={effectiveOrder}
-                onSort={onSort}
-                w={COLUMN_WIDTH[field]}
-                visibleFrom={COLUMN_VISIBLE_FROM[field]}
-              />
-            ))}
-            <Table.Th ta="right" className={classes.actionsColumn}>
-              {t("columns.actions")}
-            </Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {items.map((item) => {
-            const rel = relativePath(libraryPath, item.path);
-            return (
-              <Table.Tr
-                key={item.id}
-                bg={selected.has(item.id) ? "var(--mantine-color-blue-light)" : undefined}
+    <>
+      <ListToolbar
+        totalPages={totalPages}
+        page={page}
+        onChange={handlePageChange}
+        header={
+          <SelectionBar count={selected.size}>
+            {/* 窄屏三个批量按钮分成多行, 占用表体高度: sm 以下改由菜单提供, 选中数仍由 Badge 常驻呈现. */}
+            <Group gap="xs" wrap="wrap" visibleFrom="sm">
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconRefresh size={14} />}
+                loading={busy}
+                disabled={selected.size === 0}
+                onClick={() => void handleBatchScrape()}
               >
-                <Table.Td>
-                  <Checkbox checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
-                </Table.Td>
-                <Table.Td style={CELL_OVERFLOW} visibleFrom={METADATA_VISIBLE_FROM}>
-                  {item.metadata_id != null ? (
-                    <Link
-                      to="/meta/$metadataId"
-                      params={{ metadataId: String(item.metadata_id) }}
-                      style={{ textDecoration: "none", display: "block", overflow: "hidden" }}
-                    >
-                      <Text
-                        component="span"
-                        size="sm"
-                        ff="monospace"
-                        c="brand"
-                        truncate
-                        title={`#${item.metadata_id}`}
+                {t("actions.batchScrape")}
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconFolderDown size={14} />}
+                loading={busy}
+                disabled={selected.size === 0}
+                onClick={() => void handleBatchOrganize()}
+              >
+                {t("actions.batchOrganize")}
+              </Button>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconTrash size={14} />}
+                    loading={busy}
+                    disabled={selected.size === 0}
+                  >
+                    {t("cleanup.deleteMenu")}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <DeleteMenuItems
+                    onDeleteRecord={() => void handleBatchDelete()}
+                    onDeleteFiles={() => openMediaDelete(selectedIds, false)}
+                    onDeleteWorkDir={() => openMediaDelete(selectedIds, true)}
+                  />
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+            <Box hiddenFrom="sm">
+              <Menu position="bottom-start" withinPortal>
+                <Menu.Target>
+                  <Button size="xs" variant="light" loading={busy} disabled={selected.size === 0}>
+                    {t("columns.actions")}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconRefresh size={14} />}
+                    disabled={busy}
+                    onClick={() => void handleBatchScrape()}
+                  >
+                    {t("actions.batchScrape")}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconFolderDown size={14} />}
+                    disabled={busy}
+                    onClick={() => void handleBatchOrganize()}
+                  >
+                    {t("actions.batchOrganize")}
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <DeleteMenuItems
+                    disabled={busy}
+                    onDeleteRecord={() => void handleBatchDelete()}
+                    onDeleteFiles={() => openMediaDelete(selectedIds, false)}
+                    onDeleteWorkDir={() => openMediaDelete(selectedIds, true)}
+                  />
+                </Menu.Dropdown>
+              </Menu>
+            </Box>
+          </SelectionBar>
+        }
+        trailing={trailing}
+      >
+        <Table
+          stickyHeader
+          highlightOnHover
+          verticalSpacing="sm"
+          layout="fixed"
+          w="100%"
+          className={classes.table}
+        >
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th w={40}>
+                <Checkbox checked={allSelected} onChange={() => toggleAll(pageIds)} />
+              </Table.Th>
+              <Table.Th w={120} visibleFrom={METADATA_VISIBLE_FROM}>
+                {t("columns.metadata")}
+              </Table.Th>
+              {SORTABLE_COLUMNS.map((field) => (
+                <SortableTh
+                  key={field}
+                  field={field}
+                  label={t(`columns.${COLUMN_I18N_KEY[field]}`)}
+                  sortBy={effectiveSortBy}
+                  order={effectiveOrder}
+                  onSort={onSort}
+                  w={COLUMN_WIDTH[field]}
+                  visibleFrom={COLUMN_VISIBLE_FROM[field]}
+                />
+              ))}
+              <Table.Th ta="right" className={classes.actionsColumn}>
+                {t("columns.actions")}
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {items.map((item) => {
+              const rel = relativePath(libraryPath, item.path);
+              return (
+                <Table.Tr
+                  key={item.id}
+                  bg={selected.has(item.id) ? "var(--mantine-color-blue-light)" : undefined}
+                >
+                  <Table.Td>
+                    <Checkbox checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                  </Table.Td>
+                  <Table.Td style={CELL_OVERFLOW} visibleFrom={METADATA_VISIBLE_FROM}>
+                    {item.metadata_id != null ? (
+                      <Link
+                        to="/meta/$metadataId"
+                        params={{ metadataId: String(item.metadata_id) }}
+                        style={{ textDecoration: "none", display: "block", overflow: "hidden" }}
                       >
-                        #{item.metadata_id}
-                      </Text>
-                    </Link>
-                  ) : (
-                    <Text size="sm" c="dimmed">
-                      —
-                    </Text>
-                  )}
-                </Table.Td>
-                <Table.Td style={CELL_OVERFLOW}>
-                  <Stack gap={4}>
-                    <Text size="sm" ff="monospace" truncate title={rel}>
-                      {rel}
-                    </Text>
-                    <FilePhaseBadges phase={item} />
-                  </Stack>
-                </Table.Td>
-                <Table.Td style={CELL_OVERFLOW}>
-                  <Badge size="sm" variant="light" color={statusColor(item.status)}>
-                    {t(`filters.${item.status}`)}
-                  </Badge>
-                </Table.Td>
-                <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.size}>
-                  <Text size="sm" truncate>
-                    {formatFileSize(item.size)}
-                  </Text>
-                </Table.Td>
-                <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.updated_at}>
-                  <Text size="sm" truncate>
-                    {item.updated_at ? item.updated_at.slice(0, 10) : "—"}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {/* 窄屏动作列只容得下一个按钮, 三个动作移入菜单. */}
-                  <Group gap={4} justify="flex-end" wrap="nowrap" visibleFrom="sm">
-                    <HintedActionIcon
-                      variant="subtle"
-                      label={t("actions.scrape")}
-                      onClick={() =>
-                        submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
-                          notifications.show({
-                            message: t("common:toast.scrapeStarted"),
-                            color: "blue",
-                          }),
-                        )
-                      }
-                    >
-                      <IconRefresh size={16} />
-                    </HintedActionIcon>
-                    <HintedActionIcon
-                      variant="subtle"
-                      label={t("actions.scrapeWithNumber")}
-                      onClick={() => setOverrideTarget(item)}
-                    >
-                      <IconForms size={16} />
-                    </HintedActionIcon>
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
+                        <Text
+                          component="span"
                           size="sm"
-                          aria-label={t("cleanup.deleteMenu")}
+                          ff="monospace"
+                          c="brand"
+                          truncate
+                          title={`#${item.metadata_id}`}
                         >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <DeleteMenuItems
-                          onDeleteRecord={() => void handleDeleteOne(item.id)}
-                          onDeleteFiles={() => openMediaDelete([item.id], false)}
-                          onDeleteWorkDir={() => openMediaDelete([item.id], true)}
-                        />
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Group>
-                  {/* Menu 不接受 visibleFrom / hiddenFrom, 显隐由外层 Box 承担. */}
-                  <Box hiddenFrom="sm" style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon size="sm" variant="subtle" aria-label={t("columns.actions")}>
-                          <IconDots size={14} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconRefresh size={14} />}
-                          onClick={() =>
-                            submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
-                              notifications.show({
-                                message: t("common:toast.scrapeStarted"),
-                                color: "blue",
-                              }),
-                            )
-                          }
-                        >
-                          {t("actions.scrape")}
-                        </Menu.Item>
-                        <Menu.Item
-                          leftSection={<IconForms size={14} />}
-                          onClick={() => setOverrideTarget(item)}
-                        >
-                          {t("actions.scrapeWithNumber")}
-                        </Menu.Item>
-                        <Menu.Divider />
-                        <DeleteMenuItems
-                          onDeleteRecord={() => void handleDeleteOne(item.id)}
-                          onDeleteFiles={() => openMediaDelete([item.id], false)}
-                          onDeleteWorkDir={() => openMediaDelete([item.id], true)}
-                        />
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Box>
-                </Table.Td>
-              </Table.Tr>
-            );
-          })}
-        </Table.Tbody>
-      </Table>
+                          #{item.metadata_id}
+                        </Text>
+                      </Link>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td style={CELL_OVERFLOW}>
+                    <Stack gap={4}>
+                      <Text size="sm" ff="monospace" truncate title={rel}>
+                        {rel}
+                      </Text>
+                      <FilePhaseBadges phase={item} />
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td style={CELL_OVERFLOW}>
+                    <Badge size="sm" variant="light" color={statusColor(item.status)}>
+                      {t(`filters.${item.status}`)}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.size}>
+                    <Text size="sm" truncate>
+                      {formatFileSize(item.size)}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td style={CELL_OVERFLOW} visibleFrom={COLUMN_VISIBLE_FROM.updated_at}>
+                    <Text size="sm" truncate>
+                      {item.updated_at ? item.updated_at.slice(0, 10) : "—"}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    {/* 窄屏动作列只容得下一个按钮, 三个动作移入菜单. */}
+                    <Group gap={4} justify="flex-end" wrap="nowrap" visibleFrom="sm">
+                      <HintedActionIcon
+                        variant="subtle"
+                        label={t("subtitles.action")}
+                        onClick={() => setSubtitleTarget({ id: item.id, name: item.path })}
+                      >
+                        <IconUpload size={16} />
+                      </HintedActionIcon>
+                      <HintedActionIcon
+                        variant="subtle"
+                        label={t("actions.scrape")}
+                        onClick={() =>
+                          submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
+                            notifications.show({
+                              message: t("common:toast.scrapeStarted"),
+                              color: "blue",
+                            }),
+                          )
+                        }
+                      >
+                        <IconRefresh size={16} />
+                      </HintedActionIcon>
+                      <HintedActionIcon
+                        variant="subtle"
+                        label={t("actions.scrapeWithNumber")}
+                        onClick={() => setOverrideTarget(item)}
+                      >
+                        <IconForms size={16} />
+                      </HintedActionIcon>
+                      <Menu position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="sm"
+                            aria-label={t("cleanup.deleteMenu")}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <DeleteMenuItems
+                            onDeleteRecord={() => void handleDeleteOne(item.id)}
+                            onDeleteFiles={() => openMediaDelete([item.id], false)}
+                            onDeleteWorkDir={() => openMediaDelete([item.id], true)}
+                          />
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
+                    {/* Menu 不接受 visibleFrom / hiddenFrom, 显隐由外层 Box 承担. */}
+                    <Box hiddenFrom="sm" style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <Menu position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon size="sm" variant="subtle" aria-label={t("columns.actions")}>
+                            <IconDots size={14} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconUpload size={14} />}
+                            onClick={() => setSubtitleTarget({ id: item.id, name: item.path })}
+                          >
+                            {t("subtitles.action")}
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconRefresh size={14} />}
+                            onClick={() =>
+                              submitTask({ body: { type: "scrape", media_id: item.id } }).then(() =>
+                                notifications.show({
+                                  message: t("common:toast.scrapeStarted"),
+                                  color: "blue",
+                                }),
+                              )
+                            }
+                          >
+                            {t("actions.scrape")}
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconForms size={14} />}
+                            onClick={() => setOverrideTarget(item)}
+                          >
+                            {t("actions.scrapeWithNumber")}
+                          </Menu.Item>
+                          <Menu.Divider />
+                          <DeleteMenuItems
+                            onDeleteRecord={() => void handleDeleteOne(item.id)}
+                            onDeleteFiles={() => openMediaDelete([item.id], false)}
+                            onDeleteWorkDir={() => openMediaDelete([item.id], true)}
+                          />
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Box>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
 
-      {!isLoading && items.length === 0 && (
-        <Text c="dimmed" size="sm" ta="center" py="xl">
-          {t("empty")}
-        </Text>
-      )}
-      <ScrapeOverrideDialog
-        target={overrideTarget}
-        saving={overrideSaving}
-        onClose={() => {
-          if (!overrideSaving) setOverrideTarget(null);
-        }}
-        onSubmit={(number, contentType) => void handleOverrideScrape(number, contentType)}
-      />
-      <MediaDeleteDialog
-        libraryId={libraryId}
-        mediaFileIds={deleteTargets?.ids ?? []}
-        includeWorkDir={deleteTargets?.workDir ?? false}
-        opened={deleteTargets !== null}
-        onClose={() => setDeleteTargets(null)}
-        onDeleted={() => {
-          clear();
-          invalidate();
-        }}
-      />
-    </ListToolbar>
+        {!isLoading && items.length === 0 && (
+          <Text c="dimmed" size="sm" ta="center" py="xl">
+            {t("empty")}
+          </Text>
+        )}
+        <ScrapeOverrideDialog
+          target={overrideTarget}
+          saving={overrideSaving}
+          onClose={() => {
+            if (!overrideSaving) setOverrideTarget(null);
+          }}
+          onSubmit={(number, contentType) => void handleOverrideScrape(number, contentType)}
+        />
+        <MediaDeleteDialog
+          libraryId={libraryId}
+          mediaFileIds={deleteTargets?.ids ?? []}
+          includeWorkDir={deleteTargets?.workDir ?? false}
+          opened={deleteTargets !== null}
+          onClose={() => setDeleteTargets(null)}
+          onDeleted={() => {
+            clear();
+            invalidate();
+          }}
+        />
+        <SubtitleFilesDialog
+          key={subtitleTarget?.id ?? "none"}
+          mediaFileId={subtitleTarget?.id ?? null}
+          videoName={subtitleTarget?.name}
+          onClose={() => setSubtitleTarget(null)}
+          onChanged={invalidate}
+        />
+      </ListToolbar>
+    </>
   );
 }
