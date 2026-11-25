@@ -170,7 +170,11 @@ async def test_request_failure_returns_none(monkeypatch):
         return httpx2.Response(500, json={"error": {"message": "blocked"}}, headers={"retry-after": "0.01"})
 
     def mock_client(
-        *, proxy: str | None = None, timeout: httpx2.Timeout | None = None, follow_redirects: bool = False
+        *,
+        proxy: str | None = None,
+        timeout: httpx2.Timeout | None = None,
+        follow_redirects: bool = False,
+        trust_env: bool = True,
     ) -> httpx2.AsyncClient:
         """顶替翻译自建的传输客户端: 请求由 MockTransport 承载, 不触网."""
         return httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
@@ -223,10 +227,14 @@ async def test_build_translator_builds_proxy_client(monkeypatch):
     real_client = httpx2.AsyncClient
 
     def recording_client(
-        *, proxy: str | None = None, timeout: httpx2.Timeout | None = None, follow_redirects: bool = False
+        *,
+        proxy: str | None = None,
+        timeout: httpx2.Timeout | None = None,
+        follow_redirects: bool = False,
+        trust_env: bool = True,
     ) -> httpx2.AsyncClient:
         client = real_client(proxy=proxy, timeout=timeout, follow_redirects=follow_redirects)
-        captured.update(proxy=proxy, client=client)
+        captured.update(proxy=proxy, client=client, trust_env=trust_env)
         return client
 
     def fake_build_model(

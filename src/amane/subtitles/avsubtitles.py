@@ -13,7 +13,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final
-from urllib.parse import urljoin
+from urllib.parse import urlencode, urljoin
 
 from ..net import RequestError
 from .models import (
@@ -133,7 +133,7 @@ def parse_revision(html: str) -> str | None:
 
 def download_urls(sub_id: str, revision: str) -> tuple[str, str]:
     """两步下载的地址: 先确认页 (建会话), 再取压缩包."""
-    query = f"subid={sub_id}&revid={revision}"
+    query = urlencode({"subid": sub_id, "revid": revision})
     return (
         f"{AVSUBTITLES_BASE}/download_page.php?{query}",
         f"{AVSUBTITLES_BASE}/download_sub.php?{query}",
@@ -151,7 +151,7 @@ async def fetch(
     headers = default_headers()
     try:
         search_html = await web.get_text(
-            f"{AVSUBTITLES_BASE}/search_results.php?search={number}",
+            f"{AVSUBTITLES_BASE}/search_results.php?{urlencode({'search': number})}",
             headers=headers,
         )
     except RequestError as exc:

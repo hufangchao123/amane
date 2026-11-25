@@ -895,3 +895,23 @@ class TestDirectoryMoveAndModify:
         watcher.check_debounced()
 
         assert found == [video]
+
+    def test_move_into_path_clears_stale_delete_event(self, tmp_path: Path) -> None:
+        """先删后移入同一个目标路径: 旧的删除事件不能留在队列里, 否则会按它删掉刚入库的索引."""
+        root = tmp_path / "root3"
+        root.mkdir()
+        video = root / "ABC-125.mp4"
+        video.write_bytes(b"x" * 64)
+
+        found: list[Path] = []
+        watcher = FileWatcher(
+            on_file_found=lambda path, _id: found.append(path), debounce_seconds=0.0, settle_seconds=0
+        )
+        watcher.watch(str(root), library_id=1, patterns=None, skip_patterns=None)
+        handler = watcher._handlers[0]
+
+        handler.on_deleted(FileDeletedEvent(src_path=str(video)))
+        handler.on_moved(FileMovedEvent(src_path=str(tmp_path / "staging" / video.name), dest_path=str(video)))
+
+        assert handler.get_ready_deletes() == []
+        assert handler.get_ready_moves() != []

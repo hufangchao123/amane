@@ -126,6 +126,9 @@ class _Handler(FileSystemEventHandler):
             self._pending.pop(src_str, None)
             self._pending_deletes.pop(src_str, None)
             self._observed_sizes.pop(src_str, None)
+            # 目标路径上可能还挂着更早的删除事件 (先删后移入): 不清就会「先入库、后按旧事件删索引」
+            self._pending_deletes.pop(dest_str, None)
+            self._pending.pop(dest_str, None)
 
             if self._matches(dest):
                 # 目标匹配: 记录为移动

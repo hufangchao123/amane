@@ -94,12 +94,24 @@ async def extract_audio(video: Path, dest: Path, *, timeout: float) -> None:
     try:
         _, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
     except TimeoutError as exc:
-        process.kill()
-        await process.wait()
+        await _stop(process)
         raise WhisperError("抽取音轨超时", transient=True) from exc
+    except BaseException:
+        # 任务被取消 (关服 / 用户取消) 时子进程不会自己退出: 不杀就留一个写到死的 ffmpeg.
+        await _stop(process)
+        raise
     if process.returncode != 0:
         detail = stderr.decode("utf-8", "replace").strip().splitlines()
         raise WhisperError(f"抽取音轨失败: {detail[-1] if detail else process.returncode}")
+
+
+async def _stop(process: asyncio.subprocess.Process) -> None:
+    """结束 ffmpeg: 先 kill 再等回收, 忽略已经退出的情况."""
+    try:
+        process.kill()
+    except ProcessLookupError:
+        return
+    await process.wait()
 
 
 async def transcribe(
@@ -117,8 +129,10 @@ async def transcribe(
         raise WhisperError("没有配置转写端点")
     url = base_url.rstrip("/") + _TRANSCRIBE_PATH
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-    payload = await asyncio.to_thread(audio.read_bytes)
-    files = {"file": (audio.name, payload, "audio/wav")}
+    try:
+        handle = audio.open("rb")
+    except OSError as exc:
+        raise WhisperError(f"音轨文件不可读: {exc}") from exc
     data = {
         "model": model,
         "language": language,
@@ -127,7 +141,15 @@ async def transcribe(
         **_VAD_FIELDS,
     }
     try:
-        response = await client.post(url, files=files, data=data, headers=headers, timeout=timeout)
+        with handle:
+            # 边读边发: 180 分钟的 16 kHz 单声道音轨约 345 MB, 整段读进内存会随并发把内存吃满.
+            response = await client.post(
+                url,
+                files={"file": (audio.name, handle, "audio/wav")},
+                data=data,
+                headers=headers,
+                timeout=timeout,
+            )
     except httpx2.HTTPError as exc:
         raise WhisperError(f"转写端点不可达: {exc}", transient=True) from exc
     if response.status_code >= 500:

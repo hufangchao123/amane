@@ -125,3 +125,19 @@ def redact_url(url: str) -> str:
                 for name, value in pairs
             )
     return urlunsplit((parts.scheme, netloc, _redact_path(parts.path), query, parts.fragment))
+
+
+_URL_IN_TEXT = re.compile(r"https?://[^\s'\"<>()\[\]]+")
+_BEARER_IN_TEXT = re.compile(r"(?i)\b(bearer|token|api[_-]?key|password)=?\s*([A-Za-z0-9._~+/-]{8,})")
+
+
+def redact_text(text: str) -> str:
+    """把自由文本里的 URL 与常见凭据形态脱敏.
+
+    异常文案、渠道报错、HTTP 响应摘要都会被直接展示或入库, 里面常带着带参 URL 与
+    ``Authorization`` 头. 这里按形态替换, 不依赖调用方知不知道哪个字段敏感.
+    """
+    if not text:
+        return text
+    redacted = _URL_IN_TEXT.sub(lambda match: redact_url(match.group(0)), text)
+    return _BEARER_IN_TEXT.sub(lambda match: f"{match.group(1)}={REDACTED_QUERY_VALUE}", redacted)

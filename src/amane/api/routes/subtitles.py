@@ -278,7 +278,7 @@ async def test_subtitle_generation(config: ConfigDep) -> SubtitleGenerationTestR
     with TemporaryDirectory() as tmp:
         audio = Path(tmp) / "probe.wav"
         audio.write_bytes(_probe_wav())
-        async with httpx2.AsyncClient() as client:
+        async with httpx2.AsyncClient(trust_env=False) as client:
             try:
                 await transcribe(
                     client,

@@ -8,6 +8,7 @@ import pytest
 import structlog
 
 from amane.observability import setup_logging
+from amane.observability.logging import redact_log_fields
 from amane.observability.recorder import TaskIdFilter, _task_id_ctx
 
 if TYPE_CHECKING:
@@ -152,3 +153,24 @@ class TestTaskIdFilter:
             for line in lines:
                 record = json.loads(line)
                 assert record["task_id"] == tid
+
+
+class TestRedactLogFields:
+    def test_url_query_and_bearer_are_masked(self) -> None:
+        event = {
+            "event": "fetch failed",
+            "url": "https://sub.example.com/search?api_key=SECRET&q=AD-1",
+            "msg": "Authorization: Bearer ABCDEFGHIJ",
+            "path": "/media/library/ABC-123.mkv",
+        }
+
+        out = redact_log_fields(None, "info", event)
+
+        assert out["url"] == "https://sub.example.com/search?api_key=***&q=AD-1"
+        assert out["msg"] == "Authorization: Bearer=***"
+        assert out["path"] == "/media/library/ABC-123.mkv"
+
+    def test_plain_values_are_untouched(self) -> None:
+        event = {"event": "task completed", "count": 3, "detail": "磁盘已满"}
+
+        assert redact_log_fields(None, "info", event) == event

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import httpx2
 import structlog
@@ -106,7 +107,8 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             return TaskResult(success=True, result=SubtitleGenerateResult())
 
         outcomes: list[_TargetOutcome] = []
-        async with httpx2.AsyncClient() as client:
+        # 转写端点是内网地址: 显式关掉环境代理, 否则 HTTP(S)_PROXY 会把请求带出去.
+        async with httpx2.AsyncClient(trust_env=False) as client:
             total = len(targets)
             for index, media in enumerate(targets, start=1):
                 await self.report_progress(index - 1, total, f"转写字幕 {index}/{total}")
@@ -152,20 +154,40 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
             if media is None:
                 raise _TargetError(f"媒体文件不存在: {payload.media_file_id}")
             return [media]
-        if payload.library_id is not None:
-            if await self._repo.get_library(payload.library_id) is None:
-                raise _TargetError(f"媒体库不存在: {payload.library_id}")
-            return await self._repo.list_media_files(
+        if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
+            raise _TargetError(f"媒体库不存在: {payload.library_id}")
+        return await self._fillable(payload)
+
+    async def _fillable(self, payload: SubtitleGeneratePayload) -> list[MediaFile]:
+        """按页扫描, 只把真能转写的收进结果, 凑满 ``limit`` 或扫完为止.
+
+        库里常有大量指针文件 (``.strm``) 与分卷: 直接 ``limit=payload.limit`` 会让它们吃掉额度,
+        一轮任务实际处理的份数远少于配置值.
+        """
+        picked: list[MediaFile] = []
+        offset = 0
+        page = max(payload.limit, _SCAN_PAGE)
+        while len(picked) < payload.limit:
+            rows = await self._repo.list_media_files(
                 status=[MediaFileStatus.SCRAPED],
                 library_id=payload.library_id,
                 has_subtitle=False,
-                limit=payload.limit,
+                limit=page,
+                offset=offset,
             )
-        return await self._repo.list_media_files(
-            status=[MediaFileStatus.SCRAPED],
-            has_subtitle=False,
-            limit=payload.limit,
-        )
+            if not rows:
+                break
+            offset += len(rows)
+            for row in rows:
+                path = Path(row.path)
+                if not is_video_media(path) or is_multi_disc(path) or is_pointer_media(path):
+                    continue
+                picked.append(row)
+                if len(picked) >= payload.limit:
+                    break
+            if len(rows) < page:
+                break
+        return picked
 
     async def _process(self, client: httpx2.AsyncClient, media: MediaFile) -> _TargetOutcome:
         path = Path(media.path)
@@ -188,6 +210,9 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
         limit_seconds = generate.max_file_minutes * 60
         if media.duration is not None and media.duration > limit_seconds:
             return _TargetOutcome(_Outcome.SKIPPED, f"超过 {generate.max_file_minutes} 分钟")
+        if media.duration is None:
+            # 时长没读到就不知道要跑多久: 超时不设上限等于让一份文件独占 worker 半小时.
+            logger.info("subtitle generate without duration", media_id=media.id, path=str(path))
 
         work = await asyncio.to_thread(_work_dir)
         try:
@@ -258,7 +283,7 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
         """按视频自身位置落一份字幕; 与移动/整理共用库锁, 免得写到刚被搬走的路径上."""
         if library.id is None:
             return _TargetOutcome(_Outcome.FAILED, "媒体库尚未落库")
-        language_tag = "zh" if translated else self._hot.subtitles.generation.language
+        language_tag = "zh" if translated else _clean_language(self._hot.subtitles.generation.language)
         async with await self._library_locks.get(library.id):
             fresh = await self._repo.get_media_file(media.id) if media.id is not None else None
             current = fresh or media
@@ -268,13 +293,27 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
                 return _TargetOutcome(_Outcome.SKIPPED, "目标字幕已存在")
             marker = f"1\n{format_timestamp(0.0)} --> {format_timestamp(2.0)}\n{MACHINE_MARK} (Whisper)\n\n"
             body = marker + to_srt(segments, start_index=2)
+            temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
             try:
-                await asyncio.to_thread(target.write_text, body, encoding="utf-8")
+                await asyncio.to_thread(temporary.write_text, body, encoding="utf-8")
+                await asyncio.to_thread(temporary.replace, target)
             except OSError as exc:
+                await asyncio.to_thread(temporary.unlink, missing_ok=True)
                 logger.warning("subtitle generate write failed", path=str(target), error=str(exc))
                 return _TargetOutcome(_Outcome.FAILED, f"写字幕失败: {exc}")
             await refresh_external_subtitle(self._repo, current, library)
         return _TargetOutcome(_Outcome.GENERATED, translated=translated)
+
+
+_SCAN_PAGE = 200
+
+
+def _clean_language(language: str) -> str:
+    """语言标记只能当文件名的一段: 带 ``/`` 或非字母数字一律退回 ``zh``."""
+    text = (language or "").strip()
+    if not text or len(text) > 8 or not all(part.isalnum() for part in text.split("-")):
+        return "zh"
+    return text
 
 
 def _work_dir() -> Path:

@@ -201,9 +201,13 @@ def _depth(path: Path) -> int:
     return len(path.parts)
 
 
-def _is_wash_dir(path: Path, library_root: Path) -> bool:
-    """是否落在洗版回收站里: ``<库根父目录>/.amane_wash/<库名>/...``."""
-    return WASH_TRASH_DIRNAME in path.parts and path_is_under(path, library_root)
+def _is_wash_dir(path: Path) -> bool:
+    """是否落在洗版回收站里: ``<库根父目录>/.amane_wash/<库名>/...``.
+
+    回收站挂在库根**父目录**下, 因此不能要求路径落在库根之内 —— 那样常规布局永远判不出来,
+    直指回收站内某一项时会把可还原的备份当真文件删掉. 按目录名拦, 该名字是保留的.
+    """
+    return WASH_TRASH_DIRNAME in path.parts
 
 
 def _is_recycle_dir(path: Path) -> bool:
@@ -275,7 +279,7 @@ def _refuse_reason(target: Path, *, library_root: Path, bases: Sequence[Path] = 
         return f"refuse to delete library root: {target}"
     if same_path(target, library_root / TRASH_DIRNAME):
         return f"refuse to delete trash root: {target}"
-    if _is_wash_dir(target, library_root):
+    if _is_wash_dir(target):
         # 洗版回收站还在可还原窗口里, 删掉会让 wash_records 指向不存在的文件.
         return f"refuse to delete wash trash: {target}"
     if any(same_path(target, base) for base in bases):

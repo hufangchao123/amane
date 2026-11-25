@@ -62,6 +62,46 @@ def check_directory_path(raw_path: str, safe_dirs: list[Path] | None) -> Path:
 
 
 @in_thread
+def check_safe_dir_member(raw_path: str, safe_dirs: list[Path] | None) -> Path:
+    """目录可以还不存在, 但必须落在 ``safe_dirs`` 内.
+
+    刮削输入/成功/失败目录会参与清理与删除的授权根计算: 允许配成 ``/`` 或任何库外路径, 等于把
+    整台机器的目录树交给清理任务. 这里只查边界, 不查存在性 —— 失败目录常常是事后才建.
+    """
+    if not raw_path or not raw_path.strip():
+        raise PathValidationError("路径不能为空")
+    p = Path(raw_path.strip())
+    try:
+        resolved = p.expanduser().resolve()
+    except OSError as e:
+        raise PathValidationError(f"路径解析失败: {e}") from e
+    if safe_dirs is None:
+        return resolved
+    if not safe_dirs:
+        raise SafeDirsMissing("尚未配置安全目录, 无法校验路径")
+    if not is_any_descendant(resolved, *safe_dirs):
+        raise OutsideSafeDirs(f"路径 {raw_path} 不在允许的安全目录内")
+    return resolved
+
+
+async def validate_scrape_dirs(
+    *,
+    input_dir: str | None,
+    ok_dir: str | None,
+    fail_dir: str | None,
+    safe_dirs: list[Path] | None,
+) -> None:
+    """三个刮削目录的边界校验; 空值跳过."""
+    for value in (input_dir, ok_dir, fail_dir):
+        if not value or not value.strip():
+            continue
+        try:
+            await check_safe_dir_member(value, safe_dirs)
+        except ValueError as exc:
+            raise _http_from_path_error(exc) from exc
+
+
+@in_thread
 def check_plugin_install_path(raw_path: str, safe_dirs: list[Path] | None) -> Path:
     resolved = _resolve_under_safe_dirs(raw_path, safe_dirs)
     if resolved.is_dir():

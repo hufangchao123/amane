@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from ...db import Feed, FeedItem, FeedItemReadState, FeedItemState, TaskType
 from ...handlers.models import ScrapePayload, build_feed_scrape_payload
 from ...utils.model import to_resp
+from ...utils.urls import redact_url
 from ..deps import RepoDep, RuntimeDep
 from ..models.feeds import (
     FeedCreateRequest,
@@ -89,7 +90,7 @@ async def create_feed(req: FeedCreateRequest, repo: RepoDep, runtime: RuntimeDep
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="该订阅源 URL 已存在") from exc
     assert feed.id is not None
-    logger.info("feed created", feed_id=feed.id, url=feed.url)
+    logger.info("feed created", feed_id=feed.id, url=redact_url(feed.url))
     if runtime.feed_service is not None:
         await runtime.feed_service.poll_one(feed.id)
         refreshed = await repo.get_feed(feed.id)

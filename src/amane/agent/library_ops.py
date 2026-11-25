@@ -6,7 +6,7 @@ from typing import Any, cast
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import Capability
 
-from ..api.support.path_validation import check_directory_path
+from ..api.support.path_validation import check_directory_path, check_safe_dir_member
 from ..db.models import Library, TaskType
 from ..db.repo_types import LibraryUpdates
 from ..enums import LibraryAutomation, LibraryIngest
@@ -89,6 +89,9 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
         patterns = list(patterns or [])
         try:
             await check_directory_path(path, ctx.deps.bridge.safe_dirs)
+            for value in (scrape_input_dir, scrape_ok_dir, scrape_fail_dir):
+                if value:
+                    await check_safe_dir_member(value, ctx.deps.bridge.safe_dirs)
         except ValueError as exc:
             return {"error": str(exc)}
         problem = check_scrape_dirs(
@@ -156,9 +159,19 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
                 patch["ingest"] = LibraryIngest(patch["ingest"])
             except ValueError:
                 return {"error": f"无效的 ingest: {patch['ingest']}"}
-        if "path" in patch and patch["path"] is not None:
+        if "path" in patch:
+            if patch["path"] is None:
+                return {"error": "path 不能为空"}
             try:
                 await check_directory_path(str(patch["path"]), ctx.deps.bridge.safe_dirs)
+            except ValueError as exc:
+                return {"error": str(exc)}
+        for key in ("scrape_input_dir", "scrape_ok_dir", "scrape_fail_dir"):
+            value = patch.get(key)
+            if not value:
+                continue
+            try:
+                await check_safe_dir_member(str(value), ctx.deps.bridge.safe_dirs)
             except ValueError as exc:
                 return {"error": str(exc)}
         current = await ctx.deps.repo.get_library(library_id)
@@ -181,6 +194,11 @@ def build_library_ops_capability() -> Capability[AgentDeps]:
             return {"error": f"library {library_id} 不存在"}
         if WATCH_FIELDS & set(patch):
             _sync_library(ctx.deps, lib)
+        if "path" in patch:
+            # 清单记录着生成时的库根: 换根后按新根解释相对路径会删错文件.
+            inventory = ctx.deps.bridge.inventory_store
+            if inventory is not None:
+                inventory.drop_library(library_id)
         return TOOL_OK
 
     @cap.tool

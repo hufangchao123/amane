@@ -68,6 +68,7 @@ from ...agent.tools import AgentDeps
 from ...agent.trace import SessionStore
 from ...agent.usage import request_usage, turn_usage_from_run
 from ...db.models import AgentSessionStatus
+from ...utils.urls import redact_text
 from ..deps import AgentDep, RepoDep, RuntimeDep
 from ..models.agent import AgentCancelResponse
 
@@ -312,8 +313,9 @@ async def run_agent_agui(
                 await runtime.repo.update_agent_session(session_id, status=AgentSessionStatus.ACTIVE)
                 raise
             except Exception as exc:
-                await store.append_row(AguiEventRow(type="agui", event={"type": "RUN_ERROR", "message": str(exc)}))
-                await store.append_row(ErrorRow(type="error", message=str(exc)))
+                message = redact_text(str(exc))
+                await store.append_row(AguiEventRow(type="agui", event={"type": "RUN_ERROR", "message": message}))
+                await store.append_row(ErrorRow(type="error", message=message))
                 await store.append_row(no_approvals())
                 await runtime.repo.update_agent_session(session_id, status=AgentSessionStatus.ACTIVE)
             finally:

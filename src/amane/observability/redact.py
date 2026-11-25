@@ -254,11 +254,18 @@ def _redact_secret_values(value: object, *, key: object | None = None) -> object
 
 def redact_proxy(proxy: str) -> str:
     """剥离 proxy URL 中的 userinfo, 保留 scheme/host/port/path."""
-    parts = urlsplit(proxy)
-    host = parts.hostname
+    try:
+        parts = urlsplit(proxy)
+        host = parts.hostname
+        port = parts.port
+    except ValueError:
+        return REDACTION_PLACEHOLDER
     if host is None:
-        return proxy
-    netloc = host if parts.port is None else f"{host}:{parts.port}"
+        # 解析不出主机就不能原样回吐: 畸形串里可能就夹着 user:pass.
+        return REDACTION_PLACEHOLDER
+    # IPv6 主机必须补回方括号, 否则 ``2001:db8::1:1080`` 与端口无法区分.
+    display = f"[{host}]" if ":" in host else host
+    netloc = display if port is None else f"{display}:{port}"
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 

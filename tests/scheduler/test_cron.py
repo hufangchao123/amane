@@ -166,3 +166,47 @@ async def test_due_notify_digest_schedule_enqueues_digest_task(repo: Repository)
     tasks = await repo.list_tasks(task_types=[TaskType.NOTIFY])
     assert len(tasks) == 1
     assert tasks[0].payload["kind"] == "digest"
+
+
+@pytest.mark.asyncio
+async def test_invalid_expression_does_not_block_other_schedules(repo: Repository) -> None:
+    """一条坏表达式只丢自己: 整轮不能因此中止, 其后的例行照样入队."""
+    broken = await repo.create_schedule(
+        cron="这不是 cron",
+        task_type=RoutineType.CLEANUP,
+        payload={"type": "cleanup"},
+        next_run=None,
+    )
+    healthy = await repo.create_schedule(
+        cron="0 3 * * *",
+        task_type=RoutineType.SEMANTIC_INDEX,
+        payload={"type": "semantic_index"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+    assert broken.id is not None and healthy.id is not None
+
+    await CronScheduler(repo)._tick()
+
+    untouched = await repo.get_schedule(broken.id)
+    assert untouched is not None and untouched.next_run is None
+    assert await repo.list_tasks(task_types=[TaskType.CLEANUP]) == []
+    triggered = await repo.get_schedule(healthy.id)
+    assert triggered is not None and triggered.last_run is not None
+
+
+@pytest.mark.asyncio
+async def test_repeated_routine_does_not_stack(repo: Repository) -> None:
+    """到期两次只排一条: 整库型例行单次常超过间隔."""
+    schedule = await repo.create_schedule(
+        cron="0 4 * * 1",
+        task_type=RoutineType.CLEANUP,
+        payload={"type": "cleanup"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+    assert schedule.id is not None
+
+    await CronScheduler(repo)._tick()
+    await repo.update_schedule(schedule.id, next_run=datetime.now(UTC) - timedelta(minutes=1))
+    await CronScheduler(repo)._tick()
+
+    assert len(await repo.list_tasks(task_types=[TaskType.CLEANUP])) == 1

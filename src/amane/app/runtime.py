@@ -290,6 +290,8 @@ class AppRuntime:
 
     def _bind_semantic_bridge(self) -> None:
         """Agent 的语义工具只经 bridge 获取检索能力, 不直接依赖运行时. 热重载替换服务后须重新绑定."""
+        if self.agent_service is not None:
+            self.agent_service.bridge.inventory_store = self.inventory_store
         if self.agent_service is not None and self.semantic is not None:
             self.agent_service.bridge.semantic_search = self.semantic.search
 

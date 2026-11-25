@@ -277,7 +277,9 @@ async def commit_organized_media_file(
         return
     library = await repo.get_library(media.library_id)
     if not is_descendant(placed, library_root):
-        if await existing_disk_path(Path(media.path), follow_symlinks=False) is None:
+        # 只有「确认不在」才删索引行: 挂载抖动时读不到, 删了就得重扫整个库才能恢复.
+        probe = await disk_probe(Path(media.path), follow_symlinks=False)
+        if probe.path is None and not probe.unreadable:
             await repo.delete_media_file(media.id)
         return
 

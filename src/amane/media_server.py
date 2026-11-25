@@ -211,7 +211,11 @@ class MediaServerClient:
         self._base = config.url.rstrip("/")
         self._api_key = config.api_key or ""
         self._client = client or AsyncClient(
-            timeout=Timeout(_TIMEOUT_S), verify=config.verify_tls, follow_redirects=True
+            timeout=Timeout(_TIMEOUT_S),
+            verify=config.verify_tls,
+            follow_redirects=True,
+            # 媒体服务器一般在同网段: 走环境代理会连不通, 还会把 api_key 送到代理上.
+            trust_env=False,
         )
 
     async def __aenter__(self) -> MediaServerClient:

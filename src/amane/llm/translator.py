@@ -173,7 +173,9 @@ def build_model_http_client(proxy: str | None = None) -> AsyncClient:
     不传客户端时 pydantic-ai 会自建并托管默认客户端, 那条路不带 proxy —— 端点需要代理时请求全部超时,
     报错还会落到「端点没有可用账号」这类误导性的结论上.
     """
-    return AsyncClient(proxy=proxy, timeout=Timeout(_TIMEOUT), follow_redirects=True)
+    return AsyncClient(
+        proxy=proxy, timeout=Timeout(_TIMEOUT), follow_redirects=True, trust_env=False
+    )
 
 
 def build_translator(

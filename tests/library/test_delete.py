@@ -457,3 +457,33 @@ class TestTrashSubtreeGuard:
         assert (tally.deleted, tally.failed) == (0, 1)
         assert (trash / "old.mkv").read_bytes() == b"old"
         assert work.is_dir()
+
+
+class TestWashTrashBoundary:
+    """洗版回收站挂在库根父目录, 直指它内部的文件也要拒删."""
+
+    def test_wash_trash_outside_library_root_is_refused(self, tmp_path) -> None:
+        library_root = tmp_path / "library"
+        library_root.mkdir()
+        wash_dir = tmp_path / ".amane_wash" / "library" / "in" / "ABC-123"
+        wash_dir.mkdir(parents=True)
+        backup = wash_dir / "ABC-123-1080p.mkv"
+        backup.write_bytes(b"video")
+
+        outcome = delete_target.sync(backup, library_root=library_root)
+
+        assert outcome.status == "failed"
+        assert outcome.error is not None and "wash trash" in outcome.error
+        assert backup.exists()
+
+    def test_wash_trash_directory_itself_is_refused(self, tmp_path) -> None:
+        library_root = tmp_path / "library"
+        library_root.mkdir()
+        wash_dir = tmp_path / ".amane_wash" / "library"
+        wash_dir.mkdir(parents=True)
+
+        outcome = delete_target.sync(wash_dir, library_root=library_root)
+
+        assert outcome.status == "failed"
+        assert outcome.error is not None and "wash trash" in outcome.error
+        assert wash_dir.is_dir()

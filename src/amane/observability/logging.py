@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ..events import EventType
+from ..utils.urls import redact_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,11 +39,29 @@ def _timestamp(
 
 # 共享处理器链 (渲染前注入上下文). app.log / task.log 的 foreign_pre_chain 也复用这份,
 # 否则 stdlib 记录落盘时没有 level / logger / timestamp, 与 WS 事件不同形.
+_LOOKS_SECRET_IN_VALUE = re.compile(r"(?i)(://|bearer\s|\btoken=|\bapi[_-]?key=|\bpassword=)")
+
+
+def redact_log_fields(
+    logger: object, method_name: str, event_dict: structlog.types.EventDict
+) -> structlog.types.EventDict:
+    """兜底脱敏: 事件字典里带 URL 或凭据形态的字符串值一律过 ``redact_text``.
+
+    各调用点已经按需脱敏, 这里是最后一道: 新写的日志、第三方异常文案、以及从配置里直接塞进
+    ``extra`` 的值都可能带着明文密钥, 漏一处就是一个凭据留在日志里.
+    """
+    for key, value in event_dict.items():
+        if isinstance(value, str) and _LOOKS_SECRET_IN_VALUE.search(value):
+            event_dict[key] = redact_text(value)
+    return event_dict
+
+
 SHARED_PROCESSORS: tuple[structlog.types.Processor, ...] = (
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.add_logger_name,
     structlog.stdlib.add_log_level,
     _timestamp,
+    redact_log_fields,
     structlog.processors.StackInfoRenderer(),
     structlog.processors.ExceptionRenderer(),
     structlog.stdlib.ExtraAdder(),

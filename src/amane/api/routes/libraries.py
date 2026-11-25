@@ -18,7 +18,7 @@ from ..models import (
     PathTemplateSchemaResponse,
     path_template_schema,
 )
-from ..support.path_validation import validate_directory_path
+from ..support.path_validation import validate_directory_path, validate_scrape_dirs
 
 if TYPE_CHECKING:
     from ...db.repo_types import LibraryUpdates
@@ -44,6 +44,12 @@ async def list_libraries(repo: RepoDep) -> LibraryListResponse:
 async def create_library(req: LibraryCreateRequest, repo: RepoDep, runtime: RuntimeDep) -> LibraryResponse:
     # 校验路径: 须存在、是目录、位于 safe_dirs 内
     await validate_directory_path(req.path, runtime.safe_dirs)
+    await validate_scrape_dirs(
+        input_dir=req.scrape_input_dir,
+        ok_dir=req.scrape_ok_dir,
+        fail_dir=req.scrape_fail_dir,
+        safe_dirs=runtime.safe_dirs,
+    )
     problem = check_scrape_dirs(
         transfer=req.scrape_transfer,
         input_dir=req.scrape_input_dir,
@@ -152,6 +158,12 @@ async def update_library(
     current = await repo.get_library(library_id)
     if current is None:
         raise HTTPException(status_code=404, detail="媒体库不存在")
+    await validate_scrape_dirs(
+        input_dir=updates.get("scrape_input_dir", current.scrape_input_dir),
+        ok_dir=updates.get("scrape_ok_dir", current.scrape_ok_dir),
+        fail_dir=updates.get("scrape_fail_dir", current.scrape_fail_dir),
+        safe_dirs=runtime.safe_dirs,
+    )
     problem = check_scrape_dirs(
         transfer=updates.get("scrape_transfer", current.scrape_transfer),
         input_dir=updates.get("scrape_input_dir", current.scrape_input_dir),

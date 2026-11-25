@@ -12,6 +12,7 @@ import httpx2
 import structlog
 
 from ..config.manager import NotifyConfig
+from ..utils.urls import redact_text
 from .channels import build_request
 
 if TYPE_CHECKING:
@@ -55,8 +56,9 @@ class Notifier:
         except Exception as error:
             # 端口越界、域名解析失败、TLS 握手失败都可能抛, 有时还裹在 anyio 的 ExceptionGroup 里.
             # 只捕 Exception: 取消与中断仍要能传出去.
-            logger.warning("notify failed", channel=self._config.kind, reason=str(error))
-            return NotifyOutcome(ok=False, channel=self._config.kind, error=str(error))
+            reason = redact_text(str(error))
+            logger.warning("notify failed", channel=self._config.kind, reason=reason)
+            return NotifyOutcome(ok=False, channel=self._config.kind, error=reason)
         ok = response.status_code < 400
         if not ok:
             logger.warning("notify rejected", channel=self._config.kind, status=response.status_code)

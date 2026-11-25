@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from ..db.embeddings import EmbeddingKind
@@ -44,3 +44,5 @@ class AgentRuntimeBridge:
     cancel_running_task: Callable[[int], Awaitable[bool]] | None = None
     poll_feed: Callable[[int], Awaitable[None]] | None = None
     semantic_search: SemanticSearch | None = None
+    inventory_store: Any | None = None
+    """清单缓存: 库根改动后要丢弃, 否则按新根解释旧相对路径会删错文件."""

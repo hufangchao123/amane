@@ -76,12 +76,15 @@ class CronScheduler:
                 continue
 
             if schedule.next_run is None:
-                # 尚无 next_run: 只写入下次触发时间
-                next_run = croniter(schedule.cron, now).get_next(datetime)
-                await self._repo.update_schedule(schedule.id, next_run=next_run)
-            else:
-                # 无时区则按 UTC
-                next_run = schedule.next_run if schedule.next_run.tzinfo else schedule.next_run.replace(tzinfo=UTC)
+                # 尚无 next_run: 只写入下次触发时间. 表达式非法时这条自己算不出来, 跳过它;
+                # 若不拦, 一条坏表达式会让整轮 _tick 中止, 其后的例行永远轮不到.
+                computed = self._next_run(schedule.cron, now, schedule_id=schedule.id)
+                if computed is None:
+                    continue
+                await self._repo.update_schedule(schedule.id, next_run=computed)
+                continue
+            # 无时区则按 UTC
+            next_run = schedule.next_run if schedule.next_run.tzinfo else schedule.next_run.replace(tzinfo=UTC)
 
             if next_run > now:
                 continue
@@ -95,8 +98,18 @@ class CronScheduler:
                     # 中止, 这条自己每 60 秒重犯一次, 而 list_schedules 无排序, 其后的例行永远轮不到.
                     logger.exception("schedule execute failed", schedule_id=schedule.id)
 
-            new_next_run = croniter(schedule.cron, now).get_next(datetime)
+            new_next_run = self._next_run(schedule.cron, now, schedule_id=schedule.id)
+            if new_next_run is None:
+                continue
             await self._repo.update_schedule(schedule.id, last_run=now, next_run=new_next_run)
+
+    def _next_run(self, expression: str, after: datetime, *, schedule_id: int) -> datetime | None:
+        """算下一次触发; 表达式非法时记一条日志并返回 ``None``."""
+        try:
+            return croniter(expression, after).get_next(datetime)
+        except (ValueError, KeyError) as exc:
+            logger.warning("schedule expression invalid", schedule_id=schedule_id, cron=expression, error=str(exc))
+            return None
 
     async def _enqueue(self, task_type: TaskType, payload: BaseModel) -> None:
         """入队一条例行任务; 队列里已有同类型同载荷时就跳过.
@@ -111,15 +124,16 @@ class CronScheduler:
     async def _execute_task(self, schedule_id: int, task_type: RoutineType, payload: dict) -> None:
         match task_type:
             case RoutineType.CLEANUP:
-                await self._repo.create_task(
+                await self._enqueue(
                     TaskType.CLEANUP,
                     CleanupPayload(
                         remove_missing_files=payload.get("remove_missing_files", True),
                         remove_unreferenced_resources=payload.get("remove_unreferenced_resources", True),
+                        remove_orphan_metadata=payload.get("remove_orphan_metadata", False),
                     ),
                 )
             case RoutineType.UPSCALE:
-                await self._repo.create_task(
+                await self._enqueue(
                     TaskType.UPSCALE,
                     UpscalePayload(
                         max_dim_threshold=payload.get("max_dim_threshold"),
@@ -137,7 +151,7 @@ class CronScheduler:
                 await self._enqueue(TaskType.NOTIFY, NotifyPayload(kind="digest"))
             case RoutineType.SUBTITLE_AUDIT:
                 # 巡检只统计缺口; 指定库时巡检自己会排一轮补全, 这里不再重复排队
-                await self._repo.create_task(
+                await self._enqueue(
                     TaskType.SUBTITLE_AUDIT,
                     SubtitleAuditPayload(library_id=payload.get("library_id")),
                 )

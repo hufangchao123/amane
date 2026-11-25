@@ -3,7 +3,7 @@
 import pytest
 
 from amane.net.errors import FailureKind, RequestError, RequestFailure
-from amane.utils.urls import redact_url
+from amane.utils.urls import redact_text, redact_url
 
 
 @pytest.mark.parametrize(
@@ -73,3 +73,22 @@ def test_request_error_str_hides_token() -> None:
     assert "s3cret" not in str(exc)
     assert "token=***" in str(exc)
     assert exc.url.endswith("token=s3cret"), "原始 URL 保留给调用方, 供重试与定位"
+
+
+class TestRedactText:
+    def test_query_secrets_in_free_text(self) -> None:
+        text = "GET https://sub.example.com/search?q=AD-1&api_key=SECRET failed"
+        assert redact_text(text) == "GET https://sub.example.com/search?q=AD-1&api_key=*** failed"
+
+    def test_bearer_token_is_masked(self) -> None:
+        assert "SUPERSECRETVALUE" not in redact_text("Authorization: Bearer SUPERSECRETVALUE")
+        assert "Bearer=***" in redact_text("Authorization: Bearer SUPERSECRETVALUE")
+
+    def test_plain_text_is_untouched(self) -> None:
+        assert redact_text("磁盘已满") == "磁盘已满"
+        assert redact_text("") == ""
+
+    def test_userinfo_is_stripped(self) -> None:
+        assert redact_text("connecting to http://user:pass@192.168.9.122:7890/") == (
+            "connecting to http://192.168.9.122:7890/"
+        )
