@@ -26,7 +26,7 @@ import {
   washChoiceSetMutation,
   washStatusQueryKey,
 } from "@/client/@tanstack/react-query.gen";
-import type { WashCandidateSortField, WashRecordKind } from "@/client/types.gen";
+import type { WashCandidate, WashCandidateSortField, WashRecordKind } from "@/client/types.gen";
 import { ListPagination } from "@/components/common/list-pagination";
 import { PageSizeSelect } from "@/components/common/page-size-select";
 import { extractErrorMessage } from "@/lib/api-error";
@@ -52,6 +52,14 @@ const SORT_OPTIONS = [
   "keep_path",
 ] as const satisfies readonly WashCandidateSortField[];
 
+/**
+ * 勾选用的键: 番号相同而类型不同的两组是两份互不相干的分组, 只用 group_key 会让它们联动.
+ * 提交时再按 group_key 拆回去, 因为任务只认番号.
+ */
+function selectionKey(item: WashCandidate): string {
+  return `${item.kind}:${item.group_key}`;
+}
+
 /** 候选分组表: 显示算法给出的保留者与落选者, 并把使用者的显式决定写回 wash_choices.
  *
  * 三个决定 (留这份 / 都留着 / 恢复) 只改数据库里的选择, 不搬文件 —— 搬盘仍由「执行」入队的任务负责.
@@ -61,7 +69,8 @@ const SORT_OPTIONS = [
  * 钉住的组同理 —— 撤销钉住与忽略同一个端点, 区别只在当前决定是哪种.
  *
  * 勾选分组后「执行选中组」只把这些组交给任务 (group_keys), 不必重算全部候选;
- * 分组键按番号相同时两侧同名, 因此选择按 group_key 记录, 类型与库由筛选条件随载荷一起带上.
+ * 选择按「类型 + 番号」记录, 提交时只取番号 —— 任务按番号定位分组, 而同一番号在两类库里是两组.
+ * 已忽略的组不可勾选: 任务会跳过它们, 勾上只会让计数与执行结果对不上.
  */
 export function WashCandidates() {
   const { t } = useTranslation(["ops", "common"]);
@@ -70,7 +79,7 @@ export function WashCandidates() {
   const [scope, setScope] = useState<WashScope>("all");
   const [libraryId, setLibraryId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<WashCandidateSortField>("bytes_freed");
-  const [selectedGroups, setSelectedGroups] = useState<ReadonlySet<string>>(new Set());
+  const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
   const pageSize = useUIStore((s) => s.pageSizes.washCandidates);
   const librariesQuery = useQuery(listLibrariesOptions());
   const query = useQuery(
@@ -88,7 +97,12 @@ export function WashCandidates() {
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const allSelected = items.length > 0 && items.every((item) => selectedGroups.has(item.group_key));
+  // 已忽略的组不参与勾选: 任务会跳过它们, 勾上只会让计数与执行结果对不上.
+  const selectable = items.filter((item) => item.ignored !== true);
+  const selectedItems = selectable.filter((item) => selectedKeys.has(selectionKey(item)));
+  const selectedCount = selectedItems.length;
+  const allSelected =
+    selectable.length > 0 && selectable.every((item) => selectedKeys.has(selectionKey(item)));
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: washCandidatesQueryKey() });
@@ -119,7 +133,7 @@ export function WashCandidates() {
     ...submitTaskMutation(),
     onSuccess: () => {
       notifications.show({ message: t("wash.applyStarted"), color: "blue" });
-      setSelectedGroups(new Set());
+      setSelectedKeys(new Set());
       invalidate();
     },
     onError: (err) =>
@@ -139,23 +153,23 @@ export function WashCandidates() {
     next();
     setPage(1);
     // 筛选条件变了, 勾选的分组可能已不在表里: 一并清掉, 免得执行到看不见的组.
-    setSelectedGroups(new Set());
+    setSelectedKeys(new Set());
   }
 
-  function toggleGroup(groupKey: string) {
-    setSelectedGroups((current) => {
+  function toggleGroup(key: string) {
+    setSelectedKeys((current) => {
       const next = new Set(current);
-      if (next.has(groupKey)) next.delete(groupKey);
-      else next.add(groupKey);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
 
   function togglePage() {
-    setSelectedGroups((current) => {
+    setSelectedKeys((current) => {
       const next = new Set(current);
-      if (allSelected) for (const item of items) next.delete(item.group_key);
-      else for (const item of items) next.add(item.group_key);
+      if (allSelected) for (const item of selectable) next.delete(selectionKey(item));
+      else for (const item of selectable) next.add(selectionKey(item));
       return next;
     });
   }
@@ -163,14 +177,15 @@ export function WashCandidates() {
   async function startApplySelected() {
     const ok = await confirm({
       title: t("wash.confirmApplySelectedTitle"),
-      message: t("wash.confirmApplySelectedMessage", { count: selectedGroups.size }),
+      message: t("wash.confirmApplySelectedMessage", { count: selectedCount }),
       confirmLabel: t("wash.applySelected"),
     });
     if (!ok) return;
     apply.mutate({
       body: {
         type: "wash_apply",
-        group_keys: [...selectedGroups],
+        // 勾选按「类型 + 番号」记, 任务只认番号; 两类库里同番号的两组去重后各执行一次.
+        group_keys: [...new Set(selectedItems.map((item) => item.group_key))],
         kind: scope,
         library_id: libraryId,
       },
@@ -231,20 +246,20 @@ export function WashCandidates() {
             sizeKey="washCandidates"
             onChanged={() => {
               setPage(1);
-              setSelectedGroups(new Set());
+              setSelectedKeys(new Set());
             }}
           />
         </Group>
       </Group>
       <Group justify="space-between" wrap="wrap" gap="xs">
         <Text size="sm" c="dimmed">
-          {t("wash.selectedGroups", { count: selectedGroups.size })}
+          {t("wash.selectedGroups", { count: selectedCount })}
         </Text>
         <Button
           size="xs"
           color="orange"
           leftSection={<IconDeviceFloppy size={14} />}
-          disabled={selectedGroups.size === 0}
+          disabled={selectedCount === 0}
           loading={apply.isPending}
           onClick={() => void startApplySelected()}
         >
@@ -276,8 +291,10 @@ export function WashCandidates() {
                     aria-label={t("wash.column.group")}
                     checked={allSelected}
                     indeterminate={
-                      !allSelected && items.some((item) => selectedGroups.has(item.group_key))
+                      !allSelected &&
+                      selectable.some((item) => selectedKeys.has(selectionKey(item)))
                     }
+                    disabled={selectable.length === 0}
                     onChange={togglePage}
                   />
                 </Table.Th>
@@ -299,8 +316,9 @@ export function WashCandidates() {
                     <Table.Td>
                       <Checkbox
                         aria-label={groupNumber(item.group_key)}
-                        checked={selectedGroups.has(item.group_key)}
-                        onChange={() => toggleGroup(item.group_key)}
+                        checked={selectedKeys.has(selectionKey(item))}
+                        disabled={ignored}
+                        onChange={() => toggleGroup(selectionKey(item))}
                       />
                     </Table.Td>
                     <Table.Td>
@@ -423,7 +441,7 @@ export function WashCandidates() {
         onChange={(next) => {
           setPage(next);
           // 跨页保留勾选会执行到看不见的组, 翻页即清空.
-          setSelectedGroups(new Set());
+          setSelectedKeys(new Set());
         }}
       />
     </Stack>

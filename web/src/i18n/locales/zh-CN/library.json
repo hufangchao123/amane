@@ -305,10 +305,12 @@
     "action": "字幕",
     "uploadAction": "上传字幕",
     "uploadLanguageLabel": "字幕语言",
-    "uploadLanguageHint": "按内容选语言; 中文分简繁两种, 播放器的字幕排序会用到.",
-    "uploadLanguageZh": "简体中文",
-    "uploadLanguageZhTw": "繁体中文",
-    "uploadLanguageEn": "英文"
+    "uploadLanguageHint": "按内容选择语言; 简体中文、繁体中文与英文分别标注, 播放器的字幕排序会用到.",
+    "languages": {
+      "zh": "简体中文",
+      "zhTw": "繁体中文",
+      "en": "英文"
+    }
   },
   "embyRefresh": {
     "tooltip": "刷新 Emby 媒体库"

@@ -1,9 +1,10 @@
 import { Button, Card, Group, NumberInput, Stack, Switch, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconUserCheck } from "@tabler/icons-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listTasksQueryKey } from "@/client/@tanstack/react-query.gen";
 import { submitTask } from "@/client/sdk.gen";
 import { extractErrorMessage } from "@/lib/api-error";
 
@@ -13,6 +14,7 @@ import { extractErrorMessage } from "@/lib/api-error";
  */
 export function AvatarCard() {
   const { t } = useTranslation("ops");
+  const queryClient = useQueryClient();
   const [limit, setLimit] = useState<number | string>(20);
   const [clearBroken, setClearBroken] = useState(false);
 
@@ -23,7 +25,11 @@ export function AvatarCard() {
         throwOnError: true,
       });
     },
-    onSuccess: () => notifications.show({ message: t("maintenance.avatar.queued"), color: "blue" }),
+    onSuccess: () => {
+      notifications.show({ message: t("maintenance.avatar.queued"), color: "blue" });
+      // 入队后让「最近结果」立即出现这一条, 不必等它下一轮轮询.
+      void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
+    },
     onError: (error) =>
       notifications.show({
         message: extractErrorMessage(error, t("maintenance.avatar.runFailed")),

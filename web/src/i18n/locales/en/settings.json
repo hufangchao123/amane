@@ -18,7 +18,8 @@
     "worker": "Task Engine",
     "logging": "Logging",
     "plugins": "Plugins",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "env": "Environment"
   },
   "config": {
     "loadError": "Failed to load configuration"
@@ -1126,5 +1127,49 @@
       }
     }
   },
-  "workerIntro": "Task engine: every action becomes a task row (queued, running, done or failed) that background workers claim up to the concurrency limit. Page buttons, the API and schedules only enqueue tasks. A finished task may queue the next one (for example organize after scrape); a failure never stops other tasks, and retrying creates a new task."
+  "workerIntro": "Task engine: every action becomes a task row (queued, running, done or failed) that background workers claim up to the concurrency limit. Page buttons, the API and schedules only enqueue tasks. A finished task may queue the next one (for example organize after scrape); a failure never stops other tasks, and retrying creates a new task.",
+  "env": {
+    "env.title": "Startup environment variables",
+    "env.hint": "Stored in .env under the data directory and read only at startup, so changes need a restart. Sensitive values show as *** meaning already set; keep *** to leave them unchanged. Entries you remove fall back to their defaults.",
+    "env.path": "File: {{path}}",
+    "env.loading": "Loading…",
+    "env.loadFailed": "Could not load environment variables",
+    "env.saveFailed": "Save failed",
+    "env.saved": "Saved; restart to apply",
+    "env.restarting": "Restarting the service",
+    "env.restartFailed": "Restart failed",
+    "env.restartHint": "Restarting interrupts running tasks; save your changes first.",
+    "env.columns.key": "Variable",
+    "env.columns.value": "Value",
+    "env.columns.actions": "Actions",
+    "env.secret": "Secret",
+    "env.remove": "Remove",
+    "env.empty": "No environment variables are set; defaults are in use.",
+    "env.add": "Add",
+    "env.addPlaceholder": "Pick a variable to add",
+    "env.save": "Save",
+    "env.restart": "Restart",
+    "saved": "",
+    "saveFailed": "",
+    "restarting": "",
+    "restartFailed": "",
+    "title": "",
+    "hint": "",
+    "path": "",
+    "loading": "",
+    "loadFailed": "",
+    "columns": {
+      "key": "",
+      "value": "",
+      "actions": ""
+    },
+    "secret": "",
+    "remove": "",
+    "empty": "",
+    "addPlaceholder": "",
+    "add": "",
+    "save": "",
+    "restart": "",
+    "restartHint": ""
+  }
 }

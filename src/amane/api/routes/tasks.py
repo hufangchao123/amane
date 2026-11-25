@@ -61,7 +61,8 @@ async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | 
     library_ids = {
         int(p["library_id"])
         for t in tasks
-        if t.type in _LIBRARY_TASK_TYPES and isinstance((p := t.payload or {}).get("library_id"), int)
+        if t.type in (*_LIBRARY_TASK_TYPES, *_MEDIA_TASK_TYPES)
+        and isinstance((p := t.payload or {}).get("library_id"), int)
     }
     media_ids = {
         int(p["media_file_id"])
@@ -85,7 +86,12 @@ async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | 
             title = actor_names.get(int(actor_id)) if isinstance(actor_id, int) else None
         elif t.type in _MEDIA_TASK_TYPES:
             media_id = payload.get("media_file_id")
-            title = media_labels.get(int(media_id)) if isinstance(media_id, int) else None
+            if isinstance(media_id, int):
+                title = media_labels.get(media_id)
+            # 从字幕页按库发起时载荷只有 library_id, 没有文件名可显示
+            library_id = payload.get("library_id")
+            if title is None and isinstance(library_id, int):
+                title = library_names.get(library_id)
         elif t.type in _LIBRARY_TASK_TYPES:
             library_id = payload.get("library_id")
             title = library_names.get(int(library_id)) if isinstance(library_id, int) else None
@@ -391,8 +397,6 @@ async def get_task_record(
         data = build_record_zip(config.cold.log_dir, task_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="该任务没有任务记录") from None
-    except PermissionError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from None
 
     return StreamingResponse(
         iter([data]),

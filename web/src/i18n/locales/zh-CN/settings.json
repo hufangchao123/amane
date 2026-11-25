@@ -18,7 +18,8 @@
     "worker": "任务引擎",
     "logging": "日志",
     "plugins": "插件",
-    "audit": "审计"
+    "audit": "审计",
+    "env": "环境变量"
   },
   "config": {
     "loadError": "加载配置失败"
@@ -1126,5 +1127,49 @@
       }
     }
   },
-  "workerIntro": "任务引擎：应用把每个动作都落成一条任务（排队 → 执行 → 完成或失败），由后台工作线程按并发上限领取；页面按钮、接口与定时任务都只是往队列里放一条任务。完成时还可能自动排下一条（例如刮削完成后自动整理），失败不会中断其它任务，重试会新建一条。"
+  "workerIntro": "任务引擎：应用把每个动作都落成一条任务（排队 → 执行 → 完成或失败），由后台工作线程按并发上限领取；页面按钮、接口与定时任务都只是往队列里放一条任务。完成时还可能自动排下一条（例如刮削完成后自动整理），失败不会中断其它任务，重试会新建一条。",
+  "env": {
+    "env.title": "启动期环境变量",
+    "env.hint": "写进数据目录下的 .env, 只在进程启动时读取 —— 改完需要重启。敏感值回显为 *** 表示已设置, 保持 *** 即不修改。未列出的键表示删除, 回到默认值。",
+    "env.path": "文件: {{path}}",
+    "env.loading": "读取中…",
+    "env.loadFailed": "读取环境变量失败",
+    "env.saveFailed": "保存失败",
+    "env.saved": "已保存, 重启后生效",
+    "env.restarting": "正在重启服务",
+    "env.restartFailed": "重启失败",
+    "env.restartHint": "重启会中断正在运行的任务; 未保存的改动请先保存。",
+    "env.columns.key": "变量",
+    "env.columns.value": "值",
+    "env.columns.actions": "操作",
+    "env.secret": "敏感",
+    "env.remove": "删除",
+    "env.empty": "文件里还没有环境变量, 全部使用默认值。",
+    "env.add": "添加",
+    "env.addPlaceholder": "选择要添加的变量名",
+    "env.save": "保存",
+    "env.restart": "重启服务",
+    "saved": "env.saved",
+    "saveFailed": "env.saveFailed",
+    "restarting": "env.restarting",
+    "restartFailed": "env.restartFailed",
+    "title": "env.title",
+    "hint": "env.hint",
+    "path": "env.path",
+    "loading": "env.loading",
+    "loadFailed": "env.loadFailed",
+    "columns": {
+      "key": "env.columns.key",
+      "value": "env.columns.value",
+      "actions": "env.columns.actions"
+    },
+    "secret": "env.secret",
+    "remove": "env.remove",
+    "empty": "env.empty",
+    "addPlaceholder": "env.addPlaceholder",
+    "add": "env.add",
+    "save": "env.save",
+    "restart": "env.restart",
+    "restartHint": "env.restartHint"
+  }
 }

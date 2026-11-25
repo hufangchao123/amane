@@ -1,9 +1,10 @@
 import { Button, Card, Group, NumberInput, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowsMaximize } from "@tabler/icons-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listTasksQueryKey } from "@/client/@tanstack/react-query.gen";
 import { submitTask } from "@/client/sdk.gen";
 import { extractErrorMessage } from "@/lib/api-error";
 
@@ -14,6 +15,7 @@ const LIMIT_MAX = 1000;
 /** 超分: 按阈值把偏小的图放大. 任务只入队, 结果在下面的「最近结果」里看. */
 export function UpscaleCard() {
   const { t } = useTranslation("ops");
+  const queryClient = useQueryClient();
   const [limit, setLimit] = useState<number | string>(LIMIT_DEFAULT);
   const limitSafe = Math.min(LIMIT_MAX, Math.max(1, Math.round(Number(limit) || LIMIT_DEFAULT)));
 
@@ -21,8 +23,11 @@ export function UpscaleCard() {
     mutationFn: async () => {
       await submitTask({ body: { type: "upscale", limit: limitSafe }, throwOnError: true });
     },
-    onSuccess: () =>
-      notifications.show({ message: t("maintenance.upscale.queued"), color: "blue" }),
+    onSuccess: () => {
+      notifications.show({ message: t("maintenance.upscale.queued"), color: "blue" });
+      // 入队后让「最近结果」立即出现这一条, 不必等它下一轮轮询.
+      void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
+    },
     onError: (error) =>
       notifications.show({
         message: extractErrorMessage(error, t("maintenance.upscale.runFailed")),

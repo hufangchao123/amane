@@ -4,7 +4,11 @@ import { IconFileText } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getNfoStatusOptions, getNfoStatusQueryKey } from "@/client/@tanstack/react-query.gen";
+import {
+  getNfoStatusOptions,
+  getNfoStatusQueryKey,
+  listTasksQueryKey,
+} from "@/client/@tanstack/react-query.gen";
 import { submitTask } from "@/client/sdk.gen";
 import { extractErrorMessage } from "@/lib/api-error";
 
@@ -35,6 +39,8 @@ export function NfoCard() {
     onSuccess: () => {
       notifications.show({ message: t("maintenance.nfo.queued"), color: "blue" });
       void queryClient.invalidateQueries({ queryKey: getNfoStatusQueryKey() });
+      // 入队后让「最近结果」立即出现这一条, 不必等它下一轮轮询.
+      void queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
     },
     onError: (error) =>
       notifications.show({

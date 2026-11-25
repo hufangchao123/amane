@@ -317,10 +317,12 @@
     "action": "Subtitles",
     "uploadAction": "Upload",
     "uploadLanguageLabel": "Subtitle language",
-    "uploadLanguageHint": "Pick the language that matches the file; players use it to rank simplified and traditional Chinese separately.",
-    "uploadLanguageZh": "Simplified Chinese",
-    "uploadLanguageZhTw": "Traditional Chinese",
-    "uploadLanguageEn": "English"
+    "uploadLanguageHint": "Pick the language that matches the file; simplified Chinese, traditional Chinese and English are labelled separately because players rank subtitles by it.",
+    "languages": {
+      "zh": "Simplified Chinese",
+      "zhTw": "Traditional Chinese",
+      "en": "English"
+    }
   },
   "embyRefresh": {
     "tooltip": "Refresh the Emby library"

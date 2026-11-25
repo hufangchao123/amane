@@ -20,6 +20,7 @@ from amane.library.wash.service import (
     WashCandidateSortField,
     WashService,
     WashSummary,
+    _identity,
     parse_kind,
 )
 
@@ -128,6 +129,26 @@ async def test_summary_counts_strm_groups_without_the_size_floor(wash_lib: WashL
     summary = await service.summary()
 
     assert summary.groups == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_ignored_choice_with_disc_segment_still_matches(wash_lib: WashLibrary) -> None:
+    """候选里带分段/分卷的组键 (``lib1:ABC-100:cd1``) 也要吃掉估算里的无分段键."""
+    await seed(wash_lib)
+    await wash_lib.repo.set_wash_choice("lib1:ABC-100:cd1", WashChoiceAction.IGNORE)
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    summary = await service.summary()
+
+    assert summary.groups == 2
+
+
+def test_identity_ignores_disc_segments_but_keeps_mosaic() -> None:
+    """等价身份 = 库 + 番号 + 有码标记; 分段/分卷段丢掉, 有码标记不被无标记键吃掉."""
+    assert _identity("lib1:ABC-123:cd1:censored") == _identity("lib1:ABC-123:censored")
+    assert _identity("lib1:ABC-123:part2") == _identity("lib1:ABC-123")
+    assert _identity("lib1:ABC-123") != _identity("lib1:ABC-123:censored")
+    assert _identity("lib2:ABC-123") != _identity("lib1:ABC-123")
 
 
 @pytest.mark.asyncio(loop_scope="function")

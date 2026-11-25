@@ -2062,6 +2062,109 @@ export const EmbeddingKindSchema = {
     title: 'EmbeddingKind'
 } as const;
 
+export const EnvEntrySchema = {
+    properties: {
+        key: {
+            type: 'string',
+            title: 'Key'
+        },
+        value: {
+            type: 'string',
+            title: 'Value'
+        },
+        secret: {
+            type: 'boolean',
+            title: 'Secret',
+            default: false
+        },
+        description: {
+            type: 'string',
+            title: 'Description',
+            default: ''
+        }
+    },
+    type: 'object',
+    required: [
+        'key',
+        'value'
+    ],
+    title: 'EnvEntry',
+    description: '一条环境变量; 敏感值在读取时替换成占位符.'
+} as const;
+
+export const EnvEntryInputSchema = {
+    properties: {
+        key: {
+            type: 'string',
+            title: 'Key'
+        },
+        value: {
+            type: 'string',
+            title: 'Value'
+        }
+    },
+    type: 'object',
+    required: [
+        'key',
+        'value'
+    ],
+    title: 'EnvEntryInput'
+} as const;
+
+export const EnvFilePatchSchema = {
+    properties: {
+        entries: {
+            items: {
+                $ref: '#/components/schemas/EnvEntryInput'
+            },
+            type: 'array',
+            title: 'Entries'
+        }
+    },
+    type: 'object',
+    title: 'EnvFilePatch',
+    description: '整份替换; 未列出的键会被删除 (回到默认值).'
+} as const;
+
+export const EnvFileResponseSchema = {
+    properties: {
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        exists: {
+            type: 'boolean',
+            title: 'Exists'
+        },
+        entries: {
+            items: {
+                $ref: '#/components/schemas/EnvEntry'
+            },
+            type: 'array',
+            title: 'Entries'
+        },
+        editable_keys: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Editable Keys'
+        },
+        restart_required: {
+            type: 'boolean',
+            title: 'Restart Required',
+            default: true
+        }
+    },
+    type: 'object',
+    required: [
+        'path',
+        'exists'
+    ],
+    title: 'EnvFileResponse',
+    description: '环境变量文件的内容与可编辑范围.'
+} as const;
+
 export const ErrorRowSchema = {
     properties: {
         seq: {

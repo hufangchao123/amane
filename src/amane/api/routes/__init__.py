@@ -8,6 +8,7 @@ from .bootstrap import router as bootstrap_router
 from .cleanup import router as cleanup_router
 from .comments import router as comments_router
 from .config import router as config_router
+from .env import router as env_router
 from .facets import router as facets_router
 from .feeds import router as feeds_router
 from .files import router as files_router
@@ -66,3 +67,4 @@ router.include_router(wash_router)
 router.include_router(nfo_router)
 router.include_router(notify_router)
 router.include_router(audit_router)
+router.include_router(env_router)

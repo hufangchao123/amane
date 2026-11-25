@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from enum import StrEnum
 from pathlib import Path
@@ -253,13 +254,13 @@ class WashService:
         if not groups:
             return 0
         ignored = {
-            key
+            _identity(key)
             for key, choice in (await self._repo.list_wash_choices()).items()
             if choice.action is WashChoiceAction.IGNORE
         }
         total = 0
         for key, kinds in groups.items():
-            if any(key == item or key.startswith(f"{item}:") for item in ignored):
+            if _identity(key) in ignored:
                 continue
             total += len(kinds)
         return total
@@ -294,6 +295,32 @@ class WashService:
             if kept:
                 out[key] = kept
         return out
+
+
+def _identity(group_key: str) -> tuple[str, str, str]:
+    """分组键的等价身份: 库前缀 + 番号 + 有码标记, 丢掉分段与分卷段.
+
+    索引里没有分段与分卷字段, 估算出的键 (``lib1:ABC-123:censored``) 与候选里带分段的真键
+    (``lib1:ABC-123:cd1:censored``) 指向同一组; 反过来, 没有有码标记的键 (``lib1:ABC-123``)
+    不能吃掉同番号下带标记的组 —— 故按元组相等比较, 不用前缀匹配。
+    """
+    prefix, _, rest = group_key.partition(":")
+    number, *segments = rest.split(":")
+    mosaic = ""
+    for segment in reversed(segments):
+        if _DISC_SEGMENT.fullmatch(segment):
+            continue
+        mosaic = segment
+        break
+    return prefix, number, mosaic
+
+
+_DISC_SEGMENT = re.compile(r"^(?:cd|part)\d+$")
+
+
+def _is_ignored_key(group_key: str, ignored: set[tuple[str, str, str]]) -> bool:
+    """该组是否被「都留着」覆盖 (供测试与调用点共用)."""
+    return _identity(group_key) in ignored
 
 
 __all__ = [

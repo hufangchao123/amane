@@ -19,13 +19,14 @@ import { z } from "zod";
 import { isHidden, resolveSchema } from "@/components/schema-form/schema";
 import { AuditPanel } from "@/features/audit/audit-panel";
 import { NotifyPanel } from "@/features/notify/notify-panel";
+import { EnvEditor } from "@/features/settings/env-editor";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { useConfig, useConfigSchema, useUpdateConfig } from "@/hooks/use-config";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
 import { extractErrorMessage } from "@/lib/api-error";
 
 /** 没有配置项、只挂运维面板的分段: 这些 Tab 不出现在 schema 里. */
-const PANEL_SECTIONS = ["audit"] as const;
+const PANEL_SECTIONS = ["audit", "env"] as const;
 
 const settingsSearchSchema = z.object({
   section: z.string().optional(),
@@ -122,6 +123,9 @@ function SettingsPage() {
                     <AuditPanel />
                   </Paper>
                 );
+              }
+              if (key === "env") {
+                return <EnvEditor key={key} />;
               }
               const sectionSchema = resolvedSchema.properties?.[key];
               if (!sectionSchema || typeof sectionSchema === "boolean") return null;

@@ -55,25 +55,54 @@ type UploadLanguage = (typeof UPLOAD_LANGUAGES)[number];
 const UPLOAD_LANGUAGE_DEFAULT: UploadLanguage = "zh";
 
 /** 语言段的显示名; 语言码本身是文件名的一部分, 不进文案. */
-const UPLOAD_LANGUAGE_LABELS: Record<
-  UploadLanguage,
-  "subtitles.uploadLanguageZh" | "subtitles.uploadLanguageZhTw" | "subtitles.uploadLanguageEn"
-> = {
-  zh: "subtitles.uploadLanguageZh",
-  "zh-TW": "subtitles.uploadLanguageZhTw",
-  en: "subtitles.uploadLanguageEn",
+type LanguageLabelKey =
+  | "subtitles.languages.zh"
+  | "subtitles.languages.zhTw"
+  | "subtitles.languages.en";
+
+/** 上传下拉用的显示名, 与下方的识别表同一套文案, 免得同一个语言在两处叫法不同. */
+const UPLOAD_LANGUAGE_LABELS: Record<UploadLanguage, LanguageLabelKey> = {
+  zh: "subtitles.languages.zh",
+  "zh-TW": "subtitles.languages.zhTw",
+  en: "subtitles.languages.en",
 };
 
 function parseUploadLanguage(value: string | null): UploadLanguage {
   return UPLOAD_LANGUAGES.find((item) => item === value) ?? UPLOAD_LANGUAGE_DEFAULT;
 }
 
-/** 已知的中文语言标签; 其余段 (如 `CD2` / `004`) 是文件名里的分卷或序号, 不是语言. */
-const ZH_LANGUAGE_LABELS: ReadonlySet<string> = new Set(["zh", "zh-cn", "zh-tw"]);
+/**
+ * 清单里语言段的识别表; 能识别的就是上传下拉里那几个, 认不出的段 (如 `CD2` / `004`)
+ * 是文件名里的分卷或序号, 不当作语言.
+ */
+const LANGUAGE_LABELS = new Map<string, LanguageLabelKey>([
+  ["zh", "subtitles.languages.zh"],
+  ["zh-cn", "subtitles.languages.zh"],
+  ["zh-tw", "subtitles.languages.zhTw"],
+  ["en", "subtitles.languages.en"],
+]);
 
-function knownLanguageLabel(language: string | null): string | null {
+function languageLabelKey(language: string | null): LanguageLabelKey | null {
   if (!language) return null;
-  return ZH_LANGUAGE_LABELS.has(language.toLowerCase()) ? language : null;
+  return LANGUAGE_LABELS.get(language.toLowerCase()) ?? null;
+}
+
+/** 语言列的徽章: 认得就显示名称, 认不出显示占位符. */
+function LanguageBadge({ language }: { language: string | null }) {
+  const { t } = useTranslation("library");
+  const key = languageLabelKey(language);
+  if (key === null) {
+    return (
+      <Text size="sm" c="dimmed">
+        —
+      </Text>
+    );
+  }
+  return (
+    <Badge size="sm" variant="light">
+      {t(key)}
+    </Badge>
+  );
 }
 
 interface ErrorBody {
@@ -233,15 +262,7 @@ export function SubtitleFilesDialog({
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      {knownLanguageLabel(entry.language) != null ? (
-                        <Badge size="sm" variant="light">
-                          {entry.language}
-                        </Badge>
-                      ) : (
-                        <Text size="sm" c="dimmed">
-                          —
-                        </Text>
-                      )}
+                      <LanguageBadge language={entry.language} />
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{formatFileSize(entry.size)}</Text>

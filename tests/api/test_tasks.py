@@ -256,6 +256,18 @@ class TestGetTask:
         listed = await client.get("tasks")
         assert sum(1 for item in listed.json()["items"] if item["title"] == "MIDV-123") >= 2
 
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_library_scoped_subtitle_tasks_show_the_library_name(
+        self, client: AsyncClient, repo: Repository, stop_worker: None, safe_path
+    ):
+        """从字幕页按库发起时载荷只有 library_id: 标题退回库名, 否则列表里一片空白."""
+        library = await repo.create_library(name="日韩", path=str(safe_path))
+        assert library.id is not None
+        fetched = await client.post("tasks", json={"type": "subtitle_fetch", "library_id": library.id})
+        assert fetched.json()["title"] == "日韩"
+        generated = await client.post("tasks", json={"type": "subtitle_generate", "library_id": library.id})
+        assert generated.json()["title"] == "日韩"
+
 
 class TestBatchTasks:
     """POST /tasks/batch 接线. 计数/跳过链/重试见 tests/db/test_task_batch.py."""

@@ -1273,6 +1273,84 @@ export type DownloadableResource = 'thumb' | 'poster' | 'extrafanart' | 'trailer
 export type EmbeddingKind = 'cover' | 'still';
 
 /**
+ * EnvEntry
+ *
+ * 一条环境变量; 敏感值在读取时替换成占位符.
+ */
+export type EnvEntry = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Secret
+     */
+    secret?: boolean;
+    /**
+     * Description
+     */
+    description?: string;
+};
+
+/**
+ * EnvEntryInput
+ */
+export type EnvEntryInput = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * EnvFilePatch
+ *
+ * 整份替换; 未列出的键会被删除 (回到默认值).
+ */
+export type EnvFilePatch = {
+    /**
+     * Entries
+     */
+    entries?: Array<EnvEntryInput>;
+};
+
+/**
+ * EnvFileResponse
+ *
+ * 环境变量文件的内容与可编辑范围.
+ */
+export type EnvFileResponse = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Exists
+     */
+    exists: boolean;
+    /**
+     * Entries
+     */
+    entries?: Array<EnvEntry>;
+    /**
+     * Editable Keys
+     */
+    editable_keys?: Array<string>;
+    /**
+     * Restart Required
+     */
+    restart_required?: boolean;
+};
+
+/**
  * ErrorRow
  *
  * 回合异常; 文案直接进助手气泡.
@@ -11924,3 +12002,44 @@ export type ListAuditResponses = {
 };
 
 export type ListAuditResponse = ListAuditResponses[keyof ListAuditResponses];
+
+export type GetEnvData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/env';
+};
+
+export type GetEnvResponses = {
+    /**
+     * Successful Response
+     */
+    200: EnvFileResponse;
+};
+
+export type GetEnvResponse = GetEnvResponses[keyof GetEnvResponses];
+
+export type PutEnvData = {
+    body: EnvFilePatch;
+    path?: never;
+    query?: never;
+    url: '/api/env';
+};
+
+export type PutEnvErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PutEnvError = PutEnvErrors[keyof PutEnvErrors];
+
+export type PutEnvResponses = {
+    /**
+     * Successful Response
+     */
+    200: EnvFileResponse;
+};
+
+export type PutEnvResponse = PutEnvResponses[keyof PutEnvResponses];

@@ -189,10 +189,22 @@ class R18Config(BaseModel):
         )
 
 
+_ENV_FILES: tuple[str, ...] = (
+    ".env.dev",
+    ".env",
+    str(Path(os.environ.get("AMANE_DATA_DIR", "./data")) / ".env"),
+)
+"""环境变量文件, 后者覆盖前者: 开发用的 ``.env.dev`` / 工作目录 ``.env`` / 数据目录 ``.env``.
+
+第三条是设置页编辑的那一份 (见 :mod:`amane.config.envfile`), 与 ``AMANE_DATA_DIR`` 同源,
+所以编辑接口与加载器指向同一个文件.
+"""
+
+
 class ColdSettings(BaseSettings):
     """仅从环境变量加载; 运行时不可更改, 须重启才生效."""
 
-    model_config = SettingsConfigDict(env_prefix="AMANE_", env_file=(".env.dev", ".env"), env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_prefix="AMANE_", env_file=_ENV_FILES, env_file_encoding="utf-8")
 
     data_dir: Path = Path("./data")
 
