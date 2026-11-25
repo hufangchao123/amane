@@ -935,7 +935,7 @@
         },
         "base_url": {
           "label": "转写端点",
-          "description": "OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1; 需要支持 /audio/transcriptions 与 verbose_json 分段"
+          "description": "OpenAI 兼容端点, 形如 http://127.0.0.1:8080/v1; 需要支持 /audio/transcriptions 与 verbose_json 分段"
         },
         "api_key": {
           "label": "端点密钥",

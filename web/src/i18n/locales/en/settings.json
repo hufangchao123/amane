@@ -935,7 +935,7 @@
         },
         "base_url": {
           "label": "Transcription endpoint",
-          "description": "OpenAI-compatible endpoint such as http://192.168.9.117:8080/v1; must serve /audio/transcriptions with verbose_json segments"
+          "description": "OpenAI-compatible endpoint such as http://127.0.0.1:8080/v1; must serve /audio/transcriptions with verbose_json segments"
         },
         "api_key": {
           "label": "Endpoint key",

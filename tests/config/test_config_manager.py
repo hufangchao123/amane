@@ -196,7 +196,7 @@ class TestMediaServerConfig:
 class TestNotifyConfig:
     """通知地址的格式与长度: 配置阶段就拦住, 不等到推送失败."""
 
-    @pytest.mark.parametrize("url", ["", "https://sctapi.ftqq.com/KEY.send", "http://192.168.9.2:8080/hook"])
+    @pytest.mark.parametrize("url", ["", "https://sctapi.ftqq.com/KEY.send", "http://10.0.0.2:8080/hook"])
     def test_accepts_http_urls(self, url: str):
         assert NotifyConfig(url=url).url == url
 

@@ -880,7 +880,7 @@ class SubtitleGenerateConfig(BaseModel):
 
     enabled: bool = False
 
-    base_url: str = Field(default="", max_length=2000, description="OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1")
+    base_url: str = Field(default="", max_length=2000, description="OpenAI 兼容端点, 形如 http://127.0.0.1:8080/v1")
     api_key: str | None = Field(default=None, description="端点不需要鉴权时留空")
     model: str = Field(default="Systran/faster-whisper-medium", max_length=200)
     language: str = Field(default="ja", max_length=20, description="音轨语言; 转写结果就是这一种")

@@ -12795,7 +12795,7 @@ export const SubtitleGenerateConfigSchema = {
         },
         base_url: {
             default: '',
-            description: 'OpenAI 兼容端点, 形如 http://192.168.9.117:8080/v1',
+            description: 'OpenAI 兼容端点, 形如 http://127.0.0.1:8080/v1',
             maxLength: 2000,
             title: 'Base Url',
             type: 'string'
