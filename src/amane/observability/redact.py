@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -175,10 +176,69 @@ def _redact_secret_values(value: object, *, key: object | None = None) -> object
     return value
 
 
-def redact_plugin_config(config: dict[str, Any]) -> dict[str, Any]:
-    """插件配置的脱敏副本: 按字段名判据替换, 与任务记录导出走同一套规则."""
+def redact_plugin_config(config: dict[str, Any], *, schema: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """插件配置的脱敏副本.
+
+    两条判据取并集: 字段名命中 :data:`_SECRET_KEY_PARTS`, 或插件在自己的 JSON Schema 里把
+    该字段标成 ``format: "password"``. 只看字段名会漏掉自定义命名的密钥 (``auth_header`` /
+    ``access_code`` 之类): 页面输入框显示成星号, 接口与任务导出却是明文.
+    """
     redacted = _redact_secret_values(config)
-    return redacted if isinstance(redacted, dict) else {}
+    if not isinstance(redacted, dict):
+        return {}
+    paths = _password_paths(schema)
+    if not paths:
+        return redacted
+    result = _redact_by_paths(redacted, paths)
+    return result if isinstance(result, dict) else redacted
+
+
+def _password_paths(
+    schema: object,
+    prefix: tuple[str, ...] = (),
+    *,
+    defs: Mapping[str, Any] | None = None,
+    depth: int = 0,
+) -> set[tuple[str, ...]]:
+    """收集 JSON Schema 里 ``format == "password"`` 的字段路径 (支持嵌套与 ``$ref``)."""
+    if depth > 8 or not isinstance(schema, dict):
+        return set()
+    if defs is None:
+        raw_defs = schema.get("$defs")
+        defs = raw_defs if isinstance(raw_defs, dict) else {}
+    found: set[tuple[str, ...]] = set()
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for name, child in properties.items():
+            child_path = (*prefix, str(name))
+            if isinstance(child, dict) and child.get("format") == "password":
+                found.add(child_path)
+            found |= _password_paths(child, child_path, defs=defs, depth=depth + 1)
+    items = schema.get("items")
+    if isinstance(items, dict):
+        found |= _password_paths(items, prefix, defs=defs, depth=depth + 1)
+    ref = schema.get("$ref")
+    if isinstance(ref, str) and ref.startswith("#/$defs/"):
+        target = defs.get(ref.split("/")[-1]) if defs else None
+        if isinstance(target, dict):
+            found |= _password_paths(target, prefix, defs=defs, depth=depth + 1)
+    return found
+
+
+def _redact_by_paths(value: object, paths: set[tuple[str, ...]], prefix: tuple[str, ...] = ()) -> object:
+    """按路径把值换成占位符; 列表逐项套同一组路径."""
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, item in value.items():
+            child = (*prefix, str(key))
+            if child in paths and item:
+                out[key] = REDACTION_PLACEHOLDER
+            else:
+                out[key] = _redact_by_paths(item, paths, child)
+        return out
+    if isinstance(value, list):
+        return [_redact_by_paths(item, paths, prefix) for item in value]
+    return value
 
 
 _OMIT = object()

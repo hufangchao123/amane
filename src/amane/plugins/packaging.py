@@ -39,31 +39,61 @@ def sources_root(data_dir: Path) -> Path:
     return data_dir / "plugins" / SOURCES_DIRNAME
 
 
-def module_name(plugin_id: str) -> str:
-    """Stable, unique sys.modules key for one source id (ids may contain '.' / '-')."""
+def module_name(plugin_id: str, generation: int = 0) -> str:
+    """``sys.modules`` 键: 世代号 + 插件 id (id 里可能有 '.' / '-', 编码成下划线形式).
+
+    每轮发现都换一个世代号, 旧实例的模块不立刻从 ``sys.modules`` 摘掉 —— 在飞任务里
+    函数内的相对导入 (``from .parser import parse``) 还要用到它.
+    """
     encoded = plugin_id.replace("_", "_u_").replace("-", "_h_").replace(".", "_d_")
-    return f"{EXT_MODULE_PREFIX}{encoded}"
+    return f"{EXT_MODULE_PREFIX}g{generation}_{encoded}"
+
+
+def generation_prefix(generation: int) -> str:
+    """某一代的模块名前缀 (清理时按它删)."""
+    return f"{EXT_MODULE_PREFIX}g{generation}_"
 
 
 def plugin_entry(plugin_dir: Path) -> Path:
     return plugin_dir / PLUGIN_ENTRY
 
 
-def purge_imported_plugin_modules() -> None:
-    """Drop dynamically loaded plugin modules so the next discover() can reload them."""
-    doomed = [name for name in sys.modules if name == "amane_ext" or name.startswith(EXT_MODULE_PREFIX)]
+def purge_imported_plugin_modules(generation: int | None = None) -> None:
+    """清掉插件模块: 给 ``generation`` 只清那一代, 给 ``None`` 清全部.
+
+    退役 worker 排空之后才调它 —— 提前清会让在飞任务的延迟导入抛 ``ModuleNotFoundError``.
+    """
+    if generation is None:
+        doomed = [name for name in sys.modules if name == "amane_ext" or name.startswith(EXT_MODULE_PREFIX)]
+    else:
+        prefix = generation_prefix(generation)
+        doomed = [name for name in sys.modules if name.startswith(prefix)]
     for name in doomed:
         del sys.modules[name]
     importlib.invalidate_caches()
     sys.path_importer_cache.clear()
 
 
-def load_plugin_module(plugin_id: str, directory: Path) -> ModuleType:
+def live_generations() -> tuple[int, ...]:
+    """``sys.modules`` 里还留着的插件模块世代号 (启动自检与测试用)."""
+    found: set[int] = set()
+    for name in sys.modules:
+        if not name.startswith(EXT_MODULE_PREFIX):
+            continue
+        rest = name[len(EXT_MODULE_PREFIX) :]
+        if rest.startswith("g") and "_" in rest:
+            head, _, _tail = rest.partition("_")
+            if head[1:].isdigit():
+                found.add(int(head[1:]))
+    return tuple(sorted(found))
+
+
+def load_plugin_module(plugin_id: str, directory: Path, *, generation: int = 0) -> ModuleType:
     """Load ``plugin.py`` as a package rooted at ``directory``."""
     entry = plugin_entry(directory)
     if not entry.is_file():
         raise FileNotFoundError(f"missing {PLUGIN_ENTRY}")
-    name = module_name(plugin_id)
+    name = module_name(plugin_id, generation)
     spec = importlib.util.spec_from_file_location(name, entry, submodule_search_locations=[str(directory)])
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {entry}")
@@ -73,14 +103,14 @@ def load_plugin_module(plugin_id: str, directory: Path) -> ModuleType:
     return module
 
 
-def load_plugin(module_id: str, directory: Path) -> LoadedPlugin:
+def load_plugin(module_id: str, directory: Path, *, generation: int = 0) -> LoadedPlugin:
     """Import ``plugin.py`` under ``module_id`` and validate the exported ``Plugin``.
 
     Install and discover share this check so a tree that installs successfully is
     never rejected on the next discovery. Directory-name and duplicate-id checks
     depend on the catalog and stay in ``PluginManager.discover``.
     """
-    module = load_plugin_module(module_id, directory)
+    module = load_plugin_module(module_id, directory, generation=generation)
     plugin = _instantiate_plugin(module.__dict__.get(PLUGIN_CLASS_NAME))
     descriptor = plugin.descriptor()
     if descriptor.api_version != PLUGIN_API_VERSION:

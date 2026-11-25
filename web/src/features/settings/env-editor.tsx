@@ -3,7 +3,10 @@ import {
   Badge,
   Button,
   Group,
+  Modal,
   Paper,
+  PasswordInput,
+  Select,
   Stack,
   Table,
   Text,
@@ -29,7 +32,7 @@ import {
   putEnvMutation,
   restartServerMutation,
 } from "@/client/@tanstack/react-query.gen";
-import type { EnvEntry } from "@/client/types.gen";
+import type { EnvEntry, EnvKeyMeta } from "@/client/types.gen";
 
 /** 提交给后端的一条; 敏感键原样带回占位符表示「不改」. */
 type Draft = { key: string; value: string };
@@ -41,15 +44,26 @@ const PLACEHOLDER = "***";
  *
  * 与上半页的运行期配置分开: 这里的改动写进数据目录下的 `.env`, 重启进程才生效, 因此不做
  * 局部保存 —— 整份提交, 未列出的键表示删除 (回到默认值).
+ *
+ * 可编辑范围由后端给定 (`keys[].editable`): 数据目录、安全目录、token 这类改错就打不开
+ * 页面的键不在其中; 被容器环境变量接管的键能写但不生效, 一律标出来并禁改.
  */
 export function EnvEditor() {
   const { t } = useTranslation("settings");
   const queryClient = useQueryClient();
   const narrow = useNarrowViewport("md");
   const query = useQuery(getEnvOptions());
-  const [newKey, setNewKey] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
+  const [confirmRestart, setConfirmRestart] = useState(false);
 
   const entries = query.data?.entries;
+  const supervised = query.data?.supervised === true;
+  const metaOf = useMemo(() => {
+    const map = new Map<string, EnvKeyMeta>();
+    for (const item of query.data?.keys ?? []) map.set(item.key, item);
+    return map;
+  }, [query.data?.keys]);
+
   // 以「服务端这一版的指纹」为准: 数据换了 (保存成功 / 重新拉取) 就丢弃本地草稿,
   // 不用 effect 同步 state —— 那会在渲染后多跑一轮, 也容易把用户正在输入的内容冲掉。
   const fingerprint = useMemo(() => JSON.stringify((entries ?? []).map(toDraft)), [entries]);
@@ -84,8 +98,9 @@ export function EnvEditor() {
       }),
   });
 
-  const available = (query.data?.editable_keys ?? []).filter(
-    (key) => !drafts.some((draft) => draft.key === key),
+  const available = (query.data?.keys ?? []).filter(
+    (item) =>
+      item.editable && !item.overridden_by_env && !drafts.some((draft) => draft.key === item.key),
   );
 
   const update = (key: string, value: string) =>
@@ -94,9 +109,9 @@ export function EnvEditor() {
   const remove = (key: string) => setDrafts(drafts.filter((draft) => draft.key !== key));
 
   const add = () => {
-    if (!newKey) return;
-    setDrafts([...drafts, { key: newKey, value: "" }]);
-    setNewKey("");
+    if (picked === null) return;
+    setDrafts([...drafts, { key: picked, value: "" }]);
+    setPicked(null);
   };
 
   return (
@@ -130,10 +145,8 @@ export function EnvEditor() {
           </Table.Thead>
           <Table.Tbody>
             {drafts.map((draft) => {
-              const secret =
-                (entries ?? []).find((entry) => entry.key === draft.key)?.secret === true;
-              const description =
-                (entries ?? []).find((entry) => entry.key === draft.key)?.description ?? "";
+              const meta = metaOf.get(draft.key);
+              const locked = meta?.overridden_by_env === true || meta?.editable === false;
               return (
                 <Table.Tr key={draft.key}>
                   <Table.Td>
@@ -141,25 +154,42 @@ export function EnvEditor() {
                       <Text size="sm" ff="monospace">
                         {draft.key}
                       </Text>
-                      {secret && (
+                      {meta?.secret === true && (
                         <Badge size="xs" color="yellow" variant="light">
                           {t("env.secret")}
                         </Badge>
                       )}
-                      {description && (
-                        <Tooltip label={description} multiline w={260} withArrow>
+                      {meta?.overridden_by_env === true && (
+                        <Tooltip label={t("env.overriddenHint")} multiline w={280} withArrow>
+                          <Badge size="xs" color="gray" variant="light">
+                            {t("env.overridden")}
+                          </Badge>
+                        </Tooltip>
+                      )}
+                      {meta?.description !== undefined && meta.description !== "" && (
+                        <Tooltip label={meta.description} multiline w={260} withArrow>
                           <IconInfoCircle size={14} />
                         </Tooltip>
                       )}
                     </Group>
                   </Table.Td>
                   <Table.Td>
-                    <TextInput
-                      value={draft.value}
-                      placeholder={secret ? PLACEHOLDER : ""}
-                      onChange={(event) => update(draft.key, event.currentTarget.value)}
-                      styles={{ input: { fontFamily: "monospace" } }}
-                    />
+                    {meta?.secret === true ? (
+                      <PasswordInput
+                        value={draft.value}
+                        placeholder={PLACEHOLDER}
+                        disabled={locked}
+                        onChange={(event) => update(draft.key, event.currentTarget.value)}
+                        styles={{ input: { fontFamily: "monospace" } }}
+                      />
+                    ) : (
+                      <TextInput
+                        value={draft.value}
+                        disabled={locked}
+                        onChange={(event) => update(draft.key, event.currentTarget.value)}
+                        styles={{ input: { fontFamily: "monospace" } }}
+                      />
+                    )}
                   </Table.Td>
                   <Table.Td>
                     <Button
@@ -188,17 +218,24 @@ export function EnvEditor() {
       </Table.ScrollContainer>
 
       <Group gap="xs" wrap={narrow ? "wrap" : "nowrap"}>
-        <TextInput
-          w={narrow ? "100%" : 280}
-          value={newKey}
+        <Select
+          w={narrow ? "100%" : 320}
+          searchable
+          clearable
+          value={picked}
+          data={available.map((item) => ({
+            value: item.key,
+            label: item.description === "" ? item.key : `${item.key} · ${item.description}`,
+          }))}
           placeholder={t("env.addPlaceholder")}
-          onChange={(event) => setNewKey(event.currentTarget.value.trim().toUpperCase())}
+          nothingFoundMessage={t("env.addNothingFound")}
+          onChange={setPicked}
         />
         <Button
           leftSection={<IconPlus size={16} />}
           variant="light"
           onClick={add}
-          disabled={!available.includes(newKey)}
+          disabled={picked === null}
         >
           {t("env.add")}
         </Button>
@@ -214,7 +251,7 @@ export function EnvEditor() {
           leftSection={<IconReload size={16} />}
           variant="light"
           color="orange"
-          onClick={() => restart.mutate({})}
+          onClick={() => setConfirmRestart(true)}
           loading={restart.isPending}
           disabled={dirty}
         >
@@ -223,8 +260,34 @@ export function EnvEditor() {
       </Group>
 
       <Text size="xs" c="dimmed">
-        {t("env.restartHint")}
+        {supervised ? t("env.restartHint") : t("env.restartUnavailable")}
       </Text>
+
+      <Modal
+        opened={confirmRestart}
+        onClose={() => setConfirmRestart(false)}
+        title={t("env.restartConfirmTitle")}
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">{t("env.restartConfirmBody")}</Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" onClick={() => setConfirmRestart(false)}>
+              {t("env.restartCancel")}
+            </Button>
+            <Button
+              color="orange"
+              disabled={!supervised}
+              onClick={() => {
+                setConfirmRestart(false);
+                restart.mutate({});
+              }}
+            >
+              {t("env.restartConfirm")}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

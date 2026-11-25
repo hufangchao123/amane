@@ -1170,6 +1170,14 @@
     "add": "env.add",
     "save": "env.save",
     "restart": "env.restart",
-    "restartHint": "env.restartHint"
+    "restartHint": "env.restartHint",
+    "overridden": "环境变量接管",
+    "overriddenHint": "容器里已经用 environment 设了这个变量, 启动时它优先于 .env, 改这里不生效",
+    "addNothingFound": "没有可添加的键",
+    "restartUnavailable": "当前不是受监督运行 (AMANE_SUPERVISED=0), 页面不能重启进程, 请到容器或终端里重启",
+    "restartConfirmTitle": "重启服务",
+    "restartConfirmBody": "重启会中断正在运行的任务, 期间页面不可用. 确认现在重启?",
+    "restartConfirm": "重启",
+    "restartCancel": "取消"
   }
 }

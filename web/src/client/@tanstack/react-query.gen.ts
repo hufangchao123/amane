@@ -3221,9 +3221,13 @@ export const getEnvOptions = (options?: Options<GetEnvData>) => queryOptions<Get
 /**
  * Put Env
  *
- * 整份替换环境变量文件; 占位符 ``***`` 表示保持原值.
+ * 整份替换受管键; 占位符 ``***`` 表示保持原值, 空串表示删除该键.
  *
- * 写盘失败 500, 键或值不合法 422 —— 环境变量写错的后果是「进程起不来」, 宁可拒绝。
+ * 键或值不合法一律 422: 值先按 ``ColdSettings`` 预校验, 拒绝写入会让进程起不来的取值。
+ * 原文件里的注释、空行与第三方键 (如 ``HF_ENDPOINT``) 保持不动。
+ *
+ * 被进程环境变量接管的键 (``overridden_by_env``) 允许写盘但不会生效 —— 启动时环境变量优先,
+ * 页面据此把这些行标成只读, 免得用户以为改完没保存.
  */
 export const putEnvMutation = (options?: Partial<Options<PutEnvData>>): UseMutationOptions<PutEnvResponse, PutEnvError, Options<PutEnvData>> => {
     const mutationOptions: UseMutationOptions<PutEnvResponse, PutEnvError, Options<PutEnvData>> = {

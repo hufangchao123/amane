@@ -1170,6 +1170,14 @@
     "add": "",
     "save": "",
     "restart": "",
-    "restartHint": ""
+    "restartHint": "",
+    "overridden": "From env",
+    "overriddenHint": "The container already sets this variable, and environment wins over .env — editing it here has no effect",
+    "addNothingFound": "Nothing left to add",
+    "restartUnavailable": "Not running supervised (AMANE_SUPERVISED=0): restart from the container or a terminal instead",
+    "restartConfirmTitle": "Restart service",
+    "restartConfirmBody": "Restarting interrupts running tasks and the page becomes unavailable. Restart now?",
+    "restartConfirm": "Restart",
+    "restartCancel": "Cancel"
   }
 }

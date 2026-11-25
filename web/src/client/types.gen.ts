@@ -1275,7 +1275,7 @@ export type EmbeddingKind = 'cover' | 'still';
 /**
  * EnvEntry
  *
- * 一条环境变量; 敏感值在读取时替换成占位符.
+ * 一条已写在文件里的环境变量; 敏感值在读取时替换成占位符.
  */
 export type EnvEntry = {
     /**
@@ -1290,6 +1290,14 @@ export type EnvEntry = {
      * Secret
      */
     secret?: boolean;
+    /**
+     * Editable
+     */
+    editable?: boolean;
+    /**
+     * Overridden By Env
+     */
+    overridden_by_env?: boolean;
     /**
      * Description
      */
@@ -1313,7 +1321,7 @@ export type EnvEntryInput = {
 /**
  * EnvFilePatch
  *
- * 整份替换; 未列出的键会被删除 (回到默认值).
+ * 整份替换受管键; 未列出的可编辑键会被删除 (回到默认值).
  */
 export type EnvFilePatch = {
     /**
@@ -1325,7 +1333,7 @@ export type EnvFilePatch = {
 /**
  * EnvFileResponse
  *
- * 环境变量文件的内容与可编辑范围.
+ * 环境变量文件的内容与受管键清单.
  */
 export type EnvFileResponse = {
     /**
@@ -1341,13 +1349,45 @@ export type EnvFileResponse = {
      */
     entries?: Array<EnvEntry>;
     /**
-     * Editable Keys
+     * Keys
      */
-    editable_keys?: Array<string>;
+    keys?: Array<EnvKeyMeta>;
     /**
      * Restart Required
      */
     restart_required?: boolean;
+    /**
+     * Supervised
+     */
+    supervised?: boolean;
+};
+
+/**
+ * EnvKeyMeta
+ *
+ * 一个受管键的元信息: 是否可编辑、是否敏感、是否被容器环境变量接管.
+ */
+export type EnvKeyMeta = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Secret
+     */
+    secret?: boolean;
+    /**
+     * Editable
+     */
+    editable?: boolean;
+    /**
+     * Overridden By Env
+     */
+    overridden_by_env?: boolean;
+    /**
+     * Description
+     */
+    description?: string;
 };
 
 /**

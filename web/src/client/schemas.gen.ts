@@ -2077,6 +2077,16 @@ export const EnvEntrySchema = {
             title: 'Secret',
             default: false
         },
+        editable: {
+            type: 'boolean',
+            title: 'Editable',
+            default: true
+        },
+        overridden_by_env: {
+            type: 'boolean',
+            title: 'Overridden By Env',
+            default: false
+        },
         description: {
             type: 'string',
             title: 'Description',
@@ -2089,7 +2099,7 @@ export const EnvEntrySchema = {
         'value'
     ],
     title: 'EnvEntry',
-    description: '一条环境变量; 敏感值在读取时替换成占位符.'
+    description: '一条已写在文件里的环境变量; 敏感值在读取时替换成占位符.'
 } as const;
 
 export const EnvEntryInputSchema = {
@@ -2123,7 +2133,7 @@ export const EnvFilePatchSchema = {
     },
     type: 'object',
     title: 'EnvFilePatch',
-    description: '整份替换; 未列出的键会被删除 (回到默认值).'
+    description: '整份替换受管键; 未列出的可编辑键会被删除 (回到默认值).'
 } as const;
 
 export const EnvFileResponseSchema = {
@@ -2143,17 +2153,22 @@ export const EnvFileResponseSchema = {
             type: 'array',
             title: 'Entries'
         },
-        editable_keys: {
+        keys: {
             items: {
-                type: 'string'
+                $ref: '#/components/schemas/EnvKeyMeta'
             },
             type: 'array',
-            title: 'Editable Keys'
+            title: 'Keys'
         },
         restart_required: {
             type: 'boolean',
             title: 'Restart Required',
             default: true
+        },
+        supervised: {
+            type: 'boolean',
+            title: 'Supervised',
+            default: false
         }
     },
     type: 'object',
@@ -2162,7 +2177,42 @@ export const EnvFileResponseSchema = {
         'exists'
     ],
     title: 'EnvFileResponse',
-    description: '环境变量文件的内容与可编辑范围.'
+    description: '环境变量文件的内容与受管键清单.'
+} as const;
+
+export const EnvKeyMetaSchema = {
+    properties: {
+        key: {
+            type: 'string',
+            title: 'Key'
+        },
+        secret: {
+            type: 'boolean',
+            title: 'Secret',
+            default: false
+        },
+        editable: {
+            type: 'boolean',
+            title: 'Editable',
+            default: true
+        },
+        overridden_by_env: {
+            type: 'boolean',
+            title: 'Overridden By Env',
+            default: false
+        },
+        description: {
+            type: 'string',
+            title: 'Description',
+            default: ''
+        }
+    },
+    type: 'object',
+    required: [
+        'key'
+    ],
+    title: 'EnvKeyMeta',
+    description: '一个受管键的元信息: 是否可编辑、是否敏感、是否被容器环境变量接管.'
 } as const;
 
 export const ErrorRowSchema = {

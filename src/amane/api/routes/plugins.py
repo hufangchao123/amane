@@ -1,10 +1,11 @@
-from typing import Annotated
+from collections.abc import Mapping
+from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 from pydantic import ValidationError
 
 from ...config import ConfigManager, PluginConfig
-from ...observability.redact import redact_plugin_config
+from ...observability.redact import redact_plugin_config, restore_redacted_placeholders
 from ...plugins.manager import PluginManager
 from ..deps import ConfigDep, PluginManagerDep, RuntimeDep
 from ..models.plugins import PluginConfigUpdate, PluginListResponse, PluginResponse
@@ -14,12 +15,13 @@ from ..support.uploads import read_limited
 router = APIRouter(prefix="/plugins", tags=["plugins"])
 
 
-def _redacted_plugin_config(config: PluginConfig) -> PluginConfig:
+def _redacted_plugin_config(config: PluginConfig, schema: Mapping[str, Any] | None = None) -> PluginConfig:
     """插件配置的脱敏副本: 密钥类字段换成占位符, 其余字段原样.
 
-    插件自己声明的配置项不受 Amane 管辖, 只能按字段名判据脱敏, 与任务记录导出的规则一致.
+    判据是「字段名命中关键词」与「插件 schema 里标了 ``format: password``」的并集 ——
+    只看字段名会漏掉自定义命名的密钥.
     """
-    return config.model_copy(update={"config": redact_plugin_config(config.config)})
+    return config.model_copy(update={"config": redact_plugin_config(config.config, schema=schema)})
 
 
 def _plugin_response(manager: PluginManager, config: PluginConfig, plugin_id: str) -> PluginResponse:
@@ -29,8 +31,8 @@ def _plugin_response(manager: PluginManager, config: PluginConfig, plugin_id: st
         raise HTTPException(status_code=404, detail="插件不存在")
     return PluginResponse(
         descriptor=descriptor,
-        config=_redacted_plugin_config(config),
         config_schema=manager.plugin_config_schema(plugin_id),
+        config=_redacted_plugin_config(config, manager.plugin_config_schema(plugin_id)),
         path=origin.path if origin is not None else None,
     )
 
@@ -101,8 +103,11 @@ async def update_plugin(
     if manager.get(plugin_id) is None:
         raise HTTPException(status_code=404, detail="插件不存在")
     current = config.hot.plugins.get(plugin_id, PluginConfig())
+    # 页面回写的是脱敏后的配置: ``***`` 表示「保持原值」, 不能把占位符当成密钥存下去.
+    submitted = restore_redacted_placeholders(dict(req.config), dict(current.config))
     merged = PluginConfig(
-        enabled=current.enabled if req.enabled is None else req.enabled, config={**current.config, **req.config}
+        enabled=current.enabled if req.enabled is None else req.enabled,
+        config={**current.config, **submitted},
     )
     patch = {"plugins": {plugin_id: merged.model_dump(mode="json")}}
     try:

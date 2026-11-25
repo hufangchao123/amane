@@ -25,13 +25,21 @@ PLUGIN_TOKEN = "plugin-api-token-secret"
 PLUGIN_ENDPOINT = "https://plugin.example.test"
 
 #: 带密钥字段的插件配置模型: 用例插件比默认夹具多一个 ``api_token``.
-_SECRET_CONFIG_MODEL = '''    endpoint: str = "https://plugin.example.test"
-    api_token: str = ""'''
+_SECRET_CONFIG_MODEL = """    endpoint: str = "https://plugin.example.test"
+    api_token: str = ""
+    access_code: str = Field(default="", json_schema_extra={"format": "password"})"""
+
+
+#: 自定义命名的密钥: 字段名不含 token/secret/key, 只能靠插件 schema 里的 ``format: password`` 认出来.
+CUSTOM_SECRET = "custom-access-code-value"
 
 
 def _write_plugin_with_token(data_dir: Path) -> None:
     source = plugin_source(PLUGIN_ID)
     assert '    endpoint: str = "https://plugin.example.test"' in source
+    source = source.replace(
+        "from pydantic import BaseModel, ConfigDict", "from pydantic import BaseModel, ConfigDict, Field"
+    )
     write_plugin(
         data_dir,
         PLUGIN_ID,
@@ -46,7 +54,13 @@ def plugin_app(tmp_path: Path) -> FastAPI:
     hot = HotSettings.model_validate(
         {
             "plugins": {
-                PLUGIN_ID: {"config": {"endpoint": PLUGIN_ENDPOINT, "api_token": PLUGIN_TOKEN}},
+                PLUGIN_ID: {
+                    "config": {
+                        "endpoint": PLUGIN_ENDPOINT,
+                        "api_token": PLUGIN_TOKEN,
+                        "access_code": CUSTOM_SECRET,
+                    }
+                },
             }
         }
     )
@@ -95,3 +109,26 @@ class TestPluginConfigSecrets:
         assert resp.status_code == 200, resp.text
         assert "new-token" not in resp.text
         assert plugin_app.state.runtime.config.hot.plugins[PLUGIN_ID].config["api_token"] == "new-token"
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_schema_password_field_is_hidden(self, plugin_client: AsyncClient):
+        """字段名不像密钥也行: 插件 schema 标了 ``format: password`` 就该脱敏."""
+        listed = await plugin_client.get("plugins")
+
+        assert CUSTOM_SECRET not in listed.text
+        config = listed.json()["items"][0]["config"]["config"]
+        assert config["access_code"] == REDACTION_PLACEHOLDER
+        assert config["endpoint"] == PLUGIN_ENDPOINT
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_schema_password_field_survives_a_write_back(self, plugin_client: AsyncClient, plugin_app: FastAPI):
+        """页面原样回写整份配置时, 自定义命名的密钥也不能被占位符覆盖."""
+        current = (await plugin_client.get(f"plugins/{PLUGIN_ID}")).json()["config"]
+
+        resp = await plugin_client.patch(f"plugins/{PLUGIN_ID}", json=current)
+
+        assert resp.status_code == 200, resp.text
+        stored = plugin_app.state.runtime.config.hot.plugins[PLUGIN_ID].config
+        assert stored["access_code"] == CUSTOM_SECRET
+        assert stored["api_token"] == PLUGIN_TOKEN
+        assert CUSTOM_SECRET not in resp.text

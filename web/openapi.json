@@ -7572,7 +7572,7 @@
           "env"
         ],
         "summary": "Put Env",
-        "description": "整份替换环境变量文件; 占位符 ``***`` 表示保持原值.\n\n写盘失败 500, 键或值不合法 422 —— 环境变量写错的后果是「进程起不来」, 宁可拒绝。",
+        "description": "整份替换受管键; 占位符 ``***`` 表示保持原值, 空串表示删除该键.\n\n键或值不合法一律 422: 值先按 ``ColdSettings`` 预校验, 拒绝写入会让进程起不来的取值。\n原文件里的注释、空行与第三方键 (如 ``HF_ENDPOINT``) 保持不动。\n\n被进程环境变量接管的键 (``overridden_by_env``) 允许写盘但不会生效 —— 启动时环境变量优先,\n页面据此把这些行标成只读, 免得用户以为改完没保存.",
         "operationId": "put_env",
         "requestBody": {
           "content": {
@@ -9628,6 +9628,16 @@
             "title": "Secret",
             "default": false
           },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable",
+            "default": true
+          },
+          "overridden_by_env": {
+            "type": "boolean",
+            "title": "Overridden By Env",
+            "default": false
+          },
           "description": {
             "type": "string",
             "title": "Description",
@@ -9640,7 +9650,7 @@
           "value"
         ],
         "title": "EnvEntry",
-        "description": "一条环境变量; 敏感值在读取时替换成占位符."
+        "description": "一条已写在文件里的环境变量; 敏感值在读取时替换成占位符."
       },
       "EnvEntryInput": {
         "properties": {
@@ -9672,7 +9682,7 @@
         },
         "type": "object",
         "title": "EnvFilePatch",
-        "description": "整份替换; 未列出的键会被删除 (回到默认值)."
+        "description": "整份替换受管键; 未列出的可编辑键会被删除 (回到默认值)."
       },
       "EnvFileResponse": {
         "properties": {
@@ -9691,17 +9701,22 @@
             "type": "array",
             "title": "Entries"
           },
-          "editable_keys": {
+          "keys": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/EnvKeyMeta"
             },
             "type": "array",
-            "title": "Editable Keys"
+            "title": "Keys"
           },
           "restart_required": {
             "type": "boolean",
             "title": "Restart Required",
             "default": true
+          },
+          "supervised": {
+            "type": "boolean",
+            "title": "Supervised",
+            "default": false
           }
         },
         "type": "object",
@@ -9710,7 +9725,41 @@
           "exists"
         ],
         "title": "EnvFileResponse",
-        "description": "环境变量文件的内容与可编辑范围."
+        "description": "环境变量文件的内容与受管键清单."
+      },
+      "EnvKeyMeta": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "secret": {
+            "type": "boolean",
+            "title": "Secret",
+            "default": false
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable",
+            "default": true
+          },
+          "overridden_by_env": {
+            "type": "boolean",
+            "title": "Overridden By Env",
+            "default": false
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "EnvKeyMeta",
+        "description": "一个受管键的元信息: 是否可编辑、是否敏感、是否被容器环境变量接管."
       },
       "ErrorRow": {
         "properties": {

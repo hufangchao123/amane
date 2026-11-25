@@ -31,7 +31,6 @@ from .packaging import (
     load_plugin,
     module_name,
     plugin_entry,
-    purge_imported_plugin_modules,
     sources_root,
 )
 
@@ -67,9 +66,12 @@ class PluginManager:
         self._descriptors = self._build_descriptors(plugins)
 
     @classmethod
-    def discover(cls, data_dir: Path) -> PluginManager:
-        """Discover third-party source plugins from ``{data_dir}/plugins/sources``."""
-        purge_imported_plugin_modules()
+    def discover(cls, data_dir: Path, *, generation: int = 0) -> PluginManager:
+        """Discover third-party source plugins from ``{data_dir}/plugins/sources``.
+
+        每次发现都加载成一个新的模块世代 (``amane_ext_g<generation>_*``), 旧世代等退役
+        worker 排空后再由 :func:`purge_imported_plugin_modules` 清掉.
+        """
 
         plugins: dict[str, InstalledPlugin] = {}
         origins: dict[str, PluginOrigin] = {}
@@ -85,7 +87,7 @@ class PluginManager:
                 validate_external_source_id(plugin_id)
                 if not entry.is_file():
                     raise FileNotFoundError(f"missing {entry.name}")
-                loaded = load_plugin(plugin_id, child)
+                loaded = load_plugin(plugin_id, child, generation=generation)
                 plugin, descriptor = loaded.plugin, loaded.descriptor
                 unknown_traits = sorted(trait for trait in descriptor.traits if trait not in _KNOWN_TRAITS)
                 if unknown_traits:
@@ -100,7 +102,9 @@ class PluginManager:
                     raise ValueError(f"source id {descriptor.id!r} is already registered")
                 plugins[descriptor.id] = plugin
                 origins[descriptor.id] = PluginOrigin(
-                    plugin_id=descriptor.id, path=str(child), module=module_name(descriptor.id)
+                    plugin_id=descriptor.id,
+                    path=str(child),
+                    module=module_name(descriptor.id, generation),
                 )
             except Exception as exc:
                 failure = PluginLoadFailure(name=child.name, value=str(entry), error=str(exc))

@@ -54,7 +54,12 @@ from ..net.http import RateLimiters, WebClient, site_proxy_overrides
 from ..observability.audit import AuditLog
 from ..playback import PlaybackFactory, PlaybackState
 from ..plugins.manager import PluginManager
-from ..plugins.packaging import install_plugin_path, install_plugin_zip, uninstall_plugin_tree
+from ..plugins.packaging import (
+    install_plugin_path,
+    install_plugin_zip,
+    purge_imported_plugin_modules,
+    uninstall_plugin_tree,
+)
 from ..scheduler.worker import MAIN_LOOP_STOP_TIMEOUT, AsyncWorker
 from ..semantic import SemanticService
 
@@ -227,6 +232,8 @@ class RetiringWorker:
     browser: BrowserPool | None
     web_client: WebClient
     semantic: SemanticService | None
+    plugin_generation: int = 0
+    """该 worker 用的插件模块世代; 排空之后按它清理 ``sys.modules``."""
 
 
 @dataclass
@@ -252,6 +259,10 @@ class AppRuntime:
     r18_db: R18Database | None = None
     agent_service: AgentService | None = None
     plugin_manager: PluginManager | None = None
+    plugin_generation: int = 0
+    """当前插件模块世代; 每次发现 +1, 旧世代等退役 worker 排空后清理."""
+    _replaced_plugin_generation: int = 0
+    """刚被换下的世代号 (0 表示没有待清理的旧世代)."""
     playback_factory: PlaybackFactory | None = None
     playback_state: PlaybackState = field(default_factory=PlaybackState)
     library_locks: LibraryTaskLocks = field(default_factory=LibraryTaskLocks)
@@ -412,16 +423,24 @@ class AppRuntime:
         """Rediscover drop-ins under ``plugins/sources`` and rebuild the scrape stack."""
         async with self._rebuild_lock:
             self._ensure_open()
-            self._replace_plugin_manager(PluginManager.discover(self.config.cold.data_dir))
+            await self._discover_plugins()
             await self._apply_rebuild_unlocked()
             return self._require_plugin_manager()
+
+    async def _discover_plugins(self) -> None:
+        """在新世代里重新发现插件; 扫描磁盘与导入模块都放线程, 不阻塞事件循环."""
+        generation = self.plugin_generation + 1
+        manager = await asyncio.to_thread(PluginManager.discover, self.config.cold.data_dir, generation=generation)
+        self._replaced_plugin_generation = self.plugin_generation
+        self.plugin_generation = generation
+        self._replace_plugin_manager(manager)
 
     async def install_plugin_archive(self, payload: bytes) -> PluginManager:
         """Install a zip of ``plugin.py`` into ``plugins/sources`` and rebuild."""
         async with self._rebuild_lock:
             self._ensure_open()
-            plugin_id = install_plugin_zip(self.config.cold.data_dir, payload)
-            self._replace_plugin_manager(PluginManager.discover(self.config.cold.data_dir))
+            plugin_id = await asyncio.to_thread(install_plugin_zip, self.config.cold.data_dir, payload)
+            await self._discover_plugins()
             await self._apply_rebuild_unlocked()
             logger.info("source plugin installed", plugin_id=plugin_id)
             return self._require_plugin_manager()
@@ -430,8 +449,8 @@ class AppRuntime:
         """Copy a server path (directory or zip) into ``plugins/sources`` and rebuild."""
         async with self._rebuild_lock:
             self._ensure_open()
-            plugin_id = install_plugin_path(self.config.cold.data_dir, source)
-            self._replace_plugin_manager(PluginManager.discover(self.config.cold.data_dir))
+            plugin_id = await asyncio.to_thread(install_plugin_path, self.config.cold.data_dir, source)
+            await self._discover_plugins()
             await self._apply_rebuild_unlocked()
             logger.info("source plugin installed", plugin_id=plugin_id)
             return self._require_plugin_manager()
@@ -443,8 +462,8 @@ class AppRuntime:
             manager = self._require_plugin_manager()
             if manager.get(plugin_id) is None:
                 raise KeyError(plugin_id)
-            uninstall_plugin_tree(self.config.cold.data_dir, plugin_id)
-            self._replace_plugin_manager(PluginManager.discover(self.config.cold.data_dir))
+            await asyncio.to_thread(uninstall_plugin_tree, self.config.cold.data_dir, plugin_id)
+            await self._discover_plugins()
             await self._apply_rebuild_unlocked()
 
     async def _apply_rebuild_unlocked(self) -> None:
@@ -488,6 +507,12 @@ class AppRuntime:
         self._watcher_config = hot.model_copy(deep=True)
         logger.info("watcher restarted", use_polling=hot.use_polling)
 
+    def _take_replaced_generation(self) -> int:
+        """取走「待清理的旧世代」; 与当前世代相同或为 0 时返回 0 (= 不清理)."""
+        generation = self._replaced_plugin_generation
+        self._replaced_plugin_generation = 0
+        return generation if generation and generation != self.plugin_generation else 0
+
     def _retire_worker(
         self,
         worker: AsyncWorker,
@@ -496,7 +521,14 @@ class AppRuntime:
         web_client: WebClient,
         semantic: SemanticService | None,
     ) -> None:
-        entry = RetiringWorker(worker=worker, r18=r18, browser=browser, web_client=web_client, semantic=semantic)
+        entry = RetiringWorker(
+            worker=worker,
+            r18=r18,
+            browser=browser,
+            web_client=web_client,
+            semantic=semantic,
+            plugin_generation=self._take_replaced_generation(),
+        )
         self._retiring.append(entry)
         task = asyncio.create_task(self._drain_and_close(entry))
         self._retire_tasks.add(task)
@@ -512,6 +544,8 @@ class AppRuntime:
                 await self._release_browser(entry.browser)
             self._release_semantic(entry.semantic)
             await self._release_web_client(entry.web_client)
+            if entry.plugin_generation:
+                await asyncio.to_thread(purge_imported_plugin_modules, entry.plugin_generation)
         except Exception:
             logger.exception("retiring worker cleanup failed")
         finally:
