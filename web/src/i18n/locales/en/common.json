@@ -143,7 +143,9 @@
     "facetRuleDeleted": "Rule removed",
     "commentCreated": "Comment posted",
     "commentUpdated": "Comment saved",
-    "commentDeleted": "Comment deleted"
+    "commentDeleted": "Comment deleted",
+    "subtitleGenerateQueued": "Transcription task queued",
+    "mediaRefreshQueued": "Library refresh task queued"
   },
   "batch": {
     "selected": "{{count}} selected",

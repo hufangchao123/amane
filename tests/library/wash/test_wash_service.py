@@ -120,6 +120,29 @@ async def test_summary_hides_groups_when_disabled(wash_lib: WashLibrary, locks: 
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_summary_counts_strm_groups_without_the_size_floor(wash_lib: WashLibrary) -> None:
+    """只开 STRM 洗版时体积下限不适用: 指针文件只有几百字节, 拿 MB 卡它会让按钮永远禁用."""
+    await seed(wash_lib)
+    service = WashService(WashConfig(enabled=True, local=False, strm=True, min_size_mb=300), wash_lib.repo)
+
+    summary = await service.summary()
+
+    assert summary.groups == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_summary_skips_ignored_groups(wash_lib: WashLibrary) -> None:
+    """标成「都留着」的组不计入组数, 否则顶部数字与候选表一直对不上."""
+    await seed(wash_lib)
+    await wash_lib.repo.set_wash_choice("lib1:ABC-100", WashChoiceAction.IGNORE)
+    service = WashService(WashConfig(enabled=True, min_size_mb=0), wash_lib.repo)
+
+    summary = await service.summary()
+
+    assert summary.groups == 2
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_summary_tolerates_missing_table(repo: Repository) -> None:
     """迁移还没跑到这一版时状态卡显示 0, 不能让 /wash/status 整个 500."""
     service = WashService(WashConfig(enabled=True), repo)

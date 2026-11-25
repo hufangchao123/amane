@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -190,7 +191,7 @@ async def get_cleanup_trash(library_id: int, repo: RepoDep, runtime: RuntimeDep)
         raise HTTPException(status_code=404, detail="Library not found")
     library_root = Path(library.path)
     trash_dir = library_root / TRASH_DIRNAME
-    if not trash_dir.is_dir():
+    if not await asyncio.to_thread(trash_dir.is_dir):
         return TrashSummaryResponse(exists=False)
 
     inventory = runtime.inventory_store.latest(library_id, InventorySource.TRASH, max_age=TRASH_REUSE_WINDOW)

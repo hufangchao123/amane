@@ -240,6 +240,17 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
         />
       );
     case "upscale":
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            { label: t("result.counts.scanned"), value: result.scanned ?? 0, tone: "gray" },
+            { label: t("result.counts.upscaled"), value: result.upscaled ?? 0, tone: "teal" },
+            { label: t("result.counts.skipped"), value: result.skipped ?? 0, tone: "gray" },
+            { label: t("result.counts.failed"), value: result.failed ?? 0, tone: "red" },
+          ]}
+        />
+      );
     case "r18_import":
     case "rescrape":
     case "scan_invalid":

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   createLibraryMutation,
+  getPathTemplateSchemaOptions,
   listLibrariesOptions,
   listLibrariesQueryKey,
   updateLibraryMutation,
@@ -73,11 +74,20 @@ function LibrariesPage() {
   const { t } = useTranslation(["library", "common"]);
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery(listLibrariesOptions());
+  // 新建表单的初值取自服务端路径模板 schema; 没取到时才回退到前端默认值.
+  const schemaQuery = useQuery(getPathTemplateSchemaOptions());
+  const schema = schemaQuery.data ?? null;
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<LibraryFormState>(emptyLibraryForm());
+  const [createForm, setCreateForm] = useState<LibraryFormState>(() => emptyLibraryForm());
   const [editing, setEditing] = useState<LibraryResponse | null>(null);
-  const [editForm, setEditForm] = useState<LibraryFormState>(emptyLibraryForm());
+  const [editForm, setEditForm] = useState<LibraryFormState>(() => emptyLibraryForm());
+
+  /** 每次打开新建弹窗时按当前 schema 重建初值, 免得用上上次留下的空壳或旧默认值. */
+  function openCreate() {
+    setCreateForm(emptyLibraryForm(schema));
+    setCreateOpen(true);
+  }
 
   const invalidate = () =>
     void queryClient.invalidateQueries({ queryKey: listLibrariesQueryKey() });
@@ -87,7 +97,7 @@ function LibrariesPage() {
     onSuccess: () => {
       notifications.show({ message: t("common:toast.watchPathAdded"), color: "blue" });
       setCreateOpen(false);
-      setCreateForm(emptyLibraryForm());
+      setCreateForm(emptyLibraryForm(schema));
       invalidate();
     },
     onError: (err) =>
@@ -128,7 +138,11 @@ function LibrariesPage() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>{t("title")}</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>
+        <Button
+          leftSection={<IconPlus size={16} />}
+          loading={schemaQuery.isPending}
+          onClick={openCreate}
+        >
           {t("common:actions.add")}
         </Button>
       </Group>

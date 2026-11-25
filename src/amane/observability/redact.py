@@ -185,16 +185,18 @@ _OMIT = object()
 
 
 def _is_redacted_form(patch: Any, current: Any) -> bool:
-    """补丁值是否是当前值的脱敏形式: 占位符本身, 或剥掉 userinfo 的地址.
+    """补丁值是否是当前值的脱敏形式: 占位符本身, 剥掉 userinfo 的地址, 或密码打码的 DSN.
 
-    代理串的脱敏保留 host 与 port, 只去掉 userinfo; 前端回写这一份时若不还原, 代理口令会被
-    悄悄丢掉. 想去掉口令时清空后再填新值, 不要只删 userinfo.
+    代理串的脱敏保留 host 与 port, 只去掉 userinfo; DSN 的脱敏只把密码换成占位符. 前端回写这
+    两份时若不还原, 代理口令与数据库密码都会被悄悄丢掉. 想去掉口令时清空后再填新值.
     """
     if not isinstance(patch, str) or not isinstance(current, str):
         return False
     if patch == current:
         return False
-    return patch == REDACTION_PLACEHOLDER or redact_proxy(current) == patch
+    if patch == REDACTION_PLACEHOLDER:
+        return True
+    return patch in {redact_proxy(current), redact_dsn(current)}
 
 
 def _restore_placeholder(patch: Any, current: Any) -> Any:
@@ -222,34 +224,6 @@ def restore_redacted_placeholders(patch: dict[str, Any], current: dict[str, Any]
     """
     restored = _restore_placeholder(patch, current)
     return restored if isinstance(restored, dict) else patch
-
-
-_SECRET_KEY_PARTS = ("api_key", "apikey", "token", "secret", "password", "cookie", "credential", "dsn")
-
-
-def _is_secret_key(key: object) -> bool:
-    normalized = str(key).lower().replace("-", "_")
-    return any(part in normalized for part in _SECRET_KEY_PARTS)
-
-
-def _has_secret_value(value: object, *, key: object | None = None) -> bool:
-    if key is not None and _is_secret_key(key):
-        return bool(value)
-    if isinstance(value, dict):
-        return any(_has_secret_value(v, key=k) for k, v in value.items())
-    if isinstance(value, list):
-        return any(_has_secret_value(v) for v in value)
-    return False
-
-
-def _redact_secret_values(value: object, *, key: object | None = None) -> object:
-    if key is not None and _is_secret_key(key):
-        return REDACTION_PLACEHOLDER if value else value
-    if isinstance(value, dict):
-        return {key: _redact_secret_values(item, key=key) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_redact_secret_values(item) for item in value]
-    return value
 
 
 def redact_proxy(proxy: str) -> str:

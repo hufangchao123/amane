@@ -1,4 +1,14 @@
-import { Badge, Button, Card, Group, Select, SimpleGrid, Stack, Text } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Card,
+  Group,
+  NumberInput,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconDownload,
@@ -10,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import {
+  getConfigOptions,
   listLibrariesOptions,
   listTasksQueryKey,
   subtitleStatusOptions,
@@ -18,9 +29,25 @@ import {
   testSubtitleGenerationMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { extractErrorMessage } from "@/lib/api-error";
+import { isRecord } from "@/lib/utils";
 
 /** 排队中与运行中的任务不会自己通知前端, 因此状态卡按固定间隔重取, 任务结束后自然回落. */
 const STATUS_POLL_MS = 5000;
+
+/** 「补全此库」单轮处理的份数; 后端上限 500, 默认值沿用原来的 200. */
+const FETCH_LIMIT_DEFAULT = 200;
+const FETCH_LIMIT_MAX = 500;
+
+/** 转写开关只在整份配置里, 状态接口不下发: `/api/config` 的响应没有类型, 逐层收窄只取这一个布尔.
+ *
+ * 读不到就返回 null, 由调用方决定按哪种态度处理 —— 这里不猜 true.
+ */
+function readGenerationEnabled(config: unknown): boolean | null {
+  if (!isRecord(config) || !isRecord(config.subtitles)) return null;
+  const { generation } = config.subtitles;
+  if (!isRecord(generation)) return null;
+  return typeof generation.enabled === "boolean" ? generation.enabled : null;
+}
 
 interface StatCardProps {
   label: string;
@@ -57,7 +84,9 @@ export function SubtitleStatusCards() {
   const { t } = useTranslation(["ops", "common"]);
   const queryClient = useQueryClient();
   const [libraryId, setLibraryId] = useState<number | null>(null);
+  const [fetchLimit, setFetchLimit] = useState(FETCH_LIMIT_DEFAULT);
   const librariesQuery = useQuery(listLibrariesOptions());
+  const configQuery = useQuery(getConfigOptions());
   const statusQuery = useQuery({
     ...subtitleStatusOptions(),
     refetchInterval: STATUS_POLL_MS,
@@ -129,6 +158,9 @@ export function SubtitleStatusCards() {
   const status = statusQuery.data;
   const enabled = status?.enabled ?? false;
   const running = submit.isPending;
+  const generationEnabled = readGenerationEnabled(configQuery.data);
+  // 份数越界时按边界提交: 输入框允许空值, 但任务载荷只能收 1..500.
+  const fetchLimitSafe = Math.min(FETCH_LIMIT_MAX, Math.max(1, Math.round(fetchLimit) || 1));
 
   return (
     <Stack gap="md">
@@ -197,6 +229,18 @@ export function SubtitleStatusCards() {
           w={280}
         />
         <Group gap="sm">
+          <NumberInput
+            aria-label={t("ops:subtitles.fetchLimitLabel")}
+            description={t("ops:subtitles.fetchLimitHint")}
+            value={fetchLimit}
+            onChange={(value) =>
+              setFetchLimit(typeof value === "number" ? value : FETCH_LIMIT_DEFAULT)
+            }
+            min={1}
+            max={FETCH_LIMIT_MAX}
+            allowDecimal={false}
+            w={120}
+          />
           <Button
             variant="default"
             leftSection={<IconListSearch size={16} />}
@@ -214,7 +258,7 @@ export function SubtitleStatusCards() {
             disabled={!enabled || libraryId === null}
             onClick={() =>
               submit.mutate({
-                body: { type: "subtitle_fetch", library_id: libraryId, limit: 200 },
+                body: { type: "subtitle_fetch", library_id: libraryId, limit: fetchLimitSafe },
               })
             }
           >
@@ -232,13 +276,18 @@ export function SubtitleStatusCards() {
             variant="default"
             leftSection={<IconMicrophone size={16} />}
             loading={generate.isPending}
-            disabled={libraryId === null}
+            disabled={libraryId === null || generationEnabled !== true}
             onClick={() =>
               generate.mutate({ body: { type: "subtitle_generate", library_id: libraryId } })
             }
           >
             {t("ops:subtitles.generateLibrary")}
           </Button>
+          {generationEnabled === false ? (
+            <Text size="xs" c="dimmed">
+              {t("ops:subtitles.generationDisabled")}
+            </Text>
+          ) : null}
         </Group>
       </Group>
     </Stack>

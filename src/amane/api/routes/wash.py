@@ -137,9 +137,7 @@ async def wash_choice_set(req: WashChoiceRequest, repo: RepoDep) -> WashChoiceIt
     """
     if req.action is WashChoiceAction.KEEP and not req.keep_path.strip():
         raise HTTPException(status_code=422, detail="钉住一份时要给出要保留的文件路径")
-    await repo.set_wash_choice(req.group_key, req.action, req.keep_path.strip())
-    choices = await repo.list_wash_choices()
-    choice = choices[req.group_key]
+    choice = await repo.set_wash_choice(req.group_key, req.action, req.keep_path.strip())
     return WashChoiceItem(
         group_key=choice.group_key, action=choice.action, keep_path=choice.keep_path, updated_at=choice.updated_at
     )

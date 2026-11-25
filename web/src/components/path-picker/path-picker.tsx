@@ -1,4 +1,4 @@
-import { Button, Group, Input, Modal, Stack } from "@mantine/core";
+import { Button, Group, Input, Modal, Stack, Text } from "@mantine/core";
 import { IconFolder } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,8 @@ interface PathPickerProps {
   initialPath?: string;
   /** Label for the input. */
   label?: string;
+  /** Explanatory text under the label, 与 Mantine 的 `description` 同义. */
+  description?: string;
   /** Whether the input is read-only. */
   disabled?: boolean;
   /** Placeholder text. */
@@ -27,6 +29,7 @@ export function PathPicker({
   pathType = "directory",
   initialPath,
   label,
+  description,
   disabled = false,
   placeholder = "/path/to/directory",
 }: PathPickerProps) {
@@ -48,6 +51,11 @@ export function PathPicker({
         <Input.Label htmlFor={inputId} size="sm" fw={500}>
           {label}
         </Input.Label>
+      )}
+      {description && (
+        <Text size="xs" c="dimmed">
+          {description}
+        </Text>
       )}
       <Group gap="xs" wrap="nowrap">
         <Input

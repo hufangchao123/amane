@@ -6,6 +6,7 @@ import {
   Checkbox,
   Group,
   Loader,
+  Select,
   Stack,
   Table,
   Text,
@@ -30,6 +31,7 @@ import { formatRelativeTime } from "@/lib/format-relative-time";
 import { formatFileSize } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui";
 import { pathName } from "./path-name";
+import { pickOptionOrNull } from "./pick-option";
 import { useWashRefresh } from "./use-wash-refresh";
 
 const KIND_LABEL: Record<WashRecordKind, "wash.kind.local" | "wash.kind.strm"> = {
@@ -49,6 +51,12 @@ const STATE_COLOR: Record<WashRecordState, string> = {
   restored: "teal",
   purged: "gray",
 };
+const STATE_OPTIONS = [
+  "trashed",
+  "restored",
+  "purged",
+] as const satisfies readonly WashRecordState[];
+const KIND_OPTIONS = ["local", "strm"] as const satisfies readonly WashRecordKind[];
 
 /** 回收站表: 可勾选在回收站里的记录, 还原或清理.
  *
@@ -60,10 +68,14 @@ export function WashRecords() {
   const refresh = useWashRefresh();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+  const [stateFilter, setStateFilter] = useState<WashRecordState | null>(null);
+  const [kindFilter, setKindFilter] = useState<WashRecordKind | null>(null);
   const pageSize = useUIStore((s) => s.pageSizes.washRecords);
   const query = useQuery(
     washRecordsOptions({
       query: {
+        state: stateFilter ?? undefined,
+        kind: kindFilter ?? undefined,
         limit: pageSize,
         offset: (page - 1) * pageSize,
         sort_by: "created_at",
@@ -76,6 +88,11 @@ export function WashRecords() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectable = items.filter((item) => item.state === "trashed");
   const allSelected = selectable.length > 0 && selectable.every((item) => selected.has(item.id));
+  // 勾选只发生在当前页, 因此按页内的行还原出选中项, 不必再为它们单独查一次.
+  // 刷新后消失的记录 (别人还原了、定时任务清掉了) 由这里自然落选:
+  // 提交已经不在库里的 id 会被后端整体拒绝 (422), 一条不合格就什么都不做.
+  const selectedItems = items.filter((item) => selected.has(item.id));
+  const selectedCount = selectedItems.length;
 
   function toggle(id: number) {
     setSelected((current) => {
@@ -98,6 +115,13 @@ export function WashRecords() {
   function changePage(next: number) {
     setPage(next);
     // 跨页保留选中会让「还原」动到看不见的行, 翻页即清空.
+    setSelected(new Set());
+  }
+
+  function changeFilter(next: () => void) {
+    next();
+    setPage(1);
+    // 筛选条件变了, 原来的选中可能已不在表里, 一并清空.
     setSelected(new Set());
   }
 
@@ -135,16 +159,29 @@ export function WashRecords() {
       danger: false,
     });
     if (!ok) return;
-    restore.mutate({ body: { ids: [...selected] } });
+    restore.mutate({ body: { ids: selectedItems.map((item) => item.id) } });
   }
 
   async function startPurge() {
+    const due = selectedItems.filter(isPurgeable);
+    if (due.length === 0) {
+      // 任务只真删已过保留期的记录, 未到期的会全部计入跳过; 与其提交一条什么都不做的任务, 不如就地说明.
+      notifications.show({
+        message: t("wash.purgeNotDue", { count: selectedCount }),
+        color: "yellow",
+      });
+      return;
+    }
+    const notDue = selectedCount - due.length;
     const ok = await confirm({
       title: t("wash.confirmPurgeTitle"),
-      message: t("wash.confirmPurgeMessage"),
+      message:
+        notDue > 0
+          ? `${t("wash.confirmPurgeMessage")} ${t("wash.purgePartial", { count: notDue })}`
+          : t("wash.confirmPurgeMessage"),
     });
     if (!ok) return;
-    purge.mutate({ body: { ids: [...selected] } });
+    purge.mutate({ body: { ids: due.map((item) => item.id) } });
   }
 
   return (
@@ -160,13 +197,13 @@ export function WashRecords() {
             }}
           />
           <Text size="sm" c="dimmed">
-            {t("wash.selected", { count: selected.size })}
+            {t("wash.selected", { count: selectedCount })}
           </Text>
           <Button
             size="xs"
             variant="default"
             leftSection={<IconRestore size={14} />}
-            disabled={selected.size === 0}
+            disabled={selectedCount === 0}
             loading={restore.isPending}
             onClick={() => void startRestore()}
           >
@@ -176,13 +213,37 @@ export function WashRecords() {
             size="xs"
             color="red"
             leftSection={<IconTrash size={14} />}
-            disabled={selected.size === 0}
+            disabled={selectedCount === 0}
             loading={purge.isPending}
             onClick={() => void startPurge()}
           >
             {t("wash.purge")}
           </Button>
         </Group>
+      </Group>
+      <Group gap="xs" wrap="wrap">
+        <Select
+          aria-label={t("wash.column.state")}
+          placeholder={t("wash.stateAll")}
+          data={STATE_OPTIONS.map((value) => ({ value, label: t(STATE_LABEL[value]) }))}
+          value={stateFilter}
+          onChange={(value) =>
+            changeFilter(() => setStateFilter(pickOptionOrNull(STATE_OPTIONS, value)))
+          }
+          clearable
+          w={160}
+        />
+        <Select
+          aria-label={t("wash.filterKind")}
+          placeholder={t("wash.kindAll")}
+          data={KIND_OPTIONS.map((value) => ({ value, label: t(KIND_LABEL[value]) }))}
+          value={kindFilter}
+          onChange={(value) =>
+            changeFilter(() => setKindFilter(pickOptionOrNull(KIND_OPTIONS, value)))
+          }
+          clearable
+          w={140}
+        />
       </Group>
       {query.isError ? (
         <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
@@ -268,6 +329,16 @@ export function WashRecords() {
       <ListPagination totalPages={totalPages} page={page} onChange={changePage} />
     </Stack>
   );
+}
+
+/** 与后端 ``wash_apply._is_purgeable`` 同一判据: 仍在回收站里, 且已过保留期.
+ *
+ * 没有到期时间的记录不动 (历史行), 这一点也照抄后端: 宁可留着, 也不猜它该不该删.
+ */
+function isPurgeable(item: WashRecordItem): boolean {
+  if (item.state !== "trashed" || !item.expires_at) return false;
+  const expires = Date.parse(item.expires_at);
+  return !Number.isNaN(expires) && expires <= Date.now();
 }
 
 /** 到期时间只在还能被清理时有意义: 已清理的记录不再有倒计时. */

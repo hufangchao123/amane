@@ -164,18 +164,26 @@ class WashRepoMixin(RepositoryMixinBase):
             rows = (await session.exec(select(WashChoice))).all()
             return {choice.group_key: choice for choice in rows}
 
-    async def set_wash_choice(self, group_key: str, action: WashChoiceAction, keep_path: str = "") -> None:
-        """写入或覆盖一组的决定; 同一组只保留一条, 改主意就是覆盖."""
+    async def set_wash_choice(self, group_key: str, action: WashChoiceAction, keep_path: str = "") -> WashChoice:
+        """写入或覆盖一组的决定; 同一组只保留一条, 改主意就是覆盖.
+
+        返回落库后的记录: 调用方要回显这一条, 别再从全表读一次后按组键取值 —— 并发清空决定时
+        那个下标会抛 ``KeyError``.
+        """
         async with self._session() as session:
             existing = await session.scalar(select(WashChoice).where(col(WashChoice.group_key) == group_key))
             if existing is None:
-                session.add(WashChoice(group_key=group_key, action=action, keep_path=keep_path))
+                record = WashChoice(group_key=group_key, action=action, keep_path=keep_path)
+                session.add(record)
             else:
                 existing.action = action
                 existing.keep_path = keep_path
                 existing.updated_at = _utcnow()
                 session.add(existing)
+                record = existing
             await session.commit()
+            await session.refresh(record)
+            return record
 
     async def clear_wash_choice(self, group_key: str) -> bool:
         """撤销一组的决定; 返回是否真删掉了一条."""

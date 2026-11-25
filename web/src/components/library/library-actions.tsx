@@ -3,6 +3,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAdjustmentsHorizontal,
   IconFolderDown,
+  IconReload,
   IconScan,
   IconTrash,
 } from "@tabler/icons-react";
@@ -66,6 +67,23 @@ export function LibraryActionButtons({
         color: "red",
       }),
   });
+  /** Emby 那边的库刷新: 与 amane 自己的扫描是两件事, 刷新的是媒体服务器上的库列表.
+   *
+   * 载荷没有 library_id —— 后端只做整库刷新, 因此这个按钮不区分库.
+   */
+  const embyRefreshMutation = useMutation({
+    mutationFn: async () => {
+      await submitTask({ body: { type: "media_refresh" }, throwOnError: true });
+    },
+    onSuccess: () =>
+      notifications.show({ message: t("common:toast.mediaRefreshQueued"), color: "blue" }),
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
+
   const deleteMutation = useMutation({
     ...deleteLibraryMutation(),
     onSuccess: () => {
@@ -141,6 +159,14 @@ export function LibraryActionButtons({
         onClick={() => void organizeMutation.mutate()}
       >
         <IconFolderDown size={16} />
+      </HintedActionIcon>
+      <HintedActionIcon
+        variant="light"
+        loading={embyRefreshMutation.isPending}
+        onClick={() => void embyRefreshMutation.mutate()}
+        label={t("embyRefresh.tooltip")}
+      >
+        <IconReload size={16} />
       </HintedActionIcon>
       <HintedActionIcon
         variant="light"

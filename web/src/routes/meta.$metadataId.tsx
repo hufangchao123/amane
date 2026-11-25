@@ -207,6 +207,16 @@ function TitleDetailPage() {
     });
   };
 
+  /** 字幕文件增删之后只失效相关的三处: 字幕清单、这条媒体、媒体列表.
+   *
+   * 不带过滤的失效会把页面上所有查询一起重取 (任务、目录、标签面、评论…), 一次上传换来十几次请求.
+   */
+  const invalidateSubtitles = () => {
+    void queryClient.invalidateQueries({ queryKey: ["subtitles", "files"] });
+    invalidateDetail();
+    void queryClient.invalidateQueries({ queryKey: listMetadataQueryKey() });
+  };
+
   const scrapeMutation = useMutation({
     ...submitTaskMutation(),
     onSuccess: () => {
@@ -261,9 +271,17 @@ function TitleDetailPage() {
       }),
   });
 
-  /** 按库分组提交: 任务一次只处理一个库, 片子的文件可能分在多个库里. */
+  /** 按库分组提交: 任务一次只处理一个库, 片子的文件可能分在多个库里.
+   *
+   * 没有文件时先说明白, 不弹「确定删除」: 让用户确认一个注定什么都不做的事, 只是浪费一次点击.
+   * 各库的任务一次性并发提交并等它们全部落库, 这样才能据结果给一次提示, 也不会只提交成功的半截.
+   */
   async function handlePurge() {
     const files = data?.files ?? [];
+    if (files.length === 0) {
+      notifications.show({ message: t("purge.noFiles"), color: "yellow" });
+      return;
+    }
     const libraryIds = [...new Set(files.map((f) => f.library_id))];
     const ok = await confirm({
       title: t("purge.title"),
@@ -271,15 +289,14 @@ function TitleDetailPage() {
       confirmLabel: t("purge.title"),
     });
     if (!ok) return;
-    if (libraryIds.length === 0) {
-      notifications.show({ message: t("purge.noFiles"), color: "yellow" });
-      return;
-    }
-    for (const libraryId of libraryIds) {
-      purgeMutation.mutate({
-        body: { type: "media_purge", library_id: libraryId, metadata_ids: [Number(id)] },
-      });
-    }
+    // 每个失败都在 onError 里提示过; allSettled 让某个库失败不挡住其余库.
+    await Promise.allSettled(
+      libraryIds.map((libraryId) =>
+        purgeMutation.mutateAsync({
+          body: { type: "media_purge", library_id: libraryId, metadata_ids: [Number(id)] },
+        }),
+      ),
+    );
   }
 
   const { data: userTagOptions } = useQuery(listFacetsOptions(USER_TAG_FACET_LIST));
@@ -1010,7 +1027,7 @@ function TitleDetailPage() {
         mediaFileId={subtitleTarget?.id ?? null}
         videoName={subtitleTarget?.name}
         onClose={() => setSubtitleTarget(null)}
-        onChanged={() => void queryClient.invalidateQueries()}
+        onChanged={invalidateSubtitles}
       />
 
       <Modal

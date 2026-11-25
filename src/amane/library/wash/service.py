@@ -11,17 +11,17 @@ from __future__ import annotations
 
 from dataclasses import replace
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import structlog
 from pydantic import BaseModel
-from sqlalchemy import func
-from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 
 from ...config.manager import WashConfig
 from ...db.models import MediaFile, SortOrder, WashChoiceAction, WashRecordKind, WashRecordState
 from ...db.repos.ops_wash import WashRecordSortField
+from ..rules import is_pointer_media
 from .collect import collect_entries
 from .model import WashGroup, build_groups, sort_key
 
@@ -239,24 +239,61 @@ class WashService:
                 return sorted(groups, key=lambda group: (group.bytes_freed, group.group_key), reverse=reverse)
 
     async def _estimate_groups(self) -> int:
-        """按索引估算待处理组数: 同库 + 同番号 + 同有码标记, 且至少一份不小于 ``min_size_mb``.
+        """按索引估算待处理组数: 库 + 番号 + 有码标记, 每种实体类型各算一组.
 
-        与 ``build_groups`` 的差别只在两处: 不区分分段 (索引里没有 CD 字段, 同番号的 CD1/CD2
-        会被算成一组, 略微高估), 也不看磁盘实况. 权威数字仍以扫描任务为准.
+        与 ``build_groups`` 的差别只在两处: 索引里没有分段与 part 字段 (同番号的分段会被算成
+        一组, 略微高估), 也不看磁盘实况. 权威数字仍以扫描任务为准.
+
+        口径必须与候选列表一致, 否则按钮与顶部数字对不上:
+        - 关闭的一侧 (本地 / STRM) 不参与
+        - 本地组要有一份不小于 ``min_size_mb``; STRM 组不设下限 (指针文件只有几百字节)
+        - 标成「都留着」的组不计
         """
-        # 单列计数套在子查询外面: 多列聚合的 select 在 sqlmodel 的重载里绑不上类型,
-        # 而 ``select(func.count()).select_from(<子查询>)`` 是既有仓储里通用的写法.
+        groups = await self._indexed_groups()
+        if not groups:
+            return 0
+        ignored = {
+            key
+            for key, choice in (await self._repo.list_wash_choices()).items()
+            if choice.action is WashChoiceAction.IGNORE
+        }
+        total = 0
+        for key, kinds in groups.items():
+            if any(key == item or key.startswith(f"{item}:") for item in ignored):
+                continue
+            total += len(kinds)
+        return total
+
+    async def _indexed_groups(self) -> dict[str, list[WashRecordKind]]:
+        """分组键 → 参与的种类; 只收两份以上、且通过开关与体积下限的组."""
         floor = self._min_size_bytes()
-        grouped = (
-            sa_select(col(MediaFile.library_id), col(MediaFile.number), col(MediaFile.mosaic))
-            .where(col(MediaFile.number).is_not(None), col(MediaFile.number) != "")
-            .group_by(col(MediaFile.library_id), col(MediaFile.number), col(MediaFile.mosaic))
-            .having(func.count() > 1, func.max(col(MediaFile.size)) >= floor)
-            .subquery()
-        )
-        stmt = select(func.count()).select_from(grouped)
+        stmt = select(MediaFile).where(col(MediaFile.number).is_not(None), col(MediaFile.number) != "")
+        counts: dict[str, dict[WashRecordKind, list[int]]] = {}
         async with self._repo._session() as session:
-            return int((await session.exec(stmt)).one())
+            # 只读索引行, 不碰磁盘: 列投影的多列 select 在 sqlmodel 的 exec 重载里绑不上类型,
+            # 整行取回来反而最简单; 行数就是索引条数, 比真扫一遍文件系统便宜得多.
+            rows = (await session.exec(stmt)).all()
+        for file in rows:
+            kind = WashRecordKind.STRM if is_pointer_media(Path(file.path)) else WashRecordKind.LOCAL
+            if not (self._config.local if kind is WashRecordKind.LOCAL else self._config.strm):
+                continue
+            parts = [f"lib{file.library_id}", str(file.number).strip().upper()]
+            if file.mosaic is not None:
+                parts.append(file.mosaic.value)
+            key = ":".join(parts)
+            counts.setdefault(key, {}).setdefault(kind, []).append(int(file.size or 0))
+        out: dict[str, list[WashRecordKind]] = {}
+        for key, kinds in counts.items():
+            kept: list[WashRecordKind] = []
+            for kind, sizes in kinds.items():
+                if len(sizes) < 2:
+                    continue
+                if kind is WashRecordKind.LOCAL and max(sizes) < floor:
+                    continue
+                kept.append(kind)
+            if kept:
+                out[key] = kept
+        return out
 
 
 __all__ = [

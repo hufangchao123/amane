@@ -387,15 +387,17 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
             value={value.blacklist_patterns}
             onChange={(e) => onChange({ ...value, blacklist_patterns: e.currentTarget.value })}
           />
+          {/* 存储用字节, 界面用 MB: 两者不是整数倍关系, 只收整数会在再次保存时悄悄挪动阈值. */}
           <NumberInput
             label={t("fieldMinFileSize")}
             description={t("fieldMinFileSizeHint")}
             min={0}
-            allowDecimal={false}
+            allowDecimal
+            decimalScale={2}
             suffix=" MB"
             value={bytesToMb(value.min_file_size)}
             onChange={(raw) => {
-              const mb = typeof raw === "number" ? raw : 0;
+              const mb = typeof raw === "number" ? Math.round(raw * 100) / 100 : 0;
               onChange({ ...value, min_file_size: mbToBytes(mb) });
             }}
           />
@@ -610,39 +612,30 @@ export function LibraryFormFields({ value, onChange, showCreateOnly }: LibraryFo
         </FieldChrome>
         {value.scrape_transfer && (
           <>
-            <FieldChrome
+            <PathPicker
               label={t("scrapeTransfer.inputDir.label")}
               description={t("scrapeTransfer.inputDir.hint")}
-            >
-              <TextInput
-                value={value.scrape_input_dir}
-                onChange={(e) => onChange({ ...value, scrape_input_dir: e.currentTarget.value })}
-                placeholder={t("scrapeTransfer.inputDir.placeholder")}
-                aria-label={t("scrapeTransfer.inputDir.label")}
-              />
-            </FieldChrome>
-            <FieldChrome
+              value={value.scrape_input_dir}
+              onChange={(path) => onChange({ ...value, scrape_input_dir: path })}
+              placeholder={t("scrapeTransfer.inputDir.placeholder")}
+              pathType="directory"
+            />
+            <PathPicker
               label={t("scrapeTransfer.okDir.label")}
               description={t("scrapeTransfer.okDir.hint")}
-            >
-              <TextInput
-                value={value.scrape_ok_dir}
-                onChange={(e) => onChange({ ...value, scrape_ok_dir: e.currentTarget.value })}
-                placeholder={t("scrapeTransfer.okDir.placeholder")}
-                aria-label={t("scrapeTransfer.okDir.label")}
-              />
-            </FieldChrome>
-            <FieldChrome
+              value={value.scrape_ok_dir}
+              onChange={(path) => onChange({ ...value, scrape_ok_dir: path })}
+              placeholder={t("scrapeTransfer.okDir.placeholder")}
+              pathType="directory"
+            />
+            <PathPicker
               label={t("scrapeTransfer.failDir.label")}
               description={t("scrapeTransfer.failDir.hint")}
-            >
-              <TextInput
-                value={value.scrape_fail_dir}
-                onChange={(e) => onChange({ ...value, scrape_fail_dir: e.currentTarget.value })}
-                placeholder={t("scrapeTransfer.failDir.placeholder")}
-                aria-label={t("scrapeTransfer.failDir.label")}
-              />
-            </FieldChrome>
+              value={value.scrape_fail_dir}
+              onChange={(path) => onChange({ ...value, scrape_fail_dir: path })}
+              placeholder={t("scrapeTransfer.failDir.placeholder")}
+              pathType="directory"
+            />
           </>
         )}
         <FieldChrome label={t("keepSourceDirs.label")} description={t("keepSourceDirs.hint")}>

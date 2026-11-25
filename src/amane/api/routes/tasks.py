@@ -34,7 +34,17 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 # 标题取库名的任务类型: payload 带 `library_id` 的库内任务.
-_LIBRARY_TASK_TYPES = (TaskType.REFRESH, TaskType.ORGANIZE, TaskType.SCAN_INVALID, TaskType.DELETE)
+_LIBRARY_TASK_TYPES = (
+    TaskType.REFRESH,
+    TaskType.ORGANIZE,
+    TaskType.SCAN_INVALID,
+    TaskType.DELETE,
+    TaskType.WASH_SCAN,
+    TaskType.WASH_APPLY,
+    TaskType.SUBTITLE_AUDIT,
+    TaskType.NFO_PATCH,
+)
+"""库内任务: 载荷带 ``library_id``, 标题取库名."""
 
 # 标题取番号的任务类型: payload 带 `media_file_id` 的单文件任务. 否则列表里只剩一个 id,
 # 看不出补的是哪一部.
@@ -365,11 +375,12 @@ async def get_task_record(
     task_id: int,
     repo: RepoDep,
     config: ConfigDep,
-    include_secrets: Annotated[
-        bool, Query(description="Include plaintext cookies/tokens from local secrets snapshot")
-    ] = False,
 ):
-    """导出任务记录 (zip). 默认脱敏; include_secrets=true 需本地存在 .secrets.hot.json."""
+    """导出任务记录 (zip), 一律脱敏.
+
+    任务目录旁的 ``.secrets.hot.json`` 只在宿主机上留作调试, 不经 HTTP 下发: 它是 GET 请求,
+    不进写操作留痕表, 而内容包含站点 cookie 与大模型密钥.
+    """
     task = await repo.get_task(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -377,7 +388,7 @@ async def get_task_record(
         raise HTTPException(status_code=409, detail="只有已结束的任务才能导出任务记录")
 
     try:
-        data = build_record_zip(config.cold.log_dir, task_id, include_secrets=include_secrets)
+        data = build_record_zip(config.cold.log_dir, task_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="该任务没有任务记录") from None
     except PermissionError as e:

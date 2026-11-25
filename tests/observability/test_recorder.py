@@ -138,7 +138,7 @@ def test_build_record_zip_redacted_by_default(tmp_path: Path, task: Task):
     task.status = TaskStatus.FAILED
     rec.finalize(task, success=False, error="boom", debug_capture=False)
 
-    data = build_record_zip(tmp_path, 42, include_secrets=False)
+    data = build_record_zip(tmp_path, 42)
     with zipfile.ZipFile(BytesIO(data)) as zf:
         names = zf.namelist()
         assert all(SECRETS_HOT_FILENAME not in n for n in names)
@@ -148,19 +148,22 @@ def test_build_record_zip_redacted_by_default(tmp_path: Path, task: Task):
         assert man["redacted"] is True
 
 
-def test_build_record_zip_include_secrets(tmp_path: Path, task: Task):
+def test_build_record_zip_never_carries_secrets(tmp_path: Path, task: Task):
+    """任务记录导出不带旁路密文: 那份文件只留在宿主机上, 没有 HTTP 通道发出去."""
     hot = HotSettings()
     hot.llm.api_key = "sk-secret"
     rec = Recorder.begin(tmp_path, task, hot)
     task.status = TaskStatus.FAILED
     rec.finalize(task, success=False, error="boom", debug_capture=False)
+    root = task_dir_for(tmp_path, 42)
+    assert (root / SECRETS_HOT_FILENAME).is_file()
 
-    data = build_record_zip(tmp_path, 42, include_secrets=True)
+    data = build_record_zip(tmp_path, 42)
     with zipfile.ZipFile(BytesIO(data)) as zf:
+        names = zf.namelist()
         cfg = json.loads(zf.read("task-42/config.hot.json"))
-        assert cfg["llm"]["api_key"] == "sk-secret"
-        man = json.loads(zf.read("task-42/manifest.json"))
-        assert man["redacted"] is False
+    assert all(SECRETS_HOT_FILENAME not in name for name in names)
+    assert cfg["llm"]["api_key"] == "***"
 
 
 def test_record_http_skip_body(tmp_path: Path, task: Task):

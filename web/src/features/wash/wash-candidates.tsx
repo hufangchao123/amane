@@ -3,32 +3,41 @@ import {
   Badge,
   Button,
   Center,
+  Checkbox,
   Group,
   Loader,
+  Select,
   Stack,
   Table,
   Text,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle, IconDeviceFloppy } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  listLibrariesOptions,
+  submitTaskMutation,
   washCandidatesOptions,
   washCandidatesQueryKey,
   washChoiceClearMutation,
   washChoiceSetMutation,
   washStatusQueryKey,
 } from "@/client/@tanstack/react-query.gen";
-import type { WashRecordKind } from "@/client/types.gen";
+import type { WashCandidateSortField, WashRecordKind } from "@/client/types.gen";
 import { ListPagination } from "@/components/common/list-pagination";
 import { PageSizeSelect } from "@/components/common/page-size-select";
 import { extractErrorMessage } from "@/lib/api-error";
+import { confirm } from "@/lib/confirm";
 import { formatFileSize } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui";
 import { groupNumber, pathName } from "./path-name";
+import { pickOption } from "./pick-option";
+
+/** 与 `WashCandidateListResponse` 的 kind 查询参数同形; 生成物里该别名被内联, 这里补一处. */
+type WashScope = "local" | "strm" | "all";
 
 const KIND_COLOR: Record<WashRecordKind, string> = { local: "blue", strm: "grape" };
 const KIND_LABEL: Record<WashRecordKind, "wash.kind.local" | "wash.kind.strm"> = {
@@ -36,24 +45,42 @@ const KIND_LABEL: Record<WashRecordKind, "wash.kind.local" | "wash.kind.strm"> =
   strm: "wash.kind.strm",
 };
 
+const SCOPE_OPTIONS = ["all", "local", "strm"] as const satisfies readonly WashScope[];
+const SORT_OPTIONS = [
+  "bytes_freed",
+  "group_key",
+  "keep_path",
+] as const satisfies readonly WashCandidateSortField[];
+
 /** 候选分组表: 显示算法给出的保留者与落选者, 并把使用者的显式决定写回 wash_choices.
  *
  * 三个决定 (留这份 / 都留着 / 恢复) 只改数据库里的选择, 不搬文件 —— 搬盘仍由「执行」入队的任务负责.
  * 决定会改变保留者与可释放体积, 所以成功后让候选与状态卡一起重取, 表格据此重排;
  * 不弹成功提示, 重排后的表格与徽章本身就是反馈, 再弹一次只是噪音.
  * 被忽略的组留在表里且「可释放」为 0: 使用者要能看见自己留了哪些组, 也要能当场撤销.
+ * 钉住的组同理 —— 撤销钉住与忽略同一个端点, 区别只在当前决定是哪种.
+ *
+ * 勾选分组后「执行选中组」只把这些组交给任务 (group_keys), 不必重算全部候选;
+ * 分组键按番号相同时两侧同名, 因此选择按 group_key 记录, 类型与库由筛选条件随载荷一起带上.
  */
 export function WashCandidates() {
   const { t } = useTranslation(["ops", "common"]);
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [scope, setScope] = useState<WashScope>("all");
+  const [libraryId, setLibraryId] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<WashCandidateSortField>("bytes_freed");
+  const [selectedGroups, setSelectedGroups] = useState<ReadonlySet<string>>(new Set());
   const pageSize = useUIStore((s) => s.pageSizes.washCandidates);
+  const librariesQuery = useQuery(listLibrariesOptions());
   const query = useQuery(
     washCandidatesOptions({
       query: {
+        kind: scope,
+        library_id: libraryId ?? undefined,
         limit: pageSize,
         offset: (page - 1) * pageSize,
-        sort_by: "bytes_freed",
+        sort_by: sortBy,
         order: "desc",
       },
     }),
@@ -61,6 +88,7 @@ export function WashCandidates() {
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const allSelected = items.length > 0 && items.every((item) => selectedGroups.has(item.group_key));
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: washCandidatesQueryKey() });
@@ -87,6 +115,19 @@ export function WashCandidates() {
     onSuccess: invalidate,
     onError: onChooseError,
   });
+  const apply = useMutation({
+    ...submitTaskMutation(),
+    onSuccess: () => {
+      notifications.show({ message: t("wash.applyStarted"), color: "blue" });
+      setSelectedGroups(new Set());
+      invalidate();
+    },
+    onError: (err) =>
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      }),
+  });
 
   // 三个决定都在同一列按钮上排队, 任一个在飞时锁住全部, 免得对同一组发出互相覆盖的请求.
   const busy = keep.isPending || ignore.isPending || restore.isPending;
@@ -94,11 +135,121 @@ export function WashCandidates() {
   const pendingIgnoreKey = ignore.isPending ? ignore.variables?.body.group_key : undefined;
   const pendingRestoreKey = restore.isPending ? restore.variables?.path.group_key : undefined;
 
+  function changeFilter(next: () => void) {
+    next();
+    setPage(1);
+    // 筛选条件变了, 勾选的分组可能已不在表里: 一并清掉, 免得执行到看不见的组.
+    setSelectedGroups(new Set());
+  }
+
+  function toggleGroup(groupKey: string) {
+    setSelectedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }
+
+  function togglePage() {
+    setSelectedGroups((current) => {
+      const next = new Set(current);
+      if (allSelected) for (const item of items) next.delete(item.group_key);
+      else for (const item of items) next.add(item.group_key);
+      return next;
+    });
+  }
+
+  async function startApplySelected() {
+    const ok = await confirm({
+      title: t("wash.confirmApplySelectedTitle"),
+      message: t("wash.confirmApplySelectedMessage", { count: selectedGroups.size }),
+      confirmLabel: t("wash.applySelected"),
+    });
+    if (!ok) return;
+    apply.mutate({
+      body: {
+        type: "wash_apply",
+        group_keys: [...selectedGroups],
+        kind: scope,
+        library_id: libraryId,
+      },
+    });
+  }
+
   return (
     <Stack gap="xs">
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="wrap">
         <Title order={4}>{t("wash.candidateTitle")}</Title>
-        <PageSizeSelect sizeKey="washCandidates" onChanged={() => setPage(1)} />
+        <Group gap="xs" wrap="wrap">
+          <Select
+            aria-label={t("wash.filterKind")}
+            data={SCOPE_OPTIONS.map((value) => ({
+              value,
+              label: value === "all" ? t("wash.kindAll") : t(KIND_LABEL[value]),
+            }))}
+            value={scope}
+            onChange={(value) =>
+              changeFilter(() => setScope(pickOption(SCOPE_OPTIONS, value, "all")))
+            }
+            allowDeselect={false}
+            w={140}
+          />
+          <Select
+            aria-label={t("wash.filterLibrary")}
+            placeholder={t("wash.libraryAll")}
+            data={(librariesQuery.data?.items ?? []).map((library) => ({
+              value: String(library.id),
+              label: library.name,
+            }))}
+            value={libraryId === null ? null : String(libraryId)}
+            onChange={(value) =>
+              changeFilter(() => setLibraryId(value === null ? null : Number(value)))
+            }
+            clearable
+            w={200}
+          />
+          <Select
+            aria-label={t("wash.sortBy")}
+            data={SORT_OPTIONS.map((value) => ({
+              value,
+              label:
+                value === "group_key"
+                  ? t("wash.sort.groupKey")
+                  : value === "keep_path"
+                    ? t("wash.sort.keepPath")
+                    : t("wash.sort.bytesFreed"),
+            }))}
+            value={sortBy}
+            onChange={(value) =>
+              changeFilter(() => setSortBy(pickOption(SORT_OPTIONS, value, "bytes_freed")))
+            }
+            allowDeselect={false}
+            w={180}
+          />
+          <PageSizeSelect
+            sizeKey="washCandidates"
+            onChanged={() => {
+              setPage(1);
+              setSelectedGroups(new Set());
+            }}
+          />
+        </Group>
+      </Group>
+      <Group justify="space-between" wrap="wrap" gap="xs">
+        <Text size="sm" c="dimmed">
+          {t("wash.selectedGroups", { count: selectedGroups.size })}
+        </Text>
+        <Button
+          size="xs"
+          color="orange"
+          leftSection={<IconDeviceFloppy size={14} />}
+          disabled={selectedGroups.size === 0}
+          loading={apply.isPending}
+          onClick={() => void startApplySelected()}
+        >
+          {t("wash.applySelected")}
+        </Button>
       </Group>
       {query.isError ? (
         <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
@@ -116,10 +267,20 @@ export function WashCandidates() {
           {t("wash.candidateEmpty")}
         </Text>
       ) : (
-        <Table.ScrollContainer minWidth={880}>
+        <Table.ScrollContainer minWidth={920}>
           <Table highlightOnHover verticalSpacing="xs">
             <Table.Thead>
               <Table.Tr>
+                <Table.Th w={36}>
+                  <Checkbox
+                    aria-label={t("wash.column.group")}
+                    checked={allSelected}
+                    indeterminate={
+                      !allSelected && items.some((item) => selectedGroups.has(item.group_key))
+                    }
+                    onChange={togglePage}
+                  />
+                </Table.Th>
                 <Table.Th>{t("wash.column.group")}</Table.Th>
                 <Table.Th>{t("wash.column.kind")}</Table.Th>
                 <Table.Th>{t("wash.column.keep")}</Table.Th>
@@ -135,6 +296,13 @@ export function WashCandidates() {
                 const pinned = item.pinned === true;
                 return (
                   <Table.Tr key={`${item.kind}:${item.group_key}`}>
+                    <Table.Td>
+                      <Checkbox
+                        aria-label={groupNumber(item.group_key)}
+                        checked={selectedGroups.has(item.group_key)}
+                        onChange={() => toggleGroup(item.group_key)}
+                      />
+                    </Table.Td>
                     <Table.Td>
                       <Group gap={6} wrap="nowrap">
                         <Text size="sm">{groupNumber(item.group_key)}</Text>
@@ -216,6 +384,17 @@ export function WashCandidates() {
                         >
                           {t("wash.choiceRestore")}
                         </Button>
+                      ) : pinned ? (
+                        // 钉住是显式选择的结果, 撤销与忽略同一个端点.
+                        <Button
+                          size="compact-xs"
+                          variant="default"
+                          loading={pendingRestoreKey === item.group_key}
+                          disabled={busy}
+                          onClick={() => restore.mutate({ path: { group_key: item.group_key } })}
+                        >
+                          {t("wash.unpin")}
+                        </Button>
                       ) : (
                         <Button
                           size="compact-xs"
@@ -238,7 +417,15 @@ export function WashCandidates() {
           </Table>
         </Table.ScrollContainer>
       )}
-      <ListPagination totalPages={totalPages} page={page} onChange={setPage} />
+      <ListPagination
+        totalPages={totalPages}
+        page={page}
+        onChange={(next) => {
+          setPage(next);
+          // 跨页保留勾选会执行到看不见的组, 翻页即清空.
+          setSelectedGroups(new Set());
+        }}
+      />
     </Stack>
   );
 }

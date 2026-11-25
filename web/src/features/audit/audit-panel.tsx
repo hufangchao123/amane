@@ -20,11 +20,15 @@ import {
   listAuditOptions,
   listAuditQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import { ListPagination } from "@/components/common/list-pagination";
 import { extractErrorMessage } from "@/lib/api-error";
 import { confirm } from "@/lib/confirm";
 import { formatDateTime } from "@/lib/utils";
 
 const METHOD_FILTERS = ["", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+/** 一页的记录数: 后端上限 200, 取 50 让一屏放得下, 翻页也不必太频繁. */
+const PAGE_SIZE = 50;
 
 /**
  * 写操作留痕: 谁在什么时候改了哪条路径.
@@ -35,12 +39,23 @@ export function AuditPanel() {
   const { t: tCommon } = useTranslation("common");
   const queryClient = useQueryClient();
   const [method, setMethod] = useState<string>("");
-  const query = useQuery(listAuditOptions({ query: { limit: 100, method: method || undefined } }));
+  const [page, setPage] = useState(1);
+  const query = useQuery(
+    listAuditOptions({
+      query: {
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
+        method: method || undefined,
+      },
+    }),
+  );
 
   const clearMutation = useMutation({
     ...clearAuditMutation(),
     onSuccess: async () => {
       notifications.show({ message: t("audit.cleared"), color: "teal" });
+      // 留痕清空后只剩一页, 停在第 2 页也看不到内容.
+      setPage(1);
       await queryClient.invalidateQueries({ queryKey: listAuditQueryKey() });
     },
     onError: (error) => {
@@ -53,6 +68,7 @@ export function AuditPanel() {
 
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   async function startClear() {
     const ok = await confirm({
@@ -71,7 +87,10 @@ export function AuditPanel() {
             label={t("audit.filter.method")}
             data={METHOD_FILTERS.map((value) => ({ value, label: value || t("audit.filter.all") }))}
             value={method}
-            onChange={(value) => setMethod(value ?? "")}
+            onChange={(value) => {
+              setMethod(value ?? "");
+              setPage(1);
+            }}
             w={180}
           />
           <Button
@@ -159,6 +178,8 @@ export function AuditPanel() {
           </>
         )}
       </Card>
+
+      <ListPagination totalPages={totalPages} page={page} onChange={setPage} />
     </Stack>
   );
 }

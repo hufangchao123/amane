@@ -120,6 +120,37 @@ def _allowed_extensions(library) -> set[str]:
     return {item.lower() for item in library.subtitle_extensions}
 
 
+def _list_subtitle_files(video: Path, allowed: set[str]) -> list[SubtitleFileEntry]:
+    """同步枚举视频同目录的字幕文件; 只在 ``asyncio.to_thread`` 里调用."""
+    files: list[SubtitleFileEntry] = []
+    if not video.parent.is_dir():
+        return files
+    try:
+        entries = sorted(video.parent.iterdir())
+    except OSError:
+        return files
+    for entry in entries:
+        if entry.suffix.lower() not in allowed:
+            continue
+        try:
+            if not entry.is_file():
+                continue
+            stat = entry.stat()
+        except OSError:
+            continue
+        files.append(
+            SubtitleFileEntry(
+                name=entry.name,
+                path=str(entry),
+                extension=entry.suffix.lower(),
+                size=stat.st_size,
+                language=_language_of_name(video, entry.name),
+                modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
+            )
+        )
+    return files
+
+
 @router.get("/files", response_model=SubtitleFilesResponse)
 async def list_subtitle_files(
     repo: RepoDep,
@@ -129,25 +160,8 @@ async def list_subtitle_files(
     media, library = await _media_and_library(repo, media_file_id)
     video = Path(media.path)
     allowed = _allowed_extensions(library)
-    files: list[SubtitleFileEntry] = []
-    if video.parent.is_dir() and allowed:
-        for entry in sorted(video.parent.iterdir()):
-            if not entry.is_file() or entry.suffix.lower() not in allowed:
-                continue
-            try:
-                stat = entry.stat()
-            except OSError:
-                continue
-            files.append(
-                SubtitleFileEntry(
-                    name=entry.name,
-                    path=str(entry),
-                    extension=entry.suffix.lower(),
-                    size=stat.st_size,
-                    language=_language_of_name(video, entry.name),
-                    modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
-                )
-            )
+    # 目录枚举要进线程: 媒体库常挂 SMB/NFS, 抖动时同步 stat 会把整个事件循环卡住.
+    files = await asyncio.to_thread(_list_subtitle_files, video, allowed) if allowed else []
     return SubtitleFilesResponse(
         media_file_id=media_file_id,
         video_path=str(video),
@@ -167,14 +181,16 @@ async def delete_subtitle_file(
 
     取库锁再动手: 整理与洗版可能正把这份视频搬去别处, 锁外删会删到刚被搬走的旧路径上.
     """
-    media, library = await _media_and_library(repo, media_file_id)
+    _media, library = await _media_and_library(repo, media_file_id)
     target = Path(path)
     if target.suffix.lower() not in _allowed_extensions(library):
         raise HTTPException(status_code=422, detail=f"不是字幕文件: {target.name}")
     async with await runtime.library_locks.get(library.id):
         # 锁内重读: 等锁期间整理 / 洗版可能已把这份视频搬去别处, 按锁外的视频路径判同目录会判错.
         fresh = await repo.get_media_file(media_file_id)
-        current = fresh or media
+        if fresh is None:
+            raise HTTPException(status_code=404, detail="媒体文件不存在")
+        current = fresh
         await _require_same_dir(target, Path(current.path))
         # 删盘放到线程里: 网络盘上的 unlink 会阻塞事件循环, 卡住同时进行的任务与请求.
         try:
@@ -228,7 +244,9 @@ async def upload_subtitle(
     async with await runtime.library_locks.get(library.id):
         # 锁内重读并重算目标名: 等锁期间视频可能已被整理任务改名或搬走, 锁外算出的名字会落在旧目录.
         fresh = await repo.get_media_file(media_file_id)
-        current = fresh or media
+        if fresh is None:
+            raise HTTPException(status_code=404, detail="媒体文件不存在")
+        current = fresh
         video = Path(current.path)
         target = video.parent / custom if custom else _subtitle_target(video, language, suffix)
         if not await asyncio.to_thread(video.parent.is_dir):

@@ -36,7 +36,8 @@
     "scrape": "Scrape",
     "scrapeWithNumber": "Scrape with number",
     "batchScrape": "Batch Scrape",
-    "batchOrganize": "Batch Organize"
+    "batchOrganize": "Batch Organize",
+    "generateSubtitle": "Generate subtitles"
   },
   "scrapeOverride": {
     "title": "Scrape with number",
@@ -314,6 +315,14 @@
     "uploadNamePlaceholder": "e.g. AD-1.reviewed.srt",
     "noExtensions": "This library has no subtitle extensions configured, so uploading is disabled",
     "action": "Subtitles",
-    "uploadAction": "Upload"
+    "uploadAction": "Upload",
+    "uploadLanguageLabel": "Subtitle language",
+    "uploadLanguageHint": "Pick the language that matches the file; players use it to rank simplified and traditional Chinese separately.",
+    "uploadLanguageZh": "Simplified Chinese",
+    "uploadLanguageZhTw": "Traditional Chinese",
+    "uploadLanguageEn": "English"
+  },
+  "embyRefresh": {
+    "tooltip": "Refresh the Emby library"
   }
 }

@@ -229,7 +229,9 @@
       "filesRemoved": "Records removed",
       "resourcesRemoved": "Resources removed",
       "filesDeleted": "Files deleted",
-      "indexed": "Index rows dropped"
+      "indexed": "Index rows dropped",
+      "scanned": "Scanned",
+      "upscaled": "Upscaled"
     },
     "mediaServer": {
       "emby": "Emby",

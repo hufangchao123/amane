@@ -196,7 +196,9 @@
       "filesRemoved": "删记录",
       "resourcesRemoved": "删资源",
       "filesDeleted": "删除文件",
-      "indexed": "摘除索引"
+      "indexed": "摘除索引",
+      "scanned": "扫描",
+      "upscaled": "已放大"
     },
     "mediaServer": {
       "emby": "Emby",

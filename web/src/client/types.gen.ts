@@ -10704,14 +10704,7 @@ export type GetTaskRecordData = {
          */
         task_id: number;
     };
-    query?: {
-        /**
-         * Include Secrets
-         *
-         * Include plaintext cookies/tokens from local secrets snapshot
-         */
-        include_secrets?: boolean;
-    };
+    query?: never;
     url: '/api/tasks/{task_id}/record';
 };
 

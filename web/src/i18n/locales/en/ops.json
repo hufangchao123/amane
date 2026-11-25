@@ -30,14 +30,25 @@
     "auditLibrary": "Audit this library",
     "fetchLibrary": "Fill this library",
     "multiDiscHint": "{{parts}} multi-disc parts skipped",
-    "multiDiscHint_one": "ops:subtitles.multiDiscHint",
-    "multiDiscHint_other": "ops:subtitles.multiDiscHint",
+    "multiDiscHint_one": "{{parts}} multi-disc part skipped",
+    "multiDiscHint_other": "{{parts}} multi-disc parts skipped",
     "generateLibrary": "Transcribe missing subtitles",
     "generateStarted": "Transcription queued",
     "testGeneration": "Test endpoint",
     "testOk": "Endpoint OK: {{model}} in {{ms}} ms",
     "testFailed": "Transcription endpoint unavailable",
-    "pointerHint": "{{parts}} .strm pointers have no audio; upload subtitles by hand"
+    "pointerHint": "{{parts}} .strm pointers have no audio; upload subtitles by hand",
+    "fetchLimitLabel": "Files per run",
+    "fetchLimitHint": "How many files one task may fetch; the server caps it at 500.",
+    "generationDisabled": "Subtitle generation is off in settings, so no transcription task can be submitted.",
+    "recentKind": "Type",
+    "recentResult": "Result",
+    "recentGenerated": "Generated",
+    "recentTranslated": "Translated",
+    "recentSkipped": "Skipped",
+    "recentVideos": "Videos",
+    "recentSubtitles": "Subtitles",
+    "recentOrphans": "Orphans"
   },
   "wash": {
     "title": "Wash",
@@ -100,7 +111,29 @@
     "keepThis": "Keep this",
     "keepAll": "Keep all",
     "choiceRestore": "Undo",
-    "choiceFailed": "Could not save the decision"
+    "choiceFailed": "Could not save the decision",
+    "unpin": "Unpin",
+    "filterKind": "Type",
+    "kindAll": "All types",
+    "stateAll": "All states",
+    "filterLibrary": "Library",
+    "libraryAll": "All libraries",
+    "sortBy": "Sort by",
+    "sort": {
+      "bytesFreed": "Space freed",
+      "groupKey": "Group",
+      "keepPath": "Keep path"
+    },
+    "selectedGroups_one": "{{count}} group selected",
+    "selectedGroups_other": "{{count}} groups selected",
+    "applySelected": "Apply selected",
+    "confirmApplySelectedTitle": "Apply selected groups",
+    "confirmApplySelectedMessage_one": "Run wash apply on the selected group? The others stay untouched.",
+    "confirmApplySelectedMessage_other": "Run wash apply on the {{count}} selected groups? The others stay untouched.",
+    "purgeNotDue_one": "The selected record has not expired yet, so nothing is purged in this round.",
+    "purgeNotDue_other": "None of the {{count}} selected records has expired yet, so nothing is purged in this round.",
+    "purgePartial_one": "{{count}} record has not expired yet and is skipped.",
+    "purgePartial_other": "{{count}} records have not expired yet and are skipped."
   },
   "maintenance": {
     "title": "Library maintenance",
@@ -132,6 +165,23 @@
       "queued": "Check task queued",
       "runFailed": "Submit failed",
       "note": "The check is read-only; only with the switch on does it rewrite avatar URLs. Internal addresses are skipped."
+    },
+    "upscale": {
+      "title": "Upscale",
+      "hint": "Upscales images below the dimension and size thresholds; the thresholds live in settings, this page only sets how many files are handled per run.",
+      "limit": "Files per run",
+      "run": "Start upscale",
+      "queued": "Upscale task queued",
+      "runFailed": "Failed to submit the upscale task",
+      "note": "Results appear in Recent results at the bottom of this page."
+    },
+    "recent": {
+      "title": "Recent results",
+      "refresh": "Reload",
+      "loadFailed": "Failed to load task results",
+      "empty": "No maintenance task yet.",
+      "running": "The task is still running; the result appears once it finishes.",
+      "justNow": "just now"
     }
   },
   "notify": {
@@ -149,7 +199,11 @@
       "titlePlaceholder": "e.g. scan finished",
       "bodyLabel": "Body",
       "bodyPlaceholder": "What to push",
-      "run": "Send"
+      "run": "Send",
+      "digest": "Send a digest",
+      "digestHint": "The digest is computed server-side over the last seven days; use it to confirm the channel works.",
+      "titleCounter": "{{used}} / {{limit}} characters",
+      "bodyCounter": "{{used}} / {{limit}} characters"
     },
     "records": {
       "title": "Recent pushes",
@@ -177,7 +231,8 @@
     "recordKinds": {
       "message": "Message",
       "digest": "Digest"
-    }
+    },
+    "digestQueued": "Digest queued"
   },
   "audit": {
     "title": "Audit",

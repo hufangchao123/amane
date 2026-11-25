@@ -136,7 +136,9 @@
     "facetRuleDeleted": "规则已移除",
     "commentCreated": "评论已发表",
     "commentUpdated": "评论已保存",
-    "commentDeleted": "评论已删除"
+    "commentDeleted": "评论已删除",
+    "subtitleGenerateQueued": "已提交转写任务",
+    "mediaRefreshQueued": "已提交媒体库刷新任务"
   },
   "batch": {
     "selected": "已选 {{count}} 项"

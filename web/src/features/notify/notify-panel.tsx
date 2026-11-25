@@ -11,7 +11,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
+import { IconAlertTriangle, IconRefresh, IconReportAnalytics } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +22,10 @@ import { extractErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/utils";
 
 type Translate = TFunction<["ops"]>;
+
+/** 与后端 `NOTIFY_TITLE_LIMIT` / `NOTIFY_BODY_LIMIT` 一致; 超长会被 422 拒掉, 因此在输入处就截住. */
+const TITLE_LIMIT = 200;
+const BODY_LIMIT = 2000;
 
 /**
  * 渠道名固定四种: 用显式分支, 模板键会让抽取器插占位键.
@@ -59,6 +63,9 @@ export function NotifyPanel() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
+  /** 渠道没启用或没填地址时, 入队也只会失败; 按钮直接禁用, 省掉一次注定失败的任务. */
+  const channelReady = (query.data?.enabled ?? false) && (query.data?.has_url ?? false);
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       await submitTask({
@@ -68,6 +75,22 @@ export function NotifyPanel() {
     },
     onSuccess: () => {
       notifications.show({ message: t("notify.queued"), color: "blue" });
+      void queryClient.invalidateQueries({ queryKey: notifyStatusQueryKey() });
+    },
+    onError: (error) =>
+      notifications.show({
+        message: extractErrorMessage(error, t("notify.runFailed")),
+        color: "red",
+      }),
+  });
+
+  const digestMutation = useMutation({
+    mutationFn: async () => {
+      // 周报的标题与正文由后端现算, 这里不传.
+      await submitTask({ body: { type: "notify", kind: "digest" }, throwOnError: true });
+    },
+    onSuccess: () => {
+      notifications.show({ message: t("notify.digestQueued"), color: "blue" });
       void queryClient.invalidateQueries({ queryKey: notifyStatusQueryKey() });
     },
     onError: (error) =>
@@ -109,24 +132,48 @@ export function NotifyPanel() {
           <TextInput
             label={t("notify.send.titleLabel")}
             placeholder={t("notify.send.titlePlaceholder")}
+            description={t("notify.send.titleCounter", {
+              used: title.length,
+              limit: TITLE_LIMIT,
+            })}
+            maxLength={TITLE_LIMIT}
             value={title}
             onChange={(event) => setTitle(event.currentTarget.value)}
           />
           <Textarea
             label={t("notify.send.bodyLabel")}
             placeholder={t("notify.send.bodyPlaceholder")}
+            description={t("notify.send.bodyCounter", {
+              used: body.length,
+              limit: BODY_LIMIT,
+            })}
             autosize
             minRows={2}
+            maxLength={BODY_LIMIT}
             value={body}
             onChange={(event) => setBody(event.currentTarget.value)}
           />
-          <Button
-            onClick={() => sendMutation.mutate()}
-            loading={sendMutation.isPending}
-            disabled={!title.trim()}
-          >
-            {t("notify.send.run")}
-          </Button>
+          <Group gap="sm">
+            <Button
+              onClick={() => sendMutation.mutate()}
+              loading={sendMutation.isPending}
+              disabled={!title.trim() || !channelReady}
+            >
+              {t("notify.send.run")}
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconReportAnalytics size={16} />}
+              onClick={() => digestMutation.mutate()}
+              loading={digestMutation.isPending}
+              disabled={!channelReady}
+            >
+              {t("notify.send.digest")}
+            </Button>
+            <Text size="xs" c="dimmed">
+              {t("notify.send.digestHint")}
+            </Text>
+          </Group>
         </Stack>
       </Card>
 

@@ -35,7 +35,18 @@
     "testGeneration": "测试转写端点",
     "testOk": "端点可用：{{model}}，{{ms}} ms",
     "testFailed": "转写端点不可用",
-    "pointerHint": "另有 {{parts}} 个 .strm 指针没有音轨, 只能手动上传字幕"
+    "pointerHint": "另有 {{parts}} 个 .strm 指针没有音轨, 只能手动上传字幕",
+    "fetchLimitLabel": "单轮份数",
+    "fetchLimitHint": "一次任务最多补多少份, 上限 500.",
+    "generationDisabled": "设置里没有开启字幕转写, 无法提交转写任务.",
+    "recentKind": "类型",
+    "recentResult": "结果",
+    "recentGenerated": "生成",
+    "recentTranslated": "已翻译",
+    "recentSkipped": "跳过",
+    "recentVideos": "视频数",
+    "recentSubtitles": "字幕数",
+    "recentOrphans": "孤立字幕"
   },
   "wash": {
     "title": "洗版",
@@ -97,7 +108,25 @@
     "keepThis": "留这份",
     "keepAll": "都留着",
     "choiceRestore": "恢复",
-    "choiceFailed": "保存决定失败"
+    "choiceFailed": "保存决定失败",
+    "unpin": "取消钉住",
+    "filterKind": "类型",
+    "kindAll": "全部类型",
+    "stateAll": "全部状态",
+    "filterLibrary": "媒体库",
+    "libraryAll": "全部媒体库",
+    "sortBy": "排序",
+    "sort": {
+      "bytesFreed": "可释放体积",
+      "groupKey": "分组",
+      "keepPath": "保留路径"
+    },
+    "selectedGroups": "已选 {{count}} 组",
+    "applySelected": "执行选中组",
+    "confirmApplySelectedTitle": "执行选中的分组",
+    "confirmApplySelectedMessage": "将对选中的 {{count}} 组执行洗版, 未勾选的分组不受影响. 继续?",
+    "purgeNotDue": "选中的 {{count}} 条都还没有到期, 本轮无法清理.",
+    "purgePartial": "其中 {{count}} 条尚未到期, 本轮跳过."
   },
   "maintenance": {
     "title": "库维护",
@@ -129,6 +158,23 @@
       "queued": "校验任务已入队",
       "runFailed": "提交失败",
       "note": "校验只读；只有打开开关才会改写演员的头像地址。内网地址不校验。"
+    },
+    "upscale": {
+      "title": "超分",
+      "hint": "把低于尺寸与体积阈值的图放大; 阈值在设置里改, 这里只决定单轮处理多少份.",
+      "limit": "单轮份数",
+      "run": "开始超分",
+      "queued": "超分任务已加入队列",
+      "runFailed": "超分任务提交失败",
+      "note": "结果在页面底部的最近结果里查看."
+    },
+    "recent": {
+      "title": "最近结果",
+      "refresh": "重新读取",
+      "loadFailed": "读取任务结果失败",
+      "empty": "还没有维护任务记录.",
+      "running": "任务还没有结束, 结束后显示结果.",
+      "justNow": "刚刚"
     }
   },
   "notify": {
@@ -146,7 +192,11 @@
       "titlePlaceholder": "例如 库扫描完成",
       "bodyLabel": "正文",
       "bodyPlaceholder": "推送内容",
-      "run": "发送"
+      "run": "发送",
+      "digest": "发一条周报",
+      "digestHint": "周报由后端现算过去七天的统计, 用来确认渠道可用.",
+      "titleCounter": "{{used}} / {{limit}} 字",
+      "bodyCounter": "{{used}} / {{limit}} 字"
     },
     "records": {
       "title": "最近推送",
@@ -174,7 +224,8 @@
     "recordKinds": {
       "message": "消息",
       "digest": "摘要"
-    }
+    },
+    "digestQueued": "周报已加入队列"
   },
   "audit": {
     "title": "审计",

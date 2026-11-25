@@ -92,7 +92,7 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
         if not config.enabled:
             return TaskResult(success=False, error="字幕补全未启用")
         if not usable_providers(config):
-            return TaskResult(success=False, error="没有可用的字幕来源: 请启用来源或填写 assrt token")
+            return TaskResult(success=False, error="没有可用的字幕来源: 请在设置里启用字幕补全并至少勾选一个站点")
 
         try:
             targets = await self._select_targets(payload)

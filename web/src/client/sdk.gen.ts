@@ -888,7 +888,10 @@ export const getTaskLog = <ThrowOnError extends boolean = false>(options: Option
 /**
  * Get Task Record
  *
- * 导出任务记录 (zip). 默认脱敏; include_secrets=true 需本地存在 .secrets.hot.json.
+ * 导出任务记录 (zip), 一律脱敏.
+ *
+ * 任务目录旁的 ``.secrets.hot.json`` 只在宿主机上留作调试, 不经 HTTP 下发: 它是 GET 请求,
+ * 不进写操作留痕表, 而内容包含站点 cookie 与大模型密钥.
  */
 export const getTaskRecord = <ThrowOnError extends boolean = false>(options: Options<GetTaskRecordData, ThrowOnError>): RequestResult<GetTaskRecordResponses, GetTaskRecordErrors, ThrowOnError> => (options.client ?? client).get<GetTaskRecordResponses, GetTaskRecordErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/record', ...options });
 

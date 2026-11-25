@@ -202,7 +202,9 @@ async def delete_library(library_id: int, repo: RepoDep, runtime: RuntimeDep):
     if runtime.watcher_service:
         runtime.watcher_service.remove_library(library_id)
 
-    deleted_media = await repo.delete_library(library_id)
-    runtime.inventory_store.drop_library(library_id)
+    # 取库锁: 该库可能正在整理 / 刮削转移 / 洗版, 锁外删索引会让任务随后往已删的行上写
+    async with await runtime.library_locks.get(library_id):
+        deleted_media = await repo.delete_library(library_id)
+        runtime.inventory_store.drop_library(library_id)
     logger.info("library deleted", library_id=library_id, deleted_media=deleted_media)
     return Response(status_code=204)

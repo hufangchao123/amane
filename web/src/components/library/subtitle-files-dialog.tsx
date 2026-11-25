@@ -7,6 +7,7 @@ import {
   Group,
   Loader,
   Modal,
+  Select,
   Stack,
   Table,
   Text,
@@ -48,6 +49,25 @@ interface SubtitleFilesDialogProps {
   onChanged?: () => void;
 }
 
+/** 上传时可选的语言段; 后端按 `语言` 命名成 `<视频名>.<语言>.<扩展名>`, 只收短横线分隔的字母数字. */
+const UPLOAD_LANGUAGES = ["zh", "zh-TW", "en"] as const;
+type UploadLanguage = (typeof UPLOAD_LANGUAGES)[number];
+const UPLOAD_LANGUAGE_DEFAULT: UploadLanguage = "zh";
+
+/** 语言段的显示名; 语言码本身是文件名的一部分, 不进文案. */
+const UPLOAD_LANGUAGE_LABELS: Record<
+  UploadLanguage,
+  "subtitles.uploadLanguageZh" | "subtitles.uploadLanguageZhTw" | "subtitles.uploadLanguageEn"
+> = {
+  zh: "subtitles.uploadLanguageZh",
+  "zh-TW": "subtitles.uploadLanguageZhTw",
+  en: "subtitles.uploadLanguageEn",
+};
+
+function parseUploadLanguage(value: string | null): UploadLanguage {
+  return UPLOAD_LANGUAGES.find((item) => item === value) ?? UPLOAD_LANGUAGE_DEFAULT;
+}
+
 /** 已知的中文语言标签; 其余段 (如 `CD2` / `004`) 是文件名里的分卷或序号, 不是语言. */
 const ZH_LANGUAGE_LABELS: ReadonlySet<string> = new Set(["zh", "zh-cn", "zh-tw"]);
 
@@ -78,6 +98,7 @@ export function SubtitleFilesDialog({
   const { t, i18n } = useTranslation(["library", "common"]);
   const [busy, setBusy] = useState(false);
   const [customName, setCustomName] = useState("");
+  const [language, setLanguage] = useState<UploadLanguage>(UPLOAD_LANGUAGE_DEFAULT);
 
   const listingQuery = useQuery({
     queryKey: ["subtitles", "files", mediaFileId],
@@ -100,6 +121,7 @@ export function SubtitleFilesDialog({
       const form = new FormData();
       form.append("media_file_id", String(mediaFileId));
       form.append("file", file);
+      form.append("language", language);
       if (customName.trim()) form.append("filename", customName.trim());
       const resp = await apiFetch("/api/subtitles/upload", { method: "POST", body: form });
       if (!resp.ok) {
@@ -110,6 +132,8 @@ export function SubtitleFilesDialog({
         return;
       }
       notifications.show({ message: t("library:upload.done"), color: "teal" });
+      // 自定义名只对刚传的这一份有意义; 留着会让下一份也用它, 撞名后落位会失败.
+      setCustomName("");
       onChanged?.();
       await listingQuery.refetch();
     } catch (err) {
@@ -249,6 +273,18 @@ export function SubtitleFilesDialog({
         )}
 
         <Stack gap="xs">
+          <Select
+            label={t("subtitles.uploadLanguageLabel")}
+            description={t("subtitles.uploadLanguageHint")}
+            data={UPLOAD_LANGUAGES.map((value) => ({
+              value,
+              label: t(UPLOAD_LANGUAGE_LABELS[value]),
+            }))}
+            value={language}
+            onChange={(value) => setLanguage(parseUploadLanguage(value))}
+            allowDeselect={false}
+            w={200}
+          />
           <TextInput
             label={t("subtitles.uploadNameLabel")}
             description={t("subtitles.uploadNameHint")}

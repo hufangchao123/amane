@@ -18,6 +18,7 @@ import {
   IconDots,
   IconFolderDown,
   IconForms,
+  IconMicrophone,
   IconRefresh,
   IconTrash,
   IconUpload,
@@ -66,12 +67,15 @@ function statusColor(status: MediaFileStatus): string {
   }
 }
 
-/** library.path 前缀去除, 得到库内相对路径; 非该库路径时原样返回. */
+/** library.path 前缀去除, 得到库内相对路径; 非该库路径时原样返回.
+ *
+ * 比较前缀前先补上分隔符: 库根 `/media/av` 与 `/media/av2` 只差一个字符,
+ * 按裸前缀裁剪会把后者的 `2/xxx` 当成相对路径.
+ */
 function relativePath(libraryPath: string, path: string): string {
-  if (path.startsWith(libraryPath)) {
-    return path.slice(libraryPath.length).replace(/^\//, "");
-  }
-  return path;
+  const root = libraryPath.endsWith("/") ? libraryPath : `${libraryPath}/`;
+  if (!path.startsWith(root)) return path;
+  return path.slice(root.length);
 }
 
 interface DeleteMenuItemsProps {
@@ -322,6 +326,22 @@ export function LibraryMediaTable({
     }
   }
 
+  /** 单文件转写: 后端按文件入队, 视频没有音轨或转写未开启时任务会自己失败并留原因. */
+  async function handleGenerateOne(mediaId: number) {
+    try {
+      await submitTask({
+        body: { type: "subtitle_generate", media_file_id: mediaId },
+        throwOnError: true,
+      });
+      notifications.show({ message: t("common:toast.subtitleGenerateQueued"), color: "blue" });
+    } catch (err) {
+      notifications.show({
+        message: extractErrorMessage(err, t("common:toast.operationFailed")),
+        color: "red",
+      });
+    }
+  }
+
   async function handleScrapeOne(mediaId: number) {
     try {
       await submitTask({ body: { type: "scrape", media_id: mediaId }, throwOnError: true });
@@ -561,6 +581,13 @@ export function LibraryMediaTable({
                       >
                         <IconForms size={16} />
                       </HintedActionIcon>
+                      <HintedActionIcon
+                        variant="subtle"
+                        label={t("actions.generateSubtitle")}
+                        onClick={() => void handleGenerateOne(item.id)}
+                      >
+                        <IconMicrophone size={16} />
+                      </HintedActionIcon>
                       <Menu position="bottom-end" withinPortal>
                         <Menu.Target>
                           <ActionIcon
@@ -607,6 +634,12 @@ export function LibraryMediaTable({
                             onClick={() => setOverrideTarget(item)}
                           >
                             {t("actions.scrapeWithNumber")}
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconMicrophone size={14} />}
+                            onClick={() => void handleGenerateOne(item.id)}
+                          >
+                            {t("actions.generateSubtitle")}
                           </Menu.Item>
                           <Menu.Divider />
                           <DeleteMenuItems
