@@ -37,6 +37,7 @@ from amane.agent.rows import (
     UserMessageRow,
 )
 from amane.agent.service import AgentService
+from amane.agent.tool_call_ids import UniqueToolCallIds
 from amane.agent.tools import AgentDeps, build_explore_toolset, require_approval
 from amane.agent.trace import SessionStore
 from amane.api.routes import agent_agui
@@ -833,3 +834,73 @@ def test_new_messages_keeps_only_unseen_user_input(
     """按用户输入切分: 与服务端历史逐条相等的开头被裁掉, 之后的内容整段算本轮新输入."""
     incoming = agent_agui._new_messages(_agui_messages(*replayed), _history(*history_texts))
     assert agent_agui._new_user_texts(incoming) == expected
+
+
+@pytest.mark.asyncio
+async def test_reused_tool_call_id_across_two_approvals(app: FastAPI, client: AsyncClient) -> None:
+    """上游每轮都从 call_00 重新编号时, 第二次审批不能撞上历史里的同名调用.
+
+    回归: pydantic-ai 在恢复审批时要求 ``tool_call_id`` 全历史唯一, 撞了会抛
+    ``Tool call 'call_00' was already executed and its result cannot be overridden``.
+    """
+    ran: list[str] = []
+    toolset: FunctionToolset[AgentDeps] = FunctionToolset()
+
+    @toolset.tool
+    async def delete_metadata(ctx: RunContext[AgentDeps], target: str) -> str:
+        """删除一条元数据 (需审批)."""
+        require_approval(ctx, sql=f"DELETE FROM metadata WHERE id = {target}", tool="delete_metadata")
+        ran.append(target)
+        return "OK"
+
+    async def stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[StreamItem]:
+        done = len(_tool_returns(messages))
+        if done == 0:
+            yield _call(name="delete_metadata", args={"target": "1"}, call_id="call_00")
+        elif done == 1:
+            # 故意复用同一个 id: 真实网关(GLM 系)每轮都从 call_00 开始编号
+            yield _call(name="delete_metadata", args={"target": "2"}, call_id="call_00")
+        else:
+            yield "两个都删了"
+
+    service = await service_of(app, client)
+    session = await service.create_session(title="reused-id")
+    assert session.id is not None
+    # 生产环境由 build_agent 挂上 UniqueToolCallIds; 这里按同样装配方式装脚本化模型
+    service.agent = Agent[AgentDeps, str | DeferredToolRequests](
+        FunctionModel(stream_function=stream),
+        deps_type=AgentDeps,
+        output_type=[str, DeferredToolRequests],
+        toolsets=[toolset],
+        capabilities=[UniqueToolCallIds()],
+    )
+
+    first = await _run(client, session.id, [_user("删掉 1 和 2")])
+    first_interrupt = first[-1]["outcome"]["interrupts"][0]
+    approved = await _run(
+        client,
+        session.id,
+        [_user("删掉 1 和 2"), _call_message("call_00", "delete_metadata", {"target": "1"})],
+        resume=[{"interruptId": first_interrupt["id"], "status": "resolved", "payload": {"approved": True}}],
+    )
+    assert ran == ["1"]
+    assert approved[-1]["outcome"]["type"] == "interrupt"
+    second_interrupt = approved[-1]["outcome"]["interrupts"][0]
+    # 入历史的是改写后的 id: 两次调用的 id 必须不同, 否则恢复审批时会撞车
+    stored_ids = [
+        p.tool_call_id
+        for m in service.store_for(session.id).load_messages()
+        for p in getattr(m, "parts", ())
+        if type(p).__name__ == "ToolCallPart"
+    ]
+    assert len(set(stored_ids)) == len(stored_ids)
+
+    last = await _run(
+        client,
+        session.id,
+        [_user("删掉 1 和 2"), _call_message("call_00", "delete_metadata", {"target": "2"})],
+        resume=[{"interruptId": second_interrupt["id"], "status": "resolved", "payload": {"approved": True}}],
+    )
+    assert ran == ["1", "2"]
+    assert last[-1]["outcome"] == {"type": "success"}
+    assert not any(e["type"] == "RUN_ERROR" for e in last)
