@@ -28,10 +28,9 @@ async def _media(repo: Repository, library_id: int, root: Path, name: str, numbe
     target = root / name
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(b"x")
-    media = await repo.create_media_file(
+    return await repo.create_media_file(
         library_id=library_id, path=str(target), number=number, status=MediaFileStatus.SCRAPED
     )
-    return media
 
 
 class TestGaps:

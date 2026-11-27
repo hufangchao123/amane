@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+import structlog
 from ag_ui.core import (
     BaseEvent,
     InputContent,
@@ -64,6 +65,7 @@ from ...agent.rows import (
     no_approvals,
 )
 from ...agent.runtime import UNLIMITED_USAGE, resolve_model_settings
+from ...agent.tool_call_ids import dedupe_tool_call_ids
 from ...agent.tools import AgentDeps
 from ...agent.trace import SessionStore
 from ...agent.usage import request_usage, turn_usage_from_run
@@ -71,6 +73,8 @@ from ...db.models import AgentSessionStatus
 from ...utils.urls import redact_text
 from ..deps import AgentDep, RepoDep, RuntimeDep
 from ..models.agent import AgentCancelResponse
+
+logger = structlog.get_logger()
 
 router = APIRouter(tags=["agent"])
 
@@ -284,6 +288,11 @@ async def run_agent_agui(
     try:
         store = service.store_for(session_id)
         history: list[ModelMessage] = list(store.load_messages() or [])
+        # 上游网关每轮都从 call_00 重新编号, 与历史里的同名调用撞车会让审批恢复失败;
+        # 这里只改历史里较早的那些, 保持正在等待审批的调用 id 不变.
+        history, renamed = dedupe_tool_call_ids(history)
+        if renamed:
+            logger.debug("deduped tool call ids", renamed=renamed, session_id=session_id)
         adapter = await AGUIAdapter[AgentDeps, str | DeferredToolRequests].from_request(request, agent=agent)
         incoming = _new_messages(list(adapter.run_input.messages), history)
         adapter.run_input.messages = incoming

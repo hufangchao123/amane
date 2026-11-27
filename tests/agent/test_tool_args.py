@@ -109,7 +109,8 @@ def test_agent_registers_the_repair_capability() -> None:
     assert agent is not None
     names = [type(capability).__name__ for capability in agent.root_capability.capabilities]
     assert "RepairToolArgs" in names
-    assert names.index("UniqueToolCallIds") < names.index("RepairToolArgs")
+    # 工具调用 id 不再按回合改名(那会让流式事件与历史不一致), 改在载入历史时去重
+    assert "UniqueToolCallIds" not in names
 
 
 def test_capability_is_an_abstract_capability() -> None:

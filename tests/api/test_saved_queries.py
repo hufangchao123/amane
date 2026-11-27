@@ -486,7 +486,9 @@ async def test_result_exposes_preview_entity_for_the_grid(client: AsyncClient, r
     body = (await client.get(f"/saved-queries/{sq.id}/result")).json()
     assert body["preview_entity"] == "metadata"
 
-    plain = await repo.create_saved_query(name="计数", sql="SELECT COUNT(*) AS n FROM metadata", entity=SavedQueryEntity.DATA)
+    plain = await repo.create_saved_query(
+        name="计数", sql="SELECT COUNT(*) AS n FROM metadata", entity=SavedQueryEntity.DATA
+    )
     assert plain.id is not None
     body = (await client.get(f"/saved-queries/{plain.id}/result")).json()
     assert body["preview_entity"] is None

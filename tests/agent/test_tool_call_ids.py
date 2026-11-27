@@ -1,44 +1,105 @@
-"""``UniqueToolCallIds``: 上游复用 ``call_00`` 时不能撞历史里的同名调用."""
+"""``dedupe_tool_call_ids``: 历史里的同 id 调用改名, 在飞的那次保持原样."""
 
 from __future__ import annotations
 
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
-
-from amane.agent.tool_call_ids import uniquify_tool_call_ids
-
-
-def _response(*parts: object) -> ModelResponse:
-    return ModelResponse(parts=list(parts))  # type: ignore[arg-type]
-
-
-def test_duplicate_ids_across_turns_become_unique() -> None:
-    first = uniquify_tool_call_ids(_response(ToolCallPart(tool_name="list_media", args="{}", tool_call_id="call_00")))
-    second = uniquify_tool_call_ids(_response(ToolCallPart(tool_name="list_media", args="{}", tool_call_id="call_00")))
-    first_id = first.parts[0].tool_call_id  # type: ignore[union-attr]
-    second_id = second.parts[0].tool_call_id  # type: ignore[union-attr]
-
-    assert first_id.startswith("call_00-")
-    assert second_id.startswith("call_00-")
-    assert first_id != second_id
-    assert len(first_id) == len("call_00") + 1 + 8
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
 
 
-def test_ids_inside_one_response_are_unique_too() -> None:
-    response = uniquify_tool_call_ids(
-        _response(
-            ToolCallPart(tool_name="a", args="{}", tool_call_id="call_00"),
-            ToolCallPart(tool_name="b", args="{}", tool_call_id="call_00"),
-        )
-    )
-    ids = [part.tool_call_id for part in response.parts if isinstance(part, ToolCallPart)]  # type: ignore[union-attr]
-    assert len(set(ids)) == 2
+def _call(tool_call_id: str, name: str = "list_media") -> ModelResponse:
+    return ModelResponse(parts=[ToolCallPart(tool_name=name, args="{}", tool_call_id=tool_call_id)])
 
 
-def test_non_tool_parts_are_kept() -> None:
-    response = uniquify_tool_call_ids(_response(TextPart(content="hello")))
-    assert response.parts == [TextPart(content="hello")]
+def _ret(tool_call_id: str, name: str = "list_media") -> ModelRequest:
+    return ModelRequest(parts=[ToolReturnPart(tool_name=name, content="ok", tool_call_id=tool_call_id)])
 
 
-def test_response_without_tool_calls_is_returned_as_is() -> None:
-    original = _response(TextPart(content="done"))
-    assert uniquify_tool_call_ids(original) is original
+def _ids(messages: list[ModelMessage]) -> list[str]:
+    return [
+        part.tool_call_id
+        for message in messages
+        for part in message.parts
+        if isinstance(part, (ToolCallPart, ToolReturnPart))
+    ]
+
+
+def test_older_duplicate_is_renamed_and_last_kept() -> None:
+    from amane.agent.tool_call_ids import dedupe_tool_call_ids
+
+    history: list[ModelMessage] = [_call("call_00"), _ret("call_00"), _call("call_00"), _ret("call_00")]
+
+    deduped, renamed = dedupe_tool_call_ids(history)
+
+    ids = _ids(deduped)
+    assert renamed == 2  # 早那条的调用与它的结果
+    assert ids[0] != "call_00"
+    assert ids[0] == ids[1]  # 调用与结果同步改名
+    assert ids[1].startswith("call_00-")
+    assert ids[2] == ids[3] == "call_00"  # 最后一次保持原样, 等待审批的那次不会被改
+    assert len(set(ids)) == 2  # {call_00, call_00-xxx}
+
+
+def test_unique_ids_are_untouched() -> None:
+    from amane.agent.tool_call_ids import dedupe_tool_call_ids
+
+    history: list[ModelMessage] = [_call("call_00"), _ret("call_00"), _call("call_01"), _ret("call_01")]
+
+    deduped, renamed = dedupe_tool_call_ids(history)
+
+    assert renamed == 0
+    assert deduped == history
+
+
+def test_new_call_without_result_is_not_merged_into_the_old_one() -> None:
+    from amane.agent.tool_call_ids import dedupe_tool_call_ids
+
+    # 第二次 call_00 还没结果（正在等审批）: 它是一条新记录, 不该和上一条视作同一组
+    history: list[ModelMessage] = [_call("call_00"), _ret("call_00"), _call("call_00")]
+
+    deduped, renamed = dedupe_tool_call_ids(history)
+
+    ids = _ids(deduped)
+    assert renamed == 2
+    assert ids[0] == ids[1] != "call_00"
+    assert ids[2] == "call_00"
+
+
+def test_retry_prompt_follows_its_call() -> None:
+    from amane.agent.tool_call_ids import dedupe_tool_call_ids
+
+    history: list[ModelMessage] = [
+        _call("call_00"),
+        ModelRequest(
+            parts=[
+                ToolReturnPart(tool_name="list_media", content="bad args", tool_call_id="call_00", outcome="retried")
+            ]
+        ),
+        _call("call_00"),
+        _ret("call_00"),
+    ]
+
+    deduped, renamed = dedupe_tool_call_ids(history)
+
+    ids = _ids(deduped)
+    assert renamed == 2
+    assert ids[0] == ids[1] != "call_00"
+    assert ids[2] == ids[3] == "call_00"
+
+
+def test_text_parts_and_empty_history_survive() -> None:
+    from amane.agent.tool_call_ids import dedupe_tool_call_ids
+
+    empty, renamed = dedupe_tool_call_ids([])
+    assert empty == []
+    assert renamed == 0
+
+    response = ModelResponse(parts=[TextPart(content="hello")])
+    deduped, renamed = dedupe_tool_call_ids([response])
+    assert renamed == 0
+    assert deduped == [response]

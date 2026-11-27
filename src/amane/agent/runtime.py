@@ -12,7 +12,6 @@ from ..llm import build_model as build_llm_model
 from .capabilities import build_capabilities
 from .schema_docs import build_schema_docs
 from .tool_args import RepairToolArgs
-from .tool_call_ids import UniqueToolCallIds
 from .tool_names import ToolNameAlias
 from .tool_schema import build_tool_schema_capability
 from .tools import AgentDeps, build_explore_toolset
@@ -116,7 +115,6 @@ def build_agent(config: AgentConfig) -> Agent[AgentDeps, str | DeferredToolReque
         toolsets=[build_explore_toolset()],
         capabilities=[
             ToolNameAlias(),
-            UniqueToolCallIds(),
             RepairToolArgs(),
             build_tool_schema_capability(),
             *build_capabilities(),

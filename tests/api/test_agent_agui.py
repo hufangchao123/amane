@@ -37,7 +37,7 @@ from amane.agent.rows import (
     UserMessageRow,
 )
 from amane.agent.service import AgentService
-from amane.agent.tool_call_ids import UniqueToolCallIds
+from amane.agent.tool_call_ids import dedupe_tool_call_ids
 from amane.agent.tools import AgentDeps, build_explore_toolset, require_approval
 from amane.agent.trace import SessionStore
 from amane.api.routes import agent_agui
@@ -880,13 +880,12 @@ async def test_reused_tool_call_id_across_two_approvals(app: FastAPI, client: As
     service = await service_of(app, client)
     session = await service.create_session(title="reused-id")
     assert session.id is not None
-    # 生产环境由 build_agent 挂上 UniqueToolCallIds; 这里按同样装配方式装脚本化模型
+    # 生产环境不需要改当回合的 id: 历史载入时由 dedupe_tool_call_ids 改名, 流式事件保持原样.
     service.agent = Agent[AgentDeps, str | DeferredToolRequests](
         FunctionModel(stream_function=stream),
         deps_type=AgentDeps,
         output_type=[str, DeferredToolRequests],
         toolsets=[toolset],
-        capabilities=[UniqueToolCallIds()],
     )
 
     first = await _run(client, session.id, [_user("删掉 1 和 2")])
@@ -900,14 +899,18 @@ async def test_reused_tool_call_id_across_two_approvals(app: FastAPI, client: As
     assert ran == ["1"]
     assert approved[-1]["outcome"]["type"] == "interrupt"
     second_interrupt = approved[-1]["outcome"]["interrupts"][0]
-    # 入历史的是改写后的 id: 两次调用的 id 必须不同, 否则恢复审批时会撞车
-    stored_ids = [
-        p.tool_call_id
-        for m in service.store_for(session.id).load_messages()
-        for p in getattr(m, "parts", ())
-        if type(p).__name__ == "ToolCallPart"
+    # 网关两次都发 call_00, 落盘的历史里就是两条同名调用; 载入时 dedupe 会把较早那条改名,
+    # 于是第二次恢复审批不会撞上「已执行过的 call_00」.
+    stored = service.store_for(session.id).load_messages()
+    stored_ids = [p.tool_call_id for m in stored for p in getattr(m, "parts", ()) if type(p).__name__ == "ToolCallPart"]
+    assert stored_ids.count("call_00") == 2
+    deduped, renamed = dedupe_tool_call_ids(stored)
+    assert renamed == 2  # 早那条调用的 call 部件 + 它的结果部件
+    deduped_ids = [
+        p.tool_call_id for m in deduped for p in getattr(m, "parts", ()) if type(p).__name__ == "ToolCallPart"
     ]
-    assert len(set(stored_ids)) == len(stored_ids)
+    assert len(set(deduped_ids)) == len(deduped_ids)
+    assert "call_00" in deduped_ids
 
     last = await _run(
         client,
