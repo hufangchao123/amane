@@ -13,6 +13,7 @@ from fastapi import HTTPException, Request
 from starlette.responses import Response, StreamingResponse
 from starlette.types import Receive, Scope, Send
 
+from ..net.egress import proxy_for_target
 from ..plugins.api import UpstreamPlaybackTarget
 from ..utils.urls import redact_url
 from .disconnect import DisconnectSignal
@@ -337,7 +338,18 @@ class StreamClient:
     """Long-lived streaming HTTP client. Not the scrape WebClient."""
 
     def __init__(self, *, proxy: str | None = None) -> None:
-        self._client = httpx.AsyncClient(
+        self._proxy = proxy
+        self._client = self._make_client(proxy)
+        # 内网上游 (局域网里的 Emby / 自建反代) 直连: 走代理同样白等超时, 且这一段本来就是本机到本机.
+        self._direct: httpx.AsyncClient | None = None
+        self._gate = UpstreamGate()
+        self._in_flight = 0
+        self._idle = asyncio.Event()
+        self._idle.set()
+
+    @staticmethod
+    def _make_client(proxy: str | None) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
             timeout=httpx.Timeout(
                 connect=10.0,
                 read=PLAYBACK_READ_TIMEOUT_SECONDS,
@@ -351,10 +363,17 @@ class StreamClient:
             trust_env=False,
             headers={"Accept-Encoding": "identity"},
         )
-        self._gate = UpstreamGate()
-        self._in_flight = 0
-        self._idle = asyncio.Event()
-        self._idle.set()
+
+    def _client_for(self, url: str) -> httpx.AsyncClient:
+        """按目标选取连接池: 内网目标用直连池, 其余用带代理的池.
+
+        未配置代理时只有一个池, 直接用它 (测试替换 ``_client`` 与运维查连接池都依赖这一点).
+        """
+        if self._proxy is None or proxy_for_target(url, self._proxy) is not None:
+            return self._client
+        if self._direct is None:
+            self._direct = self._make_client(None)
+        return self._direct
 
     def _enter(self) -> None:
         self._in_flight += 1
@@ -374,6 +393,8 @@ class StreamClient:
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(self._idle.wait(), timeout=DRAIN_TIMEOUT_SECONDS)
         await self._client.aclose()
+        if self._direct is not None:
+            await self._direct.aclose()
 
     async def _open_upstream(
         self,
@@ -406,8 +427,9 @@ class StreamClient:
             self._gate.release(source_id)
 
         try:
-            upstream_req = self._client.build_request(method, url, headers=dict(headers))
-            response = await self._client.send(upstream_req, stream=True)
+            client = self._client_for(str(url))
+            upstream_req = client.build_request(method, url, headers=dict(headers))
+            response = await client.send(upstream_req, stream=True)
         except httpx.RequestError as exc:
             await release()
             logger.warning(

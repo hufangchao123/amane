@@ -17,7 +17,7 @@ from curl_cffi import CurlError
 from curl_cffi.requests import AsyncSession, BrowserTypeLiteral, Response
 
 from ..utils.urls import redact_url
-from .egress import EgressPolicy, ensure_http_scheme
+from .egress import EgressPolicy, ensure_http_scheme, proxy_for_target
 from .errors import FailureKind, RequestError, RequestFailure
 from .recording import get_bound_http_recorder, skip_body_recording
 
@@ -284,10 +284,13 @@ class WebClient:
         await self._limiters.get(httpx.URL(url).host).acquire()
 
     def _proxy_for(self, host: str | None) -> str | None:
-        """该 host 实际使用的代理: 站点级设定优先, 含显式直连 (值为 ``None``)."""
-        if host in self._proxy_overrides:
-            return self._proxy_overrides[host]
-        return self._proxy
+        """该 host 实际使用的代理: 站点级设定优先, 含显式直连 (值为 ``None``).
+
+        内网目标 (字面私网地址 / ``localhost`` / 单段名字 / 内网域名后缀) 一律直连: 显式代理路径上
+        代理侧的分流规则未必生效, 套上去只会白等超时.
+        """
+        chosen = self._proxy_overrides.get(host, self._proxy)
+        return proxy_for_target(host, chosen)
 
     async def request(
         self,

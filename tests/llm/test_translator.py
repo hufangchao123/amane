@@ -468,3 +468,29 @@ async def test_forced_translation_joins_in_flight_request(cache):
     assert users == ["Hello world"]
     assert await cache.get("Hello world", Language.ZH_CN, MetadataField.TITLE, _SYSTEM_ZH) == "新译文"
     await cache.close()
+
+
+class TestModelClientProxy:
+    """大模型传输客户端按端点决定是否套代理: 局域网里的自建网关一律直连."""
+
+    @pytest.mark.parametrize(
+        ("base_url", "expected"),
+        [
+            ("http://192.168.9.117:17863/v1", None),
+            ("http://172.17.0.1:18000/v1", None),
+            ("http://localhost:8080/v1", None),
+            ("https://api.openai.com/v1", "http://192.168.9.122:7890"),
+        ],
+    )
+    def test_proxy_depends_on_endpoint(self, monkeypatch: pytest.MonkeyPatch, base_url: str, expected: str | None):
+        captured: dict[str, object] = {}
+
+        class _CapturedClient:
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+
+        monkeypatch.setattr(translator_module, "AsyncClient", _CapturedClient)
+
+        translator_module.build_model_http_client("http://192.168.9.122:7890", base_url=base_url)
+
+        assert captured["proxy"] == expected

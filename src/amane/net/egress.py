@@ -85,6 +85,58 @@ def is_internal_address(address: str) -> bool:
     return any(ip in network for network in _INTERNAL_NETWORKS)
 
 
+_LOCAL_HOST_SUFFIXES = (".local", ".lan", ".internal", ".home", ".localdomain", ".intranet")
+
+
+def _host_part(target: str) -> str | None:
+    """从完整 URL 或裸 ``host[:port]`` 取出主机名."""
+    text = target.strip()
+    if not text:
+        return None
+    if "://" in text:
+        return urlsplit(text).hostname
+    host = text.rsplit("@", 1)[-1].split("/", 1)[0]
+    if host.startswith("[") and "]" in host:
+        return host[1 : host.index("]")]
+    return host.rsplit(":", 1)[0] or None
+
+
+def is_local_host(host: str) -> bool:
+    """主机名是否明显指向本机或内网.
+
+    字面地址按网段判定; 名字按形态判定: ``localhost``、单段名字 (``whisper`` / ``nas``)、
+    以及常见内网域名后缀. 必须解析 DNS 才知道归属的公网名字不在此列 — 那类分流交给代理侧规则.
+    """
+    name = host.strip().rstrip(".").lower()
+    if not name:
+        return False
+    bare = name[1:-1] if name.startswith("[") and name.endswith("]") else name
+    try:
+        return is_internal_address(bare)
+    except ValueError:
+        pass
+    if bare == "localhost" or bare.endswith(".localhost"):
+        return True
+    if "." not in bare:
+        return True
+    return bare.endswith(_LOCAL_HOST_SUFFIXES)
+
+
+def proxy_for_target(target: str | None, proxy: str | None) -> str | None:
+    """按目标决定是否套代理: 内网目标一律直连.
+
+    代理侧的分流规则 (``IP-CIDR,192.168.0.0/16,DIRECT``) 只约束「被劫持的数据包」, 未必覆盖
+    「客户端主动连代理端口」这条显式代理路径 — 2026-11-27 的线上事故正是这样: 大模型端点是内网
+    地址, 经代理每次白等 60 秒超时, 翻译 100% 失败而报错还归到「端点没有可用账号」.
+    """
+    if proxy is None or target is None:
+        return proxy
+    host = _host_part(target)
+    if host and is_local_host(host):
+        return None
+    return proxy
+
+
 async def resolve_addresses(host: str, port: int) -> set[str]:
     """解析 host 的全部地址. 模块级函数便于测试替换, 策略对象自身不发起 I/O."""
     infos = await asyncio.to_thread(socket.getaddrinfo, host, port, type=socket.SOCK_STREAM)

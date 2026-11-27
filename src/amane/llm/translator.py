@@ -14,6 +14,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart, U
 from pydantic_ai.models import Model
 
 from ..enums import ApiType, Language, MetadataField
+from ..net.egress import proxy_for_target
 from ..utils import zhconv
 from ..utils.language import needs_llm_translation
 from .cache import TranslationCache
@@ -167,13 +168,21 @@ class LLMTranslator:
         return _THINK.sub("", text).strip() if text else None
 
 
-def build_model_http_client(proxy: str | None = None) -> AsyncClient:
+def build_model_http_client(proxy: str | None = None, *, base_url: str | None = None) -> AsyncClient:
     """翻译路径专用的传输客户端: 带 proxy 与统一超时, 生命周期归调用方 (``async with``).
 
     不传客户端时 pydantic-ai 会自建并托管默认客户端, 那条路不带 proxy —— 端点需要代理时请求全部超时,
     报错还会落到「端点没有可用账号」这类误导性的结论上.
+
+    ``base_url`` 指向本机或内网时自动直连 (见 ``egress.proxy_for_target``): 自建的大模型网关通常就在
+    局域网里, 套上代理每次都要等满 ``_TIMEOUT`` 秒.
     """
-    return AsyncClient(proxy=proxy, timeout=Timeout(_TIMEOUT), follow_redirects=True, trust_env=False)
+    return AsyncClient(
+        proxy=proxy_for_target(base_url, proxy),
+        timeout=Timeout(_TIMEOUT),
+        follow_redirects=True,
+        trust_env=False,
+    )
 
 
 def build_translator(
@@ -194,7 +203,7 @@ def build_translator(
     if not enabled or not api_key:
         return None
     # 翻译路径自建传输客户端 (proxy + 超时) 并交给 provider; 助理不传, 由 pydantic-ai 构造默认客户端.
-    http_client = build_model_http_client(proxy)
+    http_client = build_model_http_client(proxy, base_url=base_url)
     return LLMTranslator(
         build_model(api_type, base_url=base_url, api_key=api_key, model=model, http_client=http_client),
         cache,

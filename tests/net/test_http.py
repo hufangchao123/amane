@@ -397,6 +397,10 @@ class TestProxyResolution:
             ("https://direct.example/x", True, None),
             # 本机服务 (solver) 强制直连, 站点代理也不生效
             ("https://site.example/x", False, None),
+            # 内网目标一律直连: 显式代理路径上代理侧的分流规则未必生效
+            ("http://192.168.9.117:17863/v1/models", True, None),
+            ("http://127.0.0.1:18000/v1", True, None),
+            ("http://whisper:8000/health", True, None),
         ],
     )
     async def test_request_uses_host_proxy(
@@ -413,6 +417,21 @@ class TestProxyResolution:
         await client.request("GET", url, use_proxy=use_proxy)
 
         assert session.calls[0]["proxy"] == expected
+
+    @pytest.mark.asyncio
+    async def test_internal_target_wins_over_site_override(self, monkeypatch: pytest.MonkeyPatch):
+        """站点级代理也压不过「内网直连」: 那是可用性底线, 不是偏好."""
+        client = WebClient(
+            proxy=_GLOBAL_PROXY,
+            proxy_overrides={"192.168.9.117": _SITE_PROXY},
+            limiters=RateLimiters(default_rate=100),
+        )
+        session = _StubSession()
+        monkeypatch.setattr(client, "_session", session)
+
+        await client.request("GET", "http://192.168.9.117:17863/v1/models")
+
+        assert session.calls[0]["proxy"] is None
 
     @pytest.mark.asyncio
     async def test_download_follows_host_proxy(self, monkeypatch: pytest.MonkeyPatch, tmp_path):

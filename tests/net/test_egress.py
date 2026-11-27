@@ -2,7 +2,7 @@
 
 import pytest
 
-from amane.net.egress import EgressPolicy, is_internal_address
+from amane.net.egress import EgressPolicy, is_internal_address, is_local_host, proxy_for_target
 from amane.net.errors import EgressRejected, RequestError
 
 
@@ -232,3 +232,58 @@ class TestInternalAddress:
     def test_rejects_non_address(self, address: str):
         with pytest.raises(ValueError, match="does not appear to be an IPv4 or IPv6 address"):
             is_internal_address(address)
+
+
+class TestLocalHost:
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "192.168.9.117",
+            "10.0.0.1",
+            "172.17.0.1",
+            "127.0.0.1",
+            "[::1]",
+            "localhost",
+            "whisper",
+            "nas",
+            "emby.local",
+            "box.lan",
+            "svc.internal",
+        ],
+    )
+    def test_local(self, host: str):
+        assert is_local_host(host) is True
+
+    @pytest.mark.parametrize(
+        "host",
+        ["8.8.8.8", "javbus.com", "api.github.com", "www.google.co.jp", "sub.example.org"],
+    )
+    def test_public(self, host: str):
+        assert is_local_host(host) is False
+
+    def test_empty_is_not_local(self):
+        assert is_local_host("") is False
+
+
+class TestProxyForTarget:
+    def test_internal_target_drops_proxy(self):
+        assert proxy_for_target("http://192.168.9.117:17863/v1", "http://192.168.9.122:7890") is None
+        assert proxy_for_target("http://localhost:8000/", "http://192.168.9.122:7890") is None
+        assert proxy_for_target("http://172.17.0.1:18000/v1", "http://192.168.9.122:7890") is None
+
+    def test_public_target_keeps_proxy(self):
+        proxy = "http://192.168.9.122:7890"
+        assert proxy_for_target("https://api.github.com/zen", proxy) == proxy
+
+    def test_without_proxy_stays_none(self):
+        assert proxy_for_target("https://api.github.com/zen", None) is None
+
+    def test_missing_target_keeps_proxy(self):
+        proxy = "http://192.168.9.122:7890"
+        assert proxy_for_target(None, proxy) == proxy
+        assert proxy_for_target("", proxy) == proxy
+
+    def test_bare_host_and_port_forms(self):
+        proxy = "http://192.168.9.122:7890"
+        assert proxy_for_target("192.168.9.117:17863", proxy) is None
+        assert proxy_for_target("api.github.com:443", proxy) == proxy

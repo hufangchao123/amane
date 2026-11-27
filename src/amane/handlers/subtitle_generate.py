@@ -262,7 +262,7 @@ class SubtitleGenerateHandler(TaskHandler[SubtitleGeneratePayload, SubtitleGener
         if not hot.llm.enabled or not hot.llm.api_key:
             raise TranslationError("要求翻译, 但大模型未启用或缺 api_key")
         rate_limit = max(hot.llm.rate_limit, 0.1)
-        async with build_model_http_client(hot.network.proxy) as http_client:
+        async with build_model_http_client(hot.network.proxy, base_url=hot.llm.base_url) as http_client:
             model = build_model(
                 hot.llm.api_type,
                 base_url=hot.llm.base_url,
