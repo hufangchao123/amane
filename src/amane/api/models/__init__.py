@@ -95,7 +95,7 @@ from .playback import (
 from .plugins import PluginConfigUpdate, PluginListResponse, PluginResponse
 from .schedules import ScheduleCreateRequest, ScheduleListResponse, ScheduleResponse, ScheduleUpdateRequest
 from .semantic import SemanticDiagnosticsResponse, SemanticModelCounts, SemanticStatusResponse
-from .subtitles import SubtitleStatusResponse
+from .subtitles import SubtitleGapCounts, SubtitleGapItem, SubtitleGapsResponse, SubtitleStatusResponse
 from .system import DesktopResponse, ReleaseResponse
 from .tasks import (
     ActorPushSubmission,
@@ -252,6 +252,9 @@ __all__ = [
     "SemanticStatusResponse",
     "SubtitleAuditSubmission",
     "SubtitleFetchSubmission",
+    "SubtitleGapCounts",
+    "SubtitleGapItem",
+    "SubtitleGapsResponse",
     "SubtitleGenerateSubmission",
     "SubtitleStatusResponse",
     "TaskBatchAction",

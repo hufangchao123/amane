@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from httpx2 import AsyncClient
 
 from amane.agent.service import AgentService
-from amane.db.models import SavedQueryEntity
+from amane.db.models import FacetKind, SavedQueryEntity
+from amane.db.repo_types import WriteMode
 from amane.db.repository import Repository
 
 
@@ -384,3 +385,43 @@ async def test_list_saved_queries_filters(client: AsyncClient, repo: Repository)
     persisted_ids = {i["id"] for i in r.json()["items"]}
     assert kept.id in persisted_ids
     assert ephemeral.id not in persisted_ids
+
+
+@pytest.mark.asyncio
+async def test_list_carries_thumbnail_of_first_result(client: AsyncClient, repo: Repository) -> None:
+    """列表附带的缩略图: 取第一条结果的海报 / 头像, data 预设与坏 SQL 不给图."""
+    m = await repo.upsert_metadata(number="ABC-100", poster_urls=["https://img.example/abc100.jpg"])
+    assert m.id is not None
+    await repo.upsert_metadata(number="ABC-101", actors=["测试演员"])
+    facets, _ = await repo.list_facets(FacetKind.ACTOR)
+    actor_id = next(f.id for f in facets if f.name == "测试演员")
+    assert actor_id is not None
+    actor = await repo.update_actor(actor_id, mode=WriteMode.MANUAL, image_urls=["https://img.example/actor.jpg"])
+    assert actor is not None
+
+    sq_meta = await repo.create_saved_query(
+        name="有图的一部", sql=f"SELECT id FROM metadata WHERE id = {m.id}", entity=SavedQueryEntity.METADATA
+    )
+    sq_actor = await repo.create_saved_query(
+        name="演员预设", sql=f"SELECT id FROM actors WHERE id = {actor.id}", entity=SavedQueryEntity.ACTOR
+    )
+    sq_data = await repo.create_saved_query(
+        name="计数预设", sql="SELECT COUNT(*) AS n FROM metadata", entity=SavedQueryEntity.DATA
+    )
+    assert sq_meta.id is not None and sq_actor.id is not None and sq_data.id is not None
+    await repo.persist_saved_queries([sq_meta.id, sq_actor.id, sq_data.id])
+
+    r = await client.get("/saved-queries", params={"persisted_only": True})
+    assert r.status_code == 200
+    by_id = {item["id"]: item for item in r.json()["items"]}
+
+    meta_preview = by_id[sq_meta.id]["preview"]
+    assert meta_preview == {"entity_id": m.id, "title": "ABC-100", "image_url": "https://img.example/abc100.jpg"}
+    actor_preview = by_id[sq_actor.id]["preview"]
+    assert actor_preview == {"entity_id": actor_id, "title": "测试演员", "image_url": "https://img.example/actor.jpg"}
+    # data 预设的结果是行数据, 与图无关
+    assert by_id[sq_data.id]["preview"] is None
+
+    r = await client.get("/saved-queries", params={"persisted_only": True, "with_preview": False})
+    assert r.status_code == 200
+    assert all(item["preview"] is None for item in r.json()["items"])

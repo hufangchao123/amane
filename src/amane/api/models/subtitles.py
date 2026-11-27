@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -52,3 +53,43 @@ class SubtitleFilesResponse(BaseModel):
     extensions: list[str]
     """媒体库认可的扩展名; 上传只接受这些."""
     files: list[SubtitleFileEntry]
+
+
+class SubtitleGapItem(BaseModel):
+    """一份缺字幕的文件: 为什么缺、试过几次、能不能重试."""
+
+    media_file_id: int
+    number: str | None = None
+    """番号; 未刮削或文件名解析不出番号时为空."""
+    path: str
+    kind: Literal["missing", "multi_disc", "pointer"]
+    """``missing`` 是本地成片, ``multi_disc`` 是分卷, ``pointer`` 是网盘直链 (``.strm``)."""
+    reason: Literal["multi_disc", "pointer", "fetch_failed", "fetch_empty", "not_attempted"]
+    detail: str
+    """给人看的一句话原因."""
+    attempts: int = 0
+    """最近 ``window_days`` 天内的尝试次数."""
+    failed: int = 0
+    last_error: str | None = None
+    last_attempt_at: datetime | None = None
+    retryable: bool = True
+    """分卷不可重试: 抓整片字幕也对不齐."""
+
+
+class SubtitleGapCounts(BaseModel):
+    """按原因分组的计数, 界面用它画分组标题."""
+
+    missing: int = 0
+    multi_disc: int = 0
+    pointer: int = 0
+    failed: int = 0
+    fetch_empty: int = 0
+    not_attempted: int = 0
+
+
+class SubtitleGapsResponse(BaseModel):
+    items: list[SubtitleGapItem]
+    total: int
+    """缺口总数 (不受 ``limit`` 影响)."""
+    counts: SubtitleGapCounts
+    window_days: int

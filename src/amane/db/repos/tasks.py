@@ -480,6 +480,29 @@ class TasksRepoMixin(RepositoryMixinBase):
             await session.commit()
             return result.rowcount
 
+    async def list_subtitle_attempts(
+        self, *, task_type: TaskType, since: datetime
+    ) -> list[tuple[int, TaskStatus, str | None, datetime]]:
+        """字幕类任务的尝试记录, 按 id 倒序.
+
+        返回 ``(media_file_id, status, error, created_at)``; 只取载荷里带 ``media_file_id`` 的行 ——
+        按库或按番号发起的任务不归属单个文件, 对"这份为什么还缺"没有解释力. 聚合与判定放在
+        ``subtitles/gaps.py``, 这里只把行取出来.
+        """
+        statement = (
+            select(Task.payload, Task.status, Task.error, Task.created_at)
+            .where(col(Task.type) == task_type, col(Task.created_at) >= since)
+            .order_by(col(Task.id).desc())
+        )
+        async with self._session() as session:
+            rows = (await session.exec(statement)).all()
+        result: list[tuple[int, TaskStatus, str | None, datetime]] = []
+        for payload, status, error, created_at in rows:
+            media_id = (payload or {}).get("media_file_id")
+            if isinstance(media_id, int):
+                result.append((media_id, status, error, created_at))
+        return result
+
     async def list_tasks(
         self,
         statuses: Iterable[TaskStatus] | None = None,

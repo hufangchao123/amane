@@ -4568,6 +4568,26 @@ export type SavedQueryListResponse = {
 };
 
 /**
+ * SavedQueryPreview
+ *
+ * 预设卡片的配图: 第一条结果的长相.
+ */
+export type SavedQueryPreview = {
+    /**
+     * Entity Id
+     */
+    entity_id: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Image Url
+     */
+    image_url?: string | null;
+};
+
+/**
  * SavedQueryResponse
  */
 export type SavedQueryResponse = {
@@ -4604,6 +4624,7 @@ export type SavedQueryResponse = {
      * Updated At
      */
     updated_at: string;
+    preview?: SavedQueryPreview | null;
 };
 
 /**
@@ -5606,6 +5627,109 @@ export type SubtitleFilesResponse = {
      * Files
      */
     files: Array<SubtitleFileEntry>;
+};
+
+/**
+ * SubtitleGapCounts
+ *
+ * 按原因分组的计数, 界面用它画分组标题.
+ */
+export type SubtitleGapCounts = {
+    /**
+     * Missing
+     */
+    missing?: number;
+    /**
+     * Multi Disc
+     */
+    multi_disc?: number;
+    /**
+     * Pointer
+     */
+    pointer?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Fetch Empty
+     */
+    fetch_empty?: number;
+    /**
+     * Not Attempted
+     */
+    not_attempted?: number;
+};
+
+/**
+ * SubtitleGapItem
+ *
+ * 一份缺字幕的文件: 为什么缺、试过几次、能不能重试.
+ */
+export type SubtitleGapItem = {
+    /**
+     * Media File Id
+     */
+    media_file_id: number;
+    /**
+     * Number
+     */
+    number?: string | null;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Kind
+     */
+    kind: 'missing' | 'multi_disc' | 'pointer';
+    /**
+     * Reason
+     */
+    reason: 'multi_disc' | 'pointer' | 'fetch_failed' | 'fetch_empty' | 'not_attempted';
+    /**
+     * Detail
+     */
+    detail: string;
+    /**
+     * Attempts
+     */
+    attempts?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Last Error
+     */
+    last_error?: string | null;
+    /**
+     * Last Attempt At
+     */
+    last_attempt_at?: string | null;
+    /**
+     * Retryable
+     */
+    retryable?: boolean;
+};
+
+/**
+ * SubtitleGapsResponse
+ */
+export type SubtitleGapsResponse = {
+    /**
+     * Items
+     */
+    items: Array<SubtitleGapItem>;
+    /**
+     * Total
+     */
+    total: number;
+    counts: SubtitleGapCounts;
+    /**
+     * Window Days
+     */
+    window_days: number;
 };
 
 /**
@@ -11506,6 +11630,12 @@ export type ListSavedQueriesData = {
          * 仅已保留 (persisted) 的预设
          */
         persisted_only?: boolean;
+        /**
+         * With Preview
+         *
+         * 附带每条的缩略图 (会真跑一遍预设)
+         */
+        with_preview?: boolean;
     };
     url: '/api/saved-queries';
 };
@@ -11820,6 +11950,44 @@ export type SubtitleStatusResponses = {
 };
 
 export type SubtitleStatusResponse2 = SubtitleStatusResponses[keyof SubtitleStatusResponses];
+
+export type SubtitleGapsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Library Id
+         */
+        library_id?: number | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Include Multi Disc
+         */
+        include_multi_disc?: boolean;
+    };
+    url: '/api/subtitles/gaps';
+};
+
+export type SubtitleGapsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubtitleGapsError = SubtitleGapsErrors[keyof SubtitleGapsErrors];
+
+export type SubtitleGapsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubtitleGapsResponse;
+};
+
+export type SubtitleGapsResponse2 = SubtitleGapsResponses[keyof SubtitleGapsResponses];
 
 export type TestSubtitleGenerationData = {
     body?: never;

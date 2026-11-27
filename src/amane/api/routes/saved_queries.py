@@ -19,6 +19,7 @@ from ..models.saved_queries import (
     SavedQueryResultResponse,
     SavedQueryUpdateRequest,
 )
+from ..support.saved_query_preview import build_previews
 
 router = APIRouter(tags=["saved-queries"])
 
@@ -26,11 +27,20 @@ router = APIRouter(tags=["saved-queries"])
 @router.get("/saved-queries")
 async def list_saved_queries(
     repo: RepoDep,
+    service: AgentDep,
     session_id: Annotated[int | None, Query(description="仅该会话下的预设")] = None,
     persisted_only: Annotated[bool, Query(description="仅已保留 (persisted) 的预设")] = False,
+    with_preview: Annotated[bool, Query(description="附带每条的缩略图 (会真跑一遍预设)")] = True,
 ) -> SavedQueryListResponse:
-    items = await repo.list_saved_queries(session_id=session_id, persisted_only=persisted_only)
-    return SavedQueryListResponse(items=[to_resp(SavedQueryResponse, q) for q in items if q.id is not None])
+    items = [
+        q
+        for q in await repo.list_saved_queries(session_id=session_id, persisted_only=persisted_only)
+        if q.id is not None
+    ]
+    previews = await build_previews(repo, service, items) if with_preview else {}
+    return SavedQueryListResponse(
+        items=[to_resp(SavedQueryResponse, q).model_copy(update={"preview": previews.get(q.id or 0)}) for q in items]
+    )
 
 
 @router.get("/saved-queries/{query_id}")

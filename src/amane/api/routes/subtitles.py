@@ -11,15 +11,19 @@ from typing import Annotated
 
 import httpx2
 import structlog
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from ...handlers._common import media_refresh_followups, refresh_external_subtitle
 from ...subtitles import SubtitleFetcher
+from ...subtitles.gaps import ATTEMPT_WINDOW_DAYS, GapReason, GapRow, collect_gaps
 from ...subtitles.whisper import SAMPLE_RATE, WhisperError, transcribe
 from ..deps import ConfigDep, RepoDep, RuntimeDep
 from ..models.subtitles import (
     SubtitleFileEntry,
     SubtitleFilesResponse,
+    SubtitleGapCounts,
+    SubtitleGapItem,
+    SubtitleGapsResponse,
     SubtitleGenerationTestResponse,
     SubtitleStatusResponse,
     SubtitleUploadResponse,
@@ -279,6 +283,72 @@ def _probe_wav() -> bytes:
         handle.setframerate(SAMPLE_RATE)
         handle.writeframes(b"\x00\x00" * SAMPLE_RATE)
     return buffer.getvalue()
+
+
+@router.get("/gaps", response_model=SubtitleGapsResponse)
+async def subtitle_gaps(
+    repo: RepoDep,
+    library_id: int | None = None,
+    limit: Annotated[int, Query(ge=1, le=2000)] = 200,
+    include_multi_disc: Annotated[bool, Query()] = False,
+) -> SubtitleGapsResponse:
+    """缺字幕的文件与原因: 哪个番号缺、为什么、试过几次、能不能重试.
+
+    ``library_id`` 为空时看全部库. 分卷默认不列 (它不是补全目标), 需要时用
+    ``include_multi_disc=true`` 打开, 便于解释「为什么扫描说 18 份分卷没字幕」.
+    """
+    if library_id is not None and await repo.get_library(library_id) is None:
+        raise HTTPException(status_code=404, detail=f"媒体库不存在: {library_id}")
+    rows = await collect_gaps(repo, library_id=library_id)
+    visible = [row for row in rows if include_multi_disc or row.reason is not GapReason.MULTI_DISC]
+    return SubtitleGapsResponse(
+        items=[_gap_item(row) for row in visible[:limit]],
+        total=len(visible),
+        counts=_gap_counts(rows),
+        window_days=ATTEMPT_WINDOW_DAYS,
+    )
+
+
+def _gap_item(row: GapRow) -> SubtitleGapItem:
+    media = row.media
+    media_id = media.id
+    # 行都是从库里读出来的, 主键不会为空; ty 只认显式收窄.
+    assert media_id is not None
+    return SubtitleGapItem(
+        media_file_id=media_id,
+        number=media.number,
+        path=media.path,
+        kind=row.kind.value,
+        reason=row.reason.value,
+        detail=row.detail,
+        attempts=row.attempts,
+        failed=row.failed,
+        last_error=row.last_error,
+        last_attempt_at=row.last_attempt_at,
+        retryable=row.retryable,
+    )
+
+
+def _gap_counts(rows: list[GapRow]) -> SubtitleGapCounts:
+    counts = SubtitleGapCounts()
+    for row in rows:
+        kind = row.kind.value
+        if kind == "multi_disc":
+            counts.multi_disc += 1
+        elif kind == "pointer":
+            counts.pointer += 1
+        else:
+            counts.missing += 1
+        match row.reason:
+            case GapReason.FETCH_FAILED:
+                counts.failed += 1
+            case GapReason.FETCH_EMPTY:
+                counts.fetch_empty += 1
+            case GapReason.NOT_ATTEMPTED:
+                counts.not_attempted += 1
+            case GapReason.MULTI_DISC | GapReason.POINTER:
+                pass
+    return counts
 
 
 @router.post("/generation/test", response_model=SubtitleGenerationTestResponse)

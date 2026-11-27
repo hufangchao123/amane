@@ -57,7 +57,38 @@
     "progressTitle": "进行中的字幕任务",
     "progressEmpty": "当前没有排队或运行中的字幕任务.",
     "progressCount": "{{total}} 个",
-    "progressNumbers": "{{current}} / {{total}}"
+    "progressNumbers": "{{current}} / {{total}}",
+    "gapsTitle": "缺少字幕的番号",
+    "gapsEmpty": "当前没有缺字幕的文件。",
+    "gapsFailed": "缺口清单读取失败",
+    "gapsTotal": "共 {{total}} 份",
+    "gapsPointer": "网盘直链 {{count}} 份（转写跳过）",
+    "gapsFailedCount": "下载失败 {{count}} 份",
+    "gapsHint": "失败次数按最近 {{days}} 天统计; 网盘直链（.strm）没有本地视频, 本地转写无法读取, 只能等站点收录或手动上传。",
+    "gapsTruncated": "只列出前 {{shown}} 份, 共 {{total}} 份。",
+    "gapNumber": "番号",
+    "gapKind": "文件类型",
+    "gapReason": "原因",
+    "gapAttempts": "尝试次数",
+    "gapLastAttempt": "上次尝试",
+    "gapAction": "操作",
+    "gapAttemptsFailed": "{{attempts}} 次 / 失败 {{failed}} 次",
+    "gapAttemptsOnly": "{{attempts}} 次",
+    "retryOne": "重试",
+    "retryAll": "重试失败项 ({{count}})",
+    "retryStarted": "已提交重试任务",
+    "gapKindOption": {
+      "missing": "本地成片",
+      "pointer": "网盘直链",
+      "multi_disc": "分卷"
+    },
+    "gapReasonOption": {
+      "fetch_failed": "下载失败",
+      "fetch_empty": "站点没有",
+      "not_attempted": "还没试过",
+      "pointer": "直链无法转写",
+      "multi_disc": "分卷跳过"
+    }
   },
   "wash": {
     "title": "洗版",

@@ -7,6 +7,15 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 from ...db.models import SavedQueryEntity
 
 
+class SavedQueryPreview(BaseModel):
+    """预设卡片的配图: 第一条结果的长相."""
+
+    entity_id: int
+    title: str
+    image_url: str | None = None
+    """海报或头像地址; 外链由前端套资源代理, 缺图时为空."""
+
+
 class SavedQueryResponse(BaseModel):
     id: int
     name: str
@@ -17,6 +26,8 @@ class SavedQueryResponse(BaseModel):
     persisted: bool
     created_at: datetime
     updated_at: datetime
+    preview: SavedQueryPreview | None = None
+    """列表接口按第一行结果补的缩略图; 详情与创建/更新不带."""
 
 
 class SavedQueryListResponse(BaseModel):

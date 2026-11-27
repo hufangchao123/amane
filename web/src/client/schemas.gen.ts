@@ -7858,6 +7858,37 @@ export const SavedQueryListResponseSchema = {
     title: 'SavedQueryListResponse'
 } as const;
 
+export const SavedQueryPreviewSchema = {
+    properties: {
+        entity_id: {
+            type: 'integer',
+            title: 'Entity Id'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        image_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Image Url'
+        }
+    },
+    type: 'object',
+    required: [
+        'entity_id',
+        'title'
+    ],
+    title: 'SavedQueryPreview',
+    description: '预设卡片的配图: 第一条结果的长相.'
+} as const;
+
 export const SavedQueryResponseSchema = {
     properties: {
         id: {
@@ -7903,6 +7934,16 @@ export const SavedQueryResponseSchema = {
             type: 'string',
             format: 'date-time',
             title: 'Updated At'
+        },
+        preview: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/SavedQueryPreview'
+                },
+                {
+                    type: 'null'
+                }
+            ]
         }
     },
     type: 'object',
@@ -9562,6 +9603,171 @@ export const SubtitleFilesResponseSchema = {
     ],
     title: 'SubtitleFilesResponse',
     description: '某个视频旁边现有的字幕清单.'
+} as const;
+
+export const SubtitleGapCountsSchema = {
+    properties: {
+        missing: {
+            type: 'integer',
+            title: 'Missing',
+            default: 0
+        },
+        multi_disc: {
+            type: 'integer',
+            title: 'Multi Disc',
+            default: 0
+        },
+        pointer: {
+            type: 'integer',
+            title: 'Pointer',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        fetch_empty: {
+            type: 'integer',
+            title: 'Fetch Empty',
+            default: 0
+        },
+        not_attempted: {
+            type: 'integer',
+            title: 'Not Attempted',
+            default: 0
+        }
+    },
+    type: 'object',
+    title: 'SubtitleGapCounts',
+    description: '按原因分组的计数, 界面用它画分组标题.'
+} as const;
+
+export const SubtitleGapItemSchema = {
+    properties: {
+        media_file_id: {
+            type: 'integer',
+            title: 'Media File Id'
+        },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
+        path: {
+            type: 'string',
+            title: 'Path'
+        },
+        kind: {
+            type: 'string',
+            enum: [
+                'missing',
+                'multi_disc',
+                'pointer'
+            ],
+            title: 'Kind'
+        },
+        reason: {
+            type: 'string',
+            enum: [
+                'multi_disc',
+                'pointer',
+                'fetch_failed',
+                'fetch_empty',
+                'not_attempted'
+            ],
+            title: 'Reason'
+        },
+        detail: {
+            type: 'string',
+            title: 'Detail'
+        },
+        attempts: {
+            type: 'integer',
+            title: 'Attempts',
+            default: 0
+        },
+        failed: {
+            type: 'integer',
+            title: 'Failed',
+            default: 0
+        },
+        last_error: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Error'
+        },
+        last_attempt_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Attempt At'
+        },
+        retryable: {
+            type: 'boolean',
+            title: 'Retryable',
+            default: true
+        }
+    },
+    type: 'object',
+    required: [
+        'media_file_id',
+        'path',
+        'kind',
+        'reason',
+        'detail'
+    ],
+    title: 'SubtitleGapItem',
+    description: '一份缺字幕的文件: 为什么缺、试过几次、能不能重试.'
+} as const;
+
+export const SubtitleGapsResponseSchema = {
+    properties: {
+        items: {
+            items: {
+                $ref: '#/components/schemas/SubtitleGapItem'
+            },
+            type: 'array',
+            title: 'Items'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        },
+        counts: {
+            $ref: '#/components/schemas/SubtitleGapCounts'
+        },
+        window_days: {
+            type: 'integer',
+            title: 'Window Days'
+        }
+    },
+    type: 'object',
+    required: [
+        'items',
+        'total',
+        'counts',
+        'window_days'
+    ],
+    title: 'SubtitleGapsResponse'
 } as const;
 
 export const SubtitleGenerateResultSchema = {
