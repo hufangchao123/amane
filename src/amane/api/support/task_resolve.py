@@ -138,7 +138,7 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
             return TaskType.SUBTITLE_AUDIT, SubtitleAuditPayload(library_id=req.library_id)
         case SubtitleFetchSubmission():
             return TaskType.SUBTITLE_FETCH, SubtitleFetchPayload(
-                media_file_id=req.media_file_id, library_id=req.library_id, limit=req.limit
+                media_file_id=req.media_file_id, library_id=req.library_id, number=req.number, limit=req.limit
             )
         case SubtitleGenerateSubmission():
             return TaskType.SUBTITLE_GENERATE, SubtitleGeneratePayload(

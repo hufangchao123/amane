@@ -32,11 +32,11 @@ class TestSubtitleTask:
         assert empty.status_code == 202
         by_library = await client.post("tasks", json={"type": "subtitle_fetch", "library_id": 1})
         assert by_library.status_code == 202
-        assert by_library.json()["payload"] == {"media_file_id": None, "library_id": 1, "limit": 50}
+        assert by_library.json()["payload"] == {"media_file_id": None, "library_id": 1, "number": None, "limit": 50}
 
         with_limit = await client.post("tasks", json={"type": "subtitle_fetch", "library_id": 1, "limit": 200})
         assert with_limit.status_code == 202
-        assert with_limit.json()["payload"] == {"media_file_id": None, "library_id": 1, "limit": 200}
+        assert with_limit.json()["payload"] == {"media_file_id": None, "library_id": 1, "number": None, "limit": 200}
 
 
 class TestGenerationProbe:

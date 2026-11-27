@@ -92,6 +92,11 @@ async def _task_titles(repo: RepoDep, tasks: Sequence[Task]) -> dict[int, str | 
             library_id = payload.get("library_id")
             if title is None and isinstance(library_id, int):
                 title = library_names.get(library_id)
+            # 按番号发起时载荷里只有番号 (没有文件 ID), 直接拿它当标题
+            if title is None:
+                number = payload.get("number")
+                if isinstance(number, str) and number.strip():
+                    title = number.strip()
         elif t.type in _LIBRARY_TASK_TYPES:
             library_id = payload.get("library_id")
             title = library_names.get(int(library_id)) if isinstance(library_id, int) else None

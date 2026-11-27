@@ -188,9 +188,30 @@ class SubtitleFetchHandler(TaskHandler[SubtitleFetchPayload, SubtitleFetchResult
             if media is None:
                 raise _TargetError(f"媒体文件不存在: {payload.media_file_id}")
             return [media]
+        if payload.number is not None:
+            return await self._by_number(payload)
         if payload.library_id is not None and await self._repo.get_library(payload.library_id) is None:
             raise _TargetError(f"媒体库不存在: {payload.library_id}")
         return await self._fillable(payload)
+
+    async def _by_number(self, payload: SubtitleFetchPayload) -> list[MediaFile]:
+        """按番号挑文件: 番号好记, 不必先查出文件 ID.
+
+        同一个番号可能有多份 (修过的再发版), 只补还没有字幕的那些; 都已经有字幕就当成
+        「无事可做」明确报错, 免得用户在页面里看到一个成功但什么都没发生.
+        """
+        number = (payload.number or "").strip()
+        if not number:
+            raise _TargetError("番号不能为空")
+        matches = await self._repo.list_media_files(library_id=payload.library_id, search=number, limit=None)
+        exact = [media for media in matches if (media.number or "").casefold() == number.casefold()]
+        candidates = exact or matches
+        if not candidates:
+            raise _TargetError(f"没有找到这个番号: {number}")
+        pending = [media for media in candidates if not media.has_subtitle]
+        if not pending:
+            raise _TargetError(f"番号 {number} 已经有字幕")
+        return pending[: payload.limit]
 
     async def _fillable(self, payload: SubtitleFetchPayload) -> list[MediaFile]:
         """按页扫描缺口表, 取到 ``limit`` 份可尝试的目标或扫完为止."""

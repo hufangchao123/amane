@@ -9443,6 +9443,17 @@ export const SubtitleFetchSubmissionSchema = {
             ],
             title: 'Library Id'
         },
+        number: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Number'
+        },
         limit: {
             type: 'integer',
             maximum: 500,

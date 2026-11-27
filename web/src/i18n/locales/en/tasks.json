@@ -551,6 +551,10 @@
       "limit": {
         "label": "Files per run",
         "description": "How many files one run may fill; raise it when catching up a whole library."
+      },
+      "number": {
+        "label": "Number",
+        "description": "Fetch the subtitle for this number; use either this or the file ID"
       }
     },
     "wash_scan": {

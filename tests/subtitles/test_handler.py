@@ -249,6 +249,54 @@ class TestTargets:
         assert len([url for url in web.calls if "index.php" in url]) == 2
 
     @pytest.mark.asyncio(loop_scope="function")
+    async def test_number_payload_picks_only_that_number(
+        self,
+        repo: Repository,
+        tmp_path: Path,
+        subtitle_config: SubtitleFetchConfig,
+        subtitlecat_pages: dict[str, str],
+    ):
+        """按番号补: 只动这个番号的文件, 别的番号即使也缺字幕也不碰."""
+        library, _ = await seed_media(repo, tmp_path / "lib" / "AD-1", number="AD-1")
+        await seed_media(repo, tmp_path / "lib" / "AD-9", number="AD-9", library=library)
+
+        pages = dict(subtitlecat_pages)
+        pages["https://www.subtitlecat.com/index.php?search=AD-9"] = "<html><body></body></html>"
+        web = FakeHttp(texts=pages)
+        result = await _handler(repo, web, subtitle_config).handle(SubtitleFetchPayload(number="AD-1"))
+
+        assert result.success is True
+        searched = [url for url in web.calls if "index.php?search=" in url]
+        assert all("AD-1" in url for url in searched)
+        assert searched
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_unknown_number_fails_loudly(self, repo: Repository, subtitle_config: SubtitleFetchConfig):
+        result = await _handler(repo, FakeHttp(), subtitle_config).handle(SubtitleFetchPayload(number="ZZZ-9"))
+
+        assert result.success is False
+        assert result.error is not None
+        assert "没有找到这个番号" in result.error
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_number_already_covered_fails_loudly(
+        self,
+        repo: Repository,
+        tmp_path: Path,
+        subtitle_config: SubtitleFetchConfig,
+    ):
+        """已经有字幕就明说, 不要给一个「成功但什么都没做」."""
+        _, media = await seed_media(repo, tmp_path / "lib" / "AD-5", number="AD-5")
+        assert media.id is not None
+        await repo.update_media_file(media.id, has_external_subtitle=True)
+
+        result = await _handler(repo, FakeHttp(), subtitle_config).handle(SubtitleFetchPayload(number="AD-5"))
+
+        assert result.success is False
+        assert result.error is not None
+        assert "已经有字幕" in result.error
+
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_missing_media_file_fails_loudly(self, repo: Repository, subtitle_config: SubtitleFetchConfig):
         result = await _handler(repo, FakeHttp(), subtitle_config).handle(SubtitleFetchPayload(media_file_id=999999))
 

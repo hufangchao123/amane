@@ -45,7 +45,6 @@ export type SubmittableTaskType = TaskPayload["type"];
 export type PanelOnlyTaskType =
   | "delete"
   | "semantic_benchmark"
-  | "subtitle_fetch"
   | "subtitle_audit"
   | "media_purge"
   | "subtitle_generate"
@@ -232,6 +231,7 @@ export const MANUAL_TASK_TYPES = exhaustiveTuple<ManualTaskType>()(
   "actor_push",
   "media_refresh",
   "db_vacuum",
+  "subtitle_fetch",
 );
 
 /** 刮削站点结果分组顺序. */

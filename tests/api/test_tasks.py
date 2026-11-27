@@ -272,6 +272,14 @@ class TestGetTask:
         generated = await client.post("tasks", json={"type": "subtitle_generate", "library_id": library.id})
         assert generated.json()["title"] == "日韩"
 
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_number_scoped_subtitle_task_shows_the_number(self, client: AsyncClient, stop_worker: None):
+        """按番号发起时列表标题直接就是番号, 不再是一片空白."""
+        created = await client.post("tasks", json={"type": "subtitle_fetch", "number": "AD-1"})
+        assert created.status_code == 202
+        assert created.json()["payload"]["number"] == "AD-1"
+        assert created.json()["title"] == "AD-1"
+
 
 class TestBatchTasks:
     """POST /tasks/batch 接线. 计数/跳过链/重试见 tests/db/test_task_batch.py."""

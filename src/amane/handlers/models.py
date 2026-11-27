@@ -484,10 +484,12 @@ class RescrapeResult(BaseModel):
 
 
 class SubtitleFetchPayload(BaseModel):
-    """字幕下载范围; 两者都空表示全库按覆盖缺口挑."""
+    """字幕下载范围; 三者都空表示全库按覆盖缺口挑."""
 
     media_file_id: int | None = None
     library_id: int | None = None
+    number: str | None = None
+    """按番号补: 比文件 ID 好记, 页面里也能直接看出补的是哪一部."""
     limit: int = Field(default=50, ge=1, le=500)
     """单轮最多补几份; 手动补一个库时调大, 例行与自动扇出保持默认."""
 
