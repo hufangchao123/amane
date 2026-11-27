@@ -45,5 +45,6 @@
   "dataPageFailed": "Failed to load result rows",
   "dataPageEmpty": "Query returned no rows",
   "updatedAt": "Updated {{time}}",
-  "justNow": "just now"
+  "justNow": "just now",
+  "columnThumb": "Cover"
 }

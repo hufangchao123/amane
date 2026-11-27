@@ -7993,6 +7993,20 @@ export const SavedQueryResultResponseSchema = {
         total: {
             type: 'integer',
             title: 'Total'
+        },
+        previews: {
+            items: {
+                anyOf: [
+                    {
+                        $ref: '#/components/schemas/SavedQueryPreview'
+                    },
+                    {
+                        type: 'null'
+                    }
+                ]
+            },
+            type: 'array',
+            title: 'Previews'
         }
     },
     type: 'object',

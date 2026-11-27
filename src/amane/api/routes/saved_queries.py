@@ -19,7 +19,7 @@ from ..models.saved_queries import (
     SavedQueryResultResponse,
     SavedQueryUpdateRequest,
 )
-from ..support.saved_query_preview import build_previews
+from ..support.saved_query_preview import build_previews, previews_for_rows
 
 router = APIRouter(tags=["saved-queries"])
 
@@ -142,13 +142,16 @@ async def get_saved_query_result(
     except Exception as exc:
         raise HTTPException(400, detail=f"执行查询失败: {exc}") from exc
 
+    page = cached.rows[offset : offset + limit]
+    previews = await previews_for_rows(repo, query, cached.columns, page)
     return SavedQueryResultResponse(
         saved_query_id=query_id,
         columns=cached.columns,
-        rows=cached.rows[offset : offset + limit],
+        rows=page,
         offset=offset,
         limit=limit,
         total=len(cached.rows),
+        previews=previews,
     )
 
 

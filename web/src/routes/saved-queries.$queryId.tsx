@@ -5,6 +5,7 @@ import {
   Code,
   Collapse,
   Group,
+  Image,
   Modal,
   ScrollArea,
   Stack,
@@ -19,6 +20,7 @@ import {
   IconDownload,
   IconExternalLink,
   IconPencil,
+  IconPhoto,
   IconTrash,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
@@ -53,7 +55,9 @@ import {
   SAVED_QUERY_ENTITY_LABEL_KEY,
 } from "@/lib/saved-query/display";
 import { downloadSavedQueryResult } from "@/lib/saved-query/download";
+import { proxyImageUrl } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui";
+import type { SavedQueryPreview } from "@/client/types.gen";
 
 const savedQuerySearchSchema = z.object({
   page: z.coerce.number().int().min(1).catch(1).default(1),
@@ -148,6 +152,9 @@ function SavedQueryDataPage() {
   const total = resultQuery.data?.total ?? 0;
   const columns = resultQuery.data?.columns ?? [];
   const rows = resultQuery.data?.rows ?? [];
+  const previews = resultQuery.data?.previews ?? [];
+  // 有实体图才多画一列, 纯计数类的预设不该出现空列
+  const hasThumbs = previews.some((item) => item != null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (search.page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, search.page * pageSize);
@@ -321,6 +328,11 @@ function SavedQueryDataPage() {
             >
               <Table.Thead>
                 <Table.Tr>
+                  {hasThumbs && (
+                    <Table.Th key="__thumb" w={64} fz="xs">
+                      {t("columnThumb")}
+                    </Table.Th>
+                  )}
                   {columns.map((c) => (
                     <Table.Th key={c} fz="xs" ff="monospace">
                       {c}
@@ -331,6 +343,11 @@ function SavedQueryDataPage() {
               <Table.Tbody>
                 {rows.map((row, i) => (
                   <Table.Tr key={i}>
+                    {hasThumbs && (
+                      <Table.Td key="__thumb">
+                        <ResultThumb preview={previews[i] ?? null} />
+                      </Table.Td>
+                    )}
                     {row.map((cell, j) => (
                       <Table.Td key={j} fz="sm">
                         <Text size="sm" truncate title={formatCell(cell)}>
@@ -386,5 +403,44 @@ function SavedQueryDataPage() {
         )}
       </Modal>
     </Stack>
+  );
+}
+
+const RESULT_THUMB_WIDTH = 40;
+const RESULT_THUMB_HEIGHT = 54;
+
+/** 结果行的配图: 有图就画, 没图但有实体就画占位, 两者都没有留空. */
+function ResultThumb({ preview }: { preview: SavedQueryPreview | null }) {
+  if (preview == null) {
+    return null;
+  }
+  const url = proxyImageUrl(preview.image_url);
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt={preview.title}
+        w={RESULT_THUMB_WIDTH}
+        h={RESULT_THUMB_HEIGHT}
+        radius="sm"
+        fit="cover"
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <Box
+      w={RESULT_THUMB_WIDTH}
+      h={RESULT_THUMB_HEIGHT}
+      bg="var(--mantine-color-default-hover)"
+      style={{
+        borderRadius: "var(--mantine-radius-sm)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <IconPhoto size={16} opacity={0.45} />
+    </Box>
   );
 }

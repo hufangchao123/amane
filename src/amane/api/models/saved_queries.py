@@ -100,3 +100,5 @@ class SavedQueryResultResponse(BaseModel):
     offset: int
     limit: int
     total: int
+    previews: list[SavedQueryPreview | None] = Field(default_factory=list)
+    """与 ``rows`` 等长; 每行对应实体的海报 / 头像, 取不到是 None."""

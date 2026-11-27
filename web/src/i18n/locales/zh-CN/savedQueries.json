@@ -43,5 +43,6 @@
   "dataPageFailed": "结果行加载失败",
   "dataPageEmpty": "查询结果为空",
   "updatedAt": "更新于 {{time}}",
-  "justNow": "刚刚"
+  "justNow": "刚刚",
+  "columnThumb": "图"
 }

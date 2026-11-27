@@ -316,7 +316,7 @@ def _gap_item(row: GapRow) -> SubtitleGapItem:
     assert media_id is not None
     return SubtitleGapItem(
         media_file_id=media_id,
-        number=media.number,
+        number=row.label,
         path=media.path,
         kind=row.kind.value,
         reason=row.reason.value,

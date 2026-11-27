@@ -124,3 +124,23 @@ class TestGaps:
         only_first = (await client.get("subtitles/gaps", params={"library_id": first})).json()
         assert [item["number"] for item in only_first["items"]] == ["AD-6"]
         assert (await client.get("subtitles/gaps", params={"library_id": 999})).status_code == 404
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_number_is_parsed_when_the_row_has_none(
+        self, client: AsyncClient, repo: Repository, tmp_path: Path, stop_worker: None
+    ):
+        """索引行的 number 多为空 (早期批量导入); 界面按路径解析出番号, 不能整列显示「—」."""
+        library_id = await _library(repo, tmp_path / "lib")
+        root = tmp_path / "lib"
+        actor_dir = root / "某演员" / "SMOK-049"
+        actor_dir.mkdir(parents=True)
+        pointer = actor_dir / "SMOK-049-有码.strm"
+        pointer.write_text("http://example/strm\n", encoding="utf-8")
+        await repo.create_media_file(
+            library_id=library_id, path=str(pointer), number=None, status=MediaFileStatus.SCRAPED
+        )
+
+        r = await client.get("/subtitles/gaps")
+        assert r.status_code == 200
+        items = r.json()["items"]
+        assert [i["number"] for i in items] == ["SMOK-049"]

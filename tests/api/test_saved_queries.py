@@ -425,3 +425,50 @@ async def test_list_carries_thumbnail_of_first_result(client: AsyncClient, repo:
     r = await client.get("/saved-queries", params={"persisted_only": True, "with_preview": False})
     assert r.status_code == 200
     assert all(item["preview"] is None for item in r.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_result_carries_one_thumbnail_per_row(client: AsyncClient, repo: Repository) -> None:
+    """预设详情的结果表: 每行 id 都有自己的图, 顺序与 rows 对齐."""
+    a = await repo.upsert_metadata(number="ABC-201", poster_urls=["https://img.example/abc201.jpg"])
+    b = await repo.upsert_metadata(number="ABC-202", thumb_urls=["https://img.example/abc202.jpg"])
+    c = await repo.upsert_metadata(number="ABC-203")  # 没有图
+    assert a.id is not None and b.id is not None and c.id is not None
+
+    sq = await repo.create_saved_query(
+        name="三部片子",
+        sql=f"SELECT id, number FROM metadata WHERE id IN ({c.id}, {a.id}, {b.id}) ORDER BY id",
+        entity=SavedQueryEntity.METADATA,
+    )
+    assert sq.id is not None
+
+    r = await client.get(f"/saved-queries/{sq.id}/result")
+    assert r.status_code == 200
+    body = r.json()
+    previews = body["previews"]
+    assert len(previews) == len(body["rows"]) == 3
+    assert previews[0]["image_url"] == "https://img.example/abc201.jpg"
+    assert previews[1]["image_url"] == "https://img.example/abc202.jpg"
+    # 有实体但没图: 仍给出番号, 前端画占位图
+    assert previews[2]["image_url"] is None
+    assert previews[2]["title"] == "ABC-203"
+    assert [p["entity_id"] for p in previews] == [a.id, b.id, c.id]
+
+    # data 预设: 结果里带 number 列就按 metadata 解, 没有 id 列就不给图
+    data_sq = await repo.create_saved_query(
+        name="带番号的 data 预设",
+        sql=f"SELECT id, number FROM metadata WHERE id = {a.id}",
+        entity=SavedQueryEntity.DATA,
+    )
+    assert data_sq.id is not None
+    r = await client.get(f"/saved-queries/{data_sq.id}/result")
+    assert r.status_code == 200
+    assert r.json()["previews"][0]["image_url"] == "https://img.example/abc201.jpg"
+
+    plain = await repo.create_saved_query(
+        name="纯计数", sql="SELECT COUNT(*) AS n FROM metadata", entity=SavedQueryEntity.DATA
+    )
+    assert plain.id is not None
+    r = await client.get(f"/saved-queries/{plain.id}/result")
+    assert r.status_code == 200
+    assert r.json()["previews"] == [None]

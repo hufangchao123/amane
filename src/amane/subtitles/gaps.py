@@ -10,9 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
 
 from ..db.models import MediaFile, MediaFileStatus, TaskStatus, TaskType
 from ..db.repository import Repository
+from ..parsing import parse_file_info
 from .targets import GapKind, classify_gap
 
 __all__ = ["ATTEMPT_WINDOW_DAYS", "GapReason", "GapRow", "collect_gaps"]
@@ -51,6 +53,8 @@ class GapRow:
     """一份缺字幕的文件与它的原因."""
 
     media: MediaFile
+    label: str
+    """界面上的「番号」: 索引行的 number 多为空, 退回路径解析与文件名."""
     kind: GapKind
     reason: GapReason
     detail: str
@@ -97,6 +101,23 @@ async def _attempts_by_media(repo: Repository) -> dict[int, _Attempt]:
     return stats
 
 
+def _label_of(media: MediaFile) -> str:
+    """番号优先取索引行, 空则按路径解析, 再退回文件名.
+
+    索引行的 ``number`` 只在新入库路径写; 早期批量导入的行是空的 (库里多数如此),
+    直接读它会让界面整列显示「—」。
+    """
+    stored = (media.number or "").strip()
+    if stored:
+        return stored
+    path = str(media.path or "")
+    try:
+        parsed = parse_file_info(path).number
+    except Exception:  # 解析只用于展示, 失败不能影响列表
+        parsed = None
+    return (parsed or Path(path).stem or "").strip()
+
+
 def _row(media: MediaFile, attempt: _Attempt | None) -> GapRow:
     kind = classify_gap(media.path)
     attempts = attempt.total if attempt is not None else 0
@@ -114,6 +135,7 @@ def _row(media: MediaFile, attempt: _Attempt | None) -> GapRow:
         reason, detail = GapReason.NOT_ATTEMPTED, "还没试过"
     return GapRow(
         media=media,
+        label=_label_of(media),
         kind=kind,
         reason=reason,
         detail=detail,

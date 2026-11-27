@@ -4655,6 +4655,10 @@ export type SavedQueryResultResponse = {
      * Total
      */
     total: number;
+    /**
+     * Previews
+     */
+    previews?: Array<SavedQueryPreview | null>;
 };
 
 /**
