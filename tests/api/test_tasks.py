@@ -703,3 +703,32 @@ class TestTaskLog:
 
         assert (await client.get(f"tasks/{task.id}/log", params={"limit": 0})).status_code == 422
         assert (await client.get(f"tasks/{task.id}/log", params={"limit": 5001})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_subtitle_task_summary_shows_why_nothing_came_out(client: AsyncClient, repo: Repository) -> None:
+    """「下载失败 / 转写失败」在库里是 DONE + 计数, 列表要能一眼看出全落空的原因."""
+    miss = await repo.create_task(TaskType.SUBTITLE_FETCH, {"media_file_id": None, "limit": 50})
+    assert miss.id is not None
+    await repo.claim_next_task()
+    await repo.complete_task(miss.id, {"type": "subtitle_fetch", "fetched": 0, "missing": 2, "failed": 0})
+
+    partial = await repo.create_task(TaskType.SUBTITLE_FETCH, {"media_file_id": 7, "limit": 1})
+    assert partial.id is not None
+    await repo.claim_next_task()
+    await repo.complete_task(partial.id, {"type": "subtitle_fetch", "fetched": 0, "missing": 0, "failed": 1})
+
+    skip = await repo.create_task(TaskType.SUBTITLE_GENERATE, {"media_file_id": 7, "limit": 10})
+    assert skip.id is not None
+    await repo.claim_next_task()
+    await repo.complete_task(skip.id, {"type": "subtitle_generate", "generated": 0, "skipped": 1, "failed": 0})
+
+    r = await client.get("/tasks")
+    assert r.status_code == 200
+    by_id = {item["id"]: item for item in r.json()["items"]}
+    assert by_id[miss.id]["summary"] == "取到 0 / 缺 2"
+    assert by_id[miss.id]["summary_level"] == "warn"
+    assert by_id[partial.id]["summary"] == "取到 0 / 缺 0 / 失败 1"
+    assert by_id[partial.id]["summary_level"] == "bad"
+    assert by_id[skip.id]["summary"] == "生成 0 / 跳过 1"
+    assert by_id[skip.id]["summary_level"] == "warn"

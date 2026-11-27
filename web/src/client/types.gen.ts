@@ -6003,6 +6003,14 @@ export type TaskChildItem = {
      */
     progress_message?: string;
     /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Summary Level
+     */
+    summary_level?: 'ok' | 'warn' | 'bad' | null;
+    /**
      * Link Key
      */
     link_key: string;
@@ -6107,6 +6115,14 @@ export type TaskListItem = {
      * Progress Message
      */
     progress_message?: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Summary Level
+     */
+    summary_level?: 'ok' | 'warn' | 'bad' | null;
 };
 
 /**
@@ -6230,6 +6246,14 @@ export type TaskResponse = {
      * Progress Message
      */
     progress_message?: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Summary Level
+     */
+    summary_level?: 'ok' | 'warn' | 'bad' | null;
     /**
      * Payload
      */

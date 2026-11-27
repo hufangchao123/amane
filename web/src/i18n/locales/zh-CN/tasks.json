@@ -679,7 +679,8 @@
     "loading": "加载子任务…",
     "loadError": "无法加载子任务",
     "retry": "重试",
-    "linkKey": "子任务"
+    "linkKey": "子任务",
+    "summary": "任务结束时的一句话结果摘要（如「取到 1 / 缺 2」）"
   },
   "worker": {
     "pause": "暂停",

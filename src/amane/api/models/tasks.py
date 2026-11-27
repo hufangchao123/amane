@@ -126,6 +126,10 @@ class TaskListItem(BaseModel):
     """上一次进度快照 (WS 事件落库的那份); 与 progress_total 一起画进度条."""
     progress_total: int = 0
     progress_message: str = ""
+    summary: str | None = None
+    """一句话结果摘要 (如「取到 1 / 缺 2」). 列表不返回 result, 靠它看出成败细节."""
+    summary_level: Literal["ok", "warn", "bad"] | None = None
+    """摘要的严重度: ok 正常 / warn 尽力了但没结果 / bad 有失败项."""
 
 
 class TaskChildItem(TaskListItem):

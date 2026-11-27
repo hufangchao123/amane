@@ -90,6 +90,8 @@ export interface TaskTreeProps {
   onToggle: (id: number) => void;
 }
 
+const SUMMARY_COLOR = { ok: "gray", warn: "yellow", bad: "red" } as const;
+
 export function TaskTree({
   tasks,
   progressByTask,
@@ -246,6 +248,13 @@ function TaskTreeNode({
               <Tooltip label={t("childrenCount", { count: childCount })}>
                 <Badge size="xs" variant="light" color="gray">
                   {childCount}
+                </Badge>
+              </Tooltip>
+            ) : null}
+            {task.summary ? (
+              <Tooltip label={t("tree.summary")}>
+                <Badge size="xs" variant="light" color={SUMMARY_COLOR[task.summary_level ?? "ok"]}>
+                  {task.summary}
                 </Badge>
               </Tooltip>
             ) : null}

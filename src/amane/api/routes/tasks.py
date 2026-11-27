@@ -1,3 +1,4 @@
+import json
 from collections.abc import Iterator, Sequence
 from typing import Annotated
 
@@ -114,6 +115,55 @@ def _child_status(counts: dict[TaskStatus, int] | None) -> TaskChildStatusCounts
     )
 
 
+_SUMMARY_TYPES = (TaskType.SUBTITLE_FETCH, TaskType.SUBTITLE_GENERATE, TaskType.SUBTITLE_AUDIT)
+
+
+def _outcome_summary(task: Task) -> tuple[str | None, str | None]:
+    """按结果字段拼一句摘要; 字幕类「一条都没成功」要看得出是没找到还是跳过.
+
+    列表接口不返回 result (太重), 但「下载失败 / 转写失败」在库里其实是 DONE + 计数,
+    只看状态会以为没记录, 所以把计数提炼成一句人话 + 一个严重度.
+    """
+    raw = task.result
+    if raw is None:
+        return None, None
+    if isinstance(raw, str):  # 历史行里存的是 JSON 文本
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return None, None
+    if not isinstance(raw, dict):
+        return None, None
+    result: dict[str, object] = raw
+
+    def count(key: str) -> int:
+        value = result.get(key)
+        return value if isinstance(value, int) else 0
+
+    match task.type:
+        case TaskType.SUBTITLE_FETCH:
+            fetched, missing, failed = count("fetched"), count("missing"), count("failed")
+            parts = [f"取到 {fetched}", f"缺 {missing}"]
+            if failed:
+                parts.append(f"失败 {failed}")
+            level = "bad" if failed else ("warn" if fetched == 0 and missing else "ok")
+            return " / ".join(parts), level
+        case TaskType.SUBTITLE_GENERATE:
+            generated, skipped, failed = count("generated"), count("skipped"), count("failed")
+            parts = [f"生成 {generated}"]
+            if skipped:
+                parts.append(f"跳过 {skipped}")
+            if failed:
+                parts.append(f"失败 {failed}")
+            level = "bad" if failed else ("warn" if generated == 0 and skipped else "ok")
+            return " / ".join(parts), level
+        case TaskType.SUBTITLE_AUDIT:
+            missing = count("missing")
+            return f"缺 {missing}", ("warn" if missing else "ok")
+        case _:
+            return None, None
+
+
 async def _decorate_tasks[T: TaskListItem](repo: RepoDep, tasks: Sequence[Task], model: type[T]) -> list[T]:
     """展示标题 + 直接后继计数. 一次批量, 避免列表 N+1.
 
@@ -124,12 +174,15 @@ async def _decorate_tasks[T: TaskListItem](repo: RepoDep, tasks: Sequence[Task],
     items: list[T] = []
     for t in tasks:
         child_status = _child_status(status_map.get(t.id) if t.id is not None else None)
+        summary = _outcome_summary(t)
         items.append(
             to_resp(model, t).model_copy(
                 update={
                     "title": titles.get(t.id) if t.id is not None else None,
                     "child_count": child_status.queued + child_status.running + child_status.done + child_status.failed,
                     "child_status": child_status,
+                    "summary": summary[0],
+                    "summary_level": summary[1],
                 }
             )
         )

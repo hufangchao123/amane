@@ -10337,6 +10337,33 @@ export const TaskChildItemSchema = {
             title: 'Progress Message',
             default: ''
         },
+        summary: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary'
+        },
+        summary_level: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: [
+                        'ok',
+                        'warn',
+                        'bad'
+                    ]
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary Level'
+        },
         link_key: {
             type: 'string',
             title: 'Link Key'
@@ -10515,6 +10542,33 @@ export const TaskListItemSchema = {
             type: 'string',
             title: 'Progress Message',
             default: ''
+        },
+        summary: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary'
+        },
+        summary_level: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: [
+                        'ok',
+                        'warn',
+                        'bad'
+                    ]
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary Level'
         }
     },
     type: 'object',
@@ -10725,6 +10779,33 @@ export const TaskResponseSchema = {
             type: 'string',
             title: 'Progress Message',
             default: ''
+        },
+        summary: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary'
+        },
+        summary_level: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: [
+                        'ok',
+                        'warn',
+                        'bad'
+                    ]
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Summary Level'
         },
         payload: {
             additionalProperties: true,

@@ -714,7 +714,8 @@
     "loading": "Loading subtasks…",
     "loadError": "Could not load subtasks",
     "retry": "Retry",
-    "linkKey": "Subtask"
+    "linkKey": "Subtask",
+    "summary": "One-line result summary (e.g. fetched 1 / missing 2)"
   },
   "worker": {
     "pause": "Pause",
