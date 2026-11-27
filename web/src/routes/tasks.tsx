@@ -12,6 +12,7 @@ import {
   ScrollArea,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   Textarea,
   Title,
@@ -269,6 +270,8 @@ function TasksPage() {
   const [focusId, setFocusId] = useResettingState<number | null>(() => null, listKey);
   const [batchOpen, setBatchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  // 子任务默认不列出: 逐文件字幕/转写挂在父任务下面, 想看就打开这个开关.
+  const [includeChildren, setIncludeChildren] = useState(false);
   const [template, setTemplate] = useState("");
   const [preview, setPreview] = useState<string[]>([]);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
@@ -283,6 +286,7 @@ function TasksPage() {
         type: search.type,
         offset,
         limit,
+        roots_only: includeChildren ? false : undefined,
         sort_by: "created_at",
         order: "desc",
       },
@@ -732,6 +736,16 @@ function TasksPage() {
           <Group align="flex-end" justify="space-between" wrap="wrap" style={{ flexShrink: 0 }}>
             <Group gap="xs" wrap="wrap">
               {typeChips}
+              <Switch
+                size="sm"
+                checked={includeChildren}
+                onChange={(event) => {
+                  setIncludeChildren(event.currentTarget.checked);
+                  void navigate({ search: (prev) => ({ ...prev, page: 1 }) });
+                }}
+                label={t("includeChildren")}
+                description={undefined}
+              />
             </Group>
             <PageSizeSelect
               sizeKey="tasks"

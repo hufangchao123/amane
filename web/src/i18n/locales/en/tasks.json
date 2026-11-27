@@ -723,5 +723,6 @@
   },
   "scope": {
     "allLibraries": "all libraries"
-  }
+  },
+  "includeChildren": "Include subtasks"
 }

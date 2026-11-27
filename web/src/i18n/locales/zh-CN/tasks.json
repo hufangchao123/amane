@@ -688,5 +688,6 @@
   },
   "scope": {
     "allLibraries": "全部库"
-  }
+  },
+  "includeChildren": "含子任务"
 }
