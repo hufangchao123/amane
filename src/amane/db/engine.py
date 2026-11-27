@@ -41,6 +41,9 @@ async def create_async_engine_from_path(db_path: Path | str, *, policy: DbLogPol
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
         cursor.execute("PRAGMA foreign_keys=ON")
+        # 页缓存 32 MB (负数表示 KiB): 默认 2 MB 装不下 tasks/media_files 这类表,
+        # 列表查询一旦命中不了缓存就逐页回盘, 机械盘上会抖到秒级.
+        cursor.execute("PRAGMA cache_size=-32768")
         cursor.close()
 
     if policy is not None:

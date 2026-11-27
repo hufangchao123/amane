@@ -89,6 +89,4 @@ class TestRedactText:
         assert redact_text("") == ""
 
     def test_userinfo_is_stripped(self) -> None:
-        assert redact_text("connecting to http://user:pass@10.0.0.2:7890/") == (
-            "connecting to http://10.0.0.2:7890/"
-        )
+        assert redact_text("connecting to http://user:pass@10.0.0.2:7890/") == ("connecting to http://10.0.0.2:7890/")

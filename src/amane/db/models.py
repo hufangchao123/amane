@@ -359,6 +359,11 @@ def metadata_number_predicate(number: str) -> ColumnElement[bool]:
 
 class Task(SQLModel, table=True):
     __tablename__ = "tasks"  # type: ignore[assignment]
+    __table_args__ = (
+        # 任务列表默认排序 ORDER BY created_at DESC, id ASC; 方向写进索引定义才不必临时排序.
+        # 没有这条索引时每次列表都要全表扫描再建 TEMP B-TREE, 把 payload/result 一起读出 (机械盘上抖到秒级).
+        Index("ix_tasks_created_at_id", text("created_at DESC"), "id"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     type: TaskType = Field(index=True)

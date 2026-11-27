@@ -51,6 +51,8 @@ _ENGINE_PRAGMAS: dict[str, object] = {
     "busy_timeout": 30_000,
     "synchronous": 1,
     "foreign_keys": 1,
+    # 页缓存 32 MB (SQLite 报负数 = KiB); 驱动默认 2 MB 装不下业务表.
+    "cache_size": -32768,
 }
 
 
@@ -63,3 +65,15 @@ async def test_engine_connection_pragmas(db_path):
         for session in (first, second):
             actual = {name: (await session.execute(text(f"PRAGMA {name}"))).scalar() for name in _ENGINE_PRAGMAS}
             assert actual == _ENGINE_PRAGMAS
+
+
+@pytest.mark.asyncio
+async def test_task_list_query_uses_created_at_index(db_path):
+    """任务列表按 created_at DESC, id ASC 排序, 必须走索引而不是全表扫描 + 临时排序."""
+    engine = await create_async_engine_from_path(db_path)
+    plan_sql = "EXPLAIN QUERY PLAN SELECT id FROM tasks ORDER BY created_at DESC, id ASC LIMIT 50"
+    async with get_session(engine) as session:
+        rows = (await session.execute(text(plan_sql))).all()
+    plan = " | ".join(str(row[-1]) for row in rows)
+    assert "ix_tasks_created_at_id" in plan, plan
+    assert "TEMP B-TREE" not in plan, plan
