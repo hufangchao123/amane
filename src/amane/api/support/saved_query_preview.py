@@ -117,6 +117,11 @@ def _entity_of(query: SavedQuery, columns: Sequence[str]) -> SavedQueryEntity | 
     return None
 
 
+def entity_of(query: SavedQuery, columns: Sequence[str]) -> SavedQueryEntity | None:
+    """结果行装的是哪类实体; 判断不出返回 None (调用方据此不给图)."""
+    return _entity_of(query, columns)
+
+
 async def previews_for_rows(
     repo: Repository,
     query: SavedQuery,
@@ -128,7 +133,7 @@ async def previews_for_rows(
     预设的结果表是任意 SQL 的产物, 只能靠列名判断 id 与实体; 判断不出来就整列不给图,
     宁可少一张图, 也不要把演员头像贴到番号上。
     """
-    entity = _entity_of(query, columns)
+    entity = entity_of(query, columns)
     if entity is None or not rows:
         return [None] * len(rows)
     column = _id_column(columns)

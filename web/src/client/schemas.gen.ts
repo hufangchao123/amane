@@ -8007,6 +8007,16 @@ export const SavedQueryResultResponseSchema = {
             },
             type: 'array',
             title: 'Previews'
+        },
+        preview_entity: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/SavedQueryEntity'
+                },
+                {
+                    type: 'null'
+                }
+            ]
         }
     },
     type: 'object',

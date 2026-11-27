@@ -102,3 +102,5 @@ class SavedQueryResultResponse(BaseModel):
     total: int
     previews: list[SavedQueryPreview | None] = Field(default_factory=list)
     """与 ``rows`` 等长; 每行对应实体的海报 / 头像, 取不到是 None."""
+    preview_entity: SavedQueryEntity | None = None
+    """``previews`` 里的 id 属于哪类实体; None 表示这批行没有配图."""

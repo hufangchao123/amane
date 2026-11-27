@@ -33,9 +33,11 @@ import {
   batchSavedQueriesMutation,
   getSavedQueryOptions,
   getSavedQueryResultOptions,
+  listMetadataOptions,
   updateSavedQueryMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { ListPagination } from "@/components/common/list-pagination";
+import { PosterGrid } from "@/components/media/poster-grid";
 import { PageSizeSelect } from "@/components/common/page-size-select";
 import {
   isSavedQueryFormDirty,
@@ -155,6 +157,20 @@ function SavedQueryDataPage() {
   const previews = resultQuery.data?.previews ?? [];
   // 有实体图才多画一列, 纯计数类的预设不该出现空列
   const hasThumbs = previews.some((item) => item != null);
+  // 结果行都是片子时, 按片库的样子画卡片 (与 /meta 同一个组件、同一份数据形状)
+  const previewEntity = resultQuery.data?.preview_entity ?? null;
+  const entityIds = previews.flatMap((item) => (item == null ? [] : [item.entity_id]));
+  const showGrid = previewEntity === "metadata" && entityIds.length > 0;
+  const itemsQuery = useQuery({
+    ...listMetadataOptions({ query: { ids: entityIds, limit: entityIds.length } }),
+    enabled: showGrid,
+  });
+  // 按结果行顺序重排: 库内按 id 取回, 返回顺序不保证与预设一致
+  const itemsById = new Map((itemsQuery.data?.items ?? []).map((item) => [item.id, item]));
+  const gridItems = entityIds.flatMap((entityId) => {
+    const item = itemsById.get(entityId);
+    return item == null ? [] : [item];
+  });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (search.page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, search.page * pageSize);
@@ -314,6 +330,23 @@ function SavedQueryDataPage() {
         <Text c="dimmed">{t("dataPageFailed")}</Text>
       ) : total === 0 ? (
         <Text c="dimmed">{t("dataPageEmpty")}</Text>
+      ) : showGrid ? (
+        <>
+          <PosterGrid
+            items={gridItems}
+            loading={itemsQuery.isPending}
+            emptyMessage={t("dataPageEmpty")}
+          />
+          {totalPages > 1 && (
+            <Group justify="center">
+              <ListPagination
+                totalPages={totalPages}
+                page={search.page}
+                onChange={(page) => void navigate({ search: (prev) => ({ ...prev, page }) })}
+              />
+            </Group>
+          )}
+        </>
       ) : (
         <>
           <ScrollArea type="auto" offsetScrollbars>

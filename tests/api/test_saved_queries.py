@@ -472,3 +472,34 @@ async def test_result_carries_one_thumbnail_per_row(client: AsyncClient, repo: R
     r = await client.get(f"/saved-queries/{plain.id}/result")
     assert r.status_code == 200
     assert r.json()["previews"] == [None]
+
+
+@pytest.mark.asyncio
+async def test_result_exposes_preview_entity_for_the_grid(client: AsyncClient, repo: Repository) -> None:
+    """预设详情页要按片库样式画卡片, 需要知道这批 id 属于哪类实体."""
+    a = await repo.upsert_metadata(number="ABC-301", poster_urls=["https://img.example/abc301.jpg"])
+    assert a.id is not None
+    sq = await repo.create_saved_query(
+        name="一部片子", sql=f"SELECT id, number FROM metadata WHERE id = {a.id}", entity=SavedQueryEntity.DATA
+    )
+    assert sq.id is not None
+    body = (await client.get(f"/saved-queries/{sq.id}/result")).json()
+    assert body["preview_entity"] == "metadata"
+
+    plain = await repo.create_saved_query(name="计数", sql="SELECT COUNT(*) AS n FROM metadata", entity=SavedQueryEntity.DATA)
+    assert plain.id is not None
+    body = (await client.get(f"/saved-queries/{plain.id}/result")).json()
+    assert body["preview_entity"] is None
+
+
+@pytest.mark.asyncio
+async def test_metadata_list_can_be_restricted_to_ids(client: AsyncClient, repo: Repository) -> None:
+    """预设详情页用 ids 精确取回片库条目 (卡片渲染复用片库组件)."""
+    a = await repo.upsert_metadata(number="ABC-401")
+    b = await repo.upsert_metadata(number="ABC-402")
+    assert a.id is not None and b.id is not None
+    r = await client.get("/metadata", params={"ids": [a.id]})
+    assert r.status_code == 200
+    body = r.json()
+    assert [item["number"] for item in body["items"]] == ["ABC-401"]
+    assert body["total"] == 1

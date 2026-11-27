@@ -923,6 +923,27 @@
             }
           },
           {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按 id 精确取 (预设详情页用)",
+              "title": "Ids"
+            },
+            "description": "按 id 精确取 (预设详情页用)"
+          },
+          {
             "name": "sort_by",
             "in": "query",
             "required": false,
@@ -15590,6 +15611,16 @@
             },
             "type": "array",
             "title": "Previews"
+          },
+          "preview_entity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SavedQueryEntity"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

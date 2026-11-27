@@ -4659,6 +4659,7 @@ export type SavedQueryResultResponse = {
      * Previews
      */
     previews?: Array<SavedQueryPreview | null>;
+    preview_entity?: SavedQueryEntity | null;
 };
 
 /**
@@ -8392,6 +8393,12 @@ export type ListMetadataData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Ids
+         *
+         * 按 id 精确取 (预设详情页用)
+         */
+        ids?: Array<number> | null;
         /**
          * Sort field
          */

@@ -93,6 +93,7 @@ async def list_metadata(
     search: Annotated[str | None, Query()] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 20,
+    ids: Annotated[list[int] | None, Query(description="按 id 精确取 (预设详情页用)")] = None,
     sort_by: Annotated[MetadataSortField, Query(description="Sort field")] = MetadataSortField.UPDATED_AT,
     order: Annotated[SortOrder, Query(description="Sort order")] = SortOrder.DESC,
     semantic_query: Annotated[
@@ -138,6 +139,7 @@ async def list_metadata(
         uncensored=filters.uncensored,
         definition=definition,
         content_type=filters.content_type,
+        ids=ids,
         id_subquery_sql=id_subquery_sql,
     )
     return MetadataListResponse(items=await build_metadata_responses(repo, items), total=total)

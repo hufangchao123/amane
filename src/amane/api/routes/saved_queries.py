@@ -19,7 +19,7 @@ from ..models.saved_queries import (
     SavedQueryResultResponse,
     SavedQueryUpdateRequest,
 )
-from ..support.saved_query_preview import build_previews, previews_for_rows
+from ..support.saved_query_preview import build_previews, entity_of, previews_for_rows
 
 router = APIRouter(tags=["saved-queries"])
 
@@ -144,6 +144,7 @@ async def get_saved_query_result(
 
     page = cached.rows[offset : offset + limit]
     previews = await previews_for_rows(repo, query, cached.columns, page)
+    preview_entity = entity_of(query, cached.columns) if any(item is not None for item in previews) else None
     return SavedQueryResultResponse(
         saved_query_id=query_id,
         columns=cached.columns,
@@ -152,6 +153,7 @@ async def get_saved_query_result(
         limit=limit,
         total=len(cached.rows),
         previews=previews,
+        preview_entity=preview_entity,
     )
 
 
