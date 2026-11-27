@@ -93,6 +93,16 @@ function unknownRow(row: never): void {
   console.warn("[agent] 丢弃无法识别的回放行", row);
 }
 
+/** 回放行里最后一份待批中断; 页面刷新后靠它把审批入口补回来. */
+export function pendingInterrupts(rows: readonly TraceRow[]): Interrupt[] {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (row?.type !== "approvals") continue;
+    return [...row.interrupts];
+  }
+  return [];
+}
+
 export function foldTrace(rows: readonly TraceRow[]): AgentMessage[] {
   const messages: AgentMessage[] = [];
   let parts: AgentPart[] = [];

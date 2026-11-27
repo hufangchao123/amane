@@ -81,6 +81,7 @@ import { apiFetch } from "@/lib/api-token";
 import { useFold } from "@/lib/agent/fold";
 import {
   foldTrace,
+  pendingInterrupts,
   type AgentMessage,
   type AgentPart,
   type AgentToolCallPart,
@@ -539,6 +540,38 @@ function wait(ms: number): Promise<void> {
   });
 }
 
+/** 直接发一次续批请求 (不经过运行时): 刷新后运行时不知道有中断时用这条路. */
+async function resumeRun(
+  sessionId: number,
+  entries: readonly Record<string, unknown>[],
+): Promise<void> {
+  const response = await apiFetch(`/api/agent/sessions/${sessionId}/agui`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      threadId: String(sessionId),
+      runId: crypto.randomUUID(),
+      messages: [],
+      tools: [],
+      context: [],
+      state: {},
+      forwardedProps: {},
+      resume: entries,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`${response.status} ${await response.text()}`);
+  }
+  // 读完再返回: 中途丢下连接会让服务端那一回合被取消
+  const body = response.body;
+  if (body === null) return;
+  const reader = body.getReader();
+  for (;;) {
+    const { done } = await reader.read();
+    if (done) return;
+  }
+}
+
 /** 跟随 `afterSeq` 之后的回放行; 服务端在回合结束且追平后关闭, 断连由 signal 终止. */
 async function followTraceRows(
   sessionId: number,
@@ -576,6 +609,22 @@ async function followTraceRows(
   }
 }
 
+type ContractInterrupt = ReturnType<typeof pendingInterrupts>[number];
+
+/** 契约里的中断 → 运行时库的中断: 契约字段可为 null, 库的可选项只接受 undefined. */
+function toAgUiInterrupt(item: ContractInterrupt): AgUiInterrupt {
+  return {
+    id: item.id,
+    reason: item.reason as AgUiInterrupt["reason"],
+    ...(item.message == null ? {} : { message: item.message }),
+    ...(item.toolCallId == null ? {} : { toolCallId: item.toolCallId }),
+    ...(item.responseSchema == null
+      ? {}
+      : { responseSchema: item.responseSchema as Record<string, unknown> }),
+    ...(item.metadata == null ? {} : { metadata: item.metadata as Record<string, unknown> }),
+  };
+}
+
 type Decision = "approve" | "reject";
 
 type ApprovalQueue = {
@@ -591,28 +640,43 @@ type ApprovalQueue = {
     一次 resume 必须回答全部打开的中断, 故逐个点选只暂存决定, 最后一个决定落下时才整批提交;
     批量批准即对全部中断一次暂存 approve.
 */
-function useApprovalQueue(): ApprovalQueue {
+function useApprovalQueue({
+  restored,
+  sessionId,
+  onSettled,
+}: {
+  readonly restored: readonly AgUiInterrupt[];
+  readonly sessionId: number;
+  readonly onSettled: () => Promise<void>;
+}): ApprovalQueue {
   const { t } = useTranslation("agent");
-  const interrupts = useAgUiInterrupts();
+  const live = useAgUiInterrupts();
   const submit = useAgUiSubmitInterruptResponses();
+  // 刷新后运行时的话题本丢掉待批态, 用回放行里的中断顶上, 免得审批入口消失
+  const interrupts = live.length > 0 ? live : restored;
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [submitting, setSubmitting] = useState(false);
 
   const flush = (next: Record<string, Decision>) => {
     setSubmitting(true);
+    const entries = interrupts.map((item) => ({
+      interruptId: item.id,
+      status: "resolved" as const,
+      // 拒绝理由随 payload 进 ToolDenied 再到 messages.json, 是模型的输入而不是页面徽章文案
+      payload:
+        next[item.id] === "approve"
+          ? { approved: true }
+          : { approved: false, reason: t("approvalRejectReason") },
+    }));
     void (async () => {
       try {
-        await submit(
-          interrupts.map((item) => ({
-            interruptId: item.id,
-            status: "resolved" as const,
-            // 拒绝理由随 payload 进 ToolDenied 再到 messages.json, 是模型的输入而不是页面徽章文案
-            payload:
-              next[item.id] === "approve"
-                ? { approved: true }
-                : { approved: false, reason: t("approvalRejectReason") },
-          })),
-        );
+        if (live.length > 0) {
+          await submit(entries);
+        } else {
+          // 运行时不知道有中断 (刚刷新过), 直接发一次续批请求, 回合结束再用快照对齐
+          await resumeRun(sessionId, entries);
+          await onSettled();
+        }
       } catch (error) {
         notifications.show({ color: "red", message: String(error) });
       } finally {
@@ -747,8 +811,18 @@ function ApprovalPanel() {
 }
 
 /** 审批队列须在 runtime 内读取, 故单独一层 Provider. */
-function ApprovalProvider({ children }: { children: ReactNode }) {
-  const queue = useApprovalQueue();
+function ApprovalProvider({
+  children,
+  restored,
+  sessionId,
+  onSettled,
+}: {
+  children: ReactNode;
+  restored: readonly AgUiInterrupt[];
+  sessionId: number;
+  onSettled: () => Promise<void>;
+}) {
+  const queue = useApprovalQueue({ restored, sessionId, onSettled });
   return <ApprovalContext.Provider value={queue}>{children}</ApprovalContext.Provider>;
 }
 
@@ -822,6 +896,8 @@ function AgUiThread({
   const scrollRef = useRef<HTMLDivElement>(null);
   /** 视图是否贴底: 用户上滚查看历史时不再跟随新内容. */
   const stickRef = useRef(true);
+  /** 回放行里最后一份待批中断: 刷新后运行时没有它, 用它把审批入口补回来. */
+  const [restoredInterrupts, setRestoredInterrupts] = useState<AgUiInterrupt[]>([]);
 
   const agent = useMemo(
     () =>
@@ -852,6 +928,7 @@ function AgUiThread({
       const folded = foldTrace(rows);
       messagesRef.current = folded;
       setMessages(folded);
+      setRestoredInterrupts(pendingInterrupts(rows).map(toAgUiInterrupt));
       if (syncRuntime) runtime.thread.reset(folded);
     },
     [runtime],
@@ -975,7 +1052,7 @@ function AgUiThread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <RunEdges onStart={startFollow} onEnd={settle} />
-      <ApprovalProvider>
+      <ApprovalProvider restored={restoredInterrupts} sessionId={sessionId} onSettled={settle}>
         <Stack style={{ flex: 1, minWidth: 0, minHeight: 0, height: "100%" }} gap="sm">
           <Paper
             withBorder
