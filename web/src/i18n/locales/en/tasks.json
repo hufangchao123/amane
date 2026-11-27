@@ -719,5 +719,8 @@
   "worker": {
     "pause": "Pause",
     "resume": "Resume"
+  },
+  "scope": {
+    "allLibraries": "all libraries"
   }
 }

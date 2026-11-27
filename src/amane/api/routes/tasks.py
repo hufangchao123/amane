@@ -164,6 +164,7 @@ async def list_tasks(
     root_task_id: Annotated[
         int | None, Query(description="Filter to a task chain (all tasks sharing the root)")
     ] = None,
+    roots_only: Annotated[bool, Query(description="只返回链根; 想看子任务(如逐文件字幕)传 false")] = True,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     sort_by: Annotated[TaskSortField, Query(description="Sort field")] = TaskSortField.CREATED_AT,
@@ -175,13 +176,19 @@ async def list_tasks(
         await repo.list_tasks_by_root(root_task_id)
         if root_task_id is not None
         else await repo.list_tasks(
-            statuses=status, task_types=type, limit=limit, offset=offset, sort_by=sort_by, order=order, roots_only=True
+            statuses=status,
+            task_types=type,
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            order=order,
+            roots_only=roots_only,
         )
     )
     total = (
         len(items)
         if root_task_id is not None
-        else await repo.count_tasks(statuses=status, task_types=type, roots_only=True)
+        else await repo.count_tasks(statuses=status, task_types=type, roots_only=roots_only)
     )
     return TaskListResponse(items=await _decorate_tasks(repo, items, TaskListItem), total=total)
 

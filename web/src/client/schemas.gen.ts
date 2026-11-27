@@ -10092,6 +10092,21 @@ export const TaskChildItemSchema = {
             ],
             title: 'Finished At'
         },
+        progress_current: {
+            type: 'integer',
+            title: 'Progress Current',
+            default: 0
+        },
+        progress_total: {
+            type: 'integer',
+            title: 'Progress Total',
+            default: 0
+        },
+        progress_message: {
+            type: 'string',
+            title: 'Progress Message',
+            default: ''
+        },
         link_key: {
             type: 'string',
             title: 'Link Key'
@@ -10255,6 +10270,21 @@ export const TaskListItemSchema = {
                 }
             ],
             title: 'Finished At'
+        },
+        progress_current: {
+            type: 'integer',
+            title: 'Progress Current',
+            default: 0
+        },
+        progress_total: {
+            type: 'integer',
+            title: 'Progress Total',
+            default: 0
+        },
+        progress_message: {
+            type: 'string',
+            title: 'Progress Message',
+            default: ''
         }
     },
     type: 'object',
@@ -10450,6 +10480,21 @@ export const TaskResponseSchema = {
                 }
             ],
             title: 'Finished At'
+        },
+        progress_current: {
+            type: 'integer',
+            title: 'Progress Current',
+            default: 0
+        },
+        progress_total: {
+            type: 'integer',
+            title: 'Progress Total',
+            default: 0
+        },
+        progress_message: {
+            type: 'string',
+            title: 'Progress Message',
+            default: ''
         },
         payload: {
             additionalProperties: true,

@@ -30,6 +30,25 @@ class TestListTasks:
         assert empty.json()["items"] == []
         assert empty.json()["total"] == 0
 
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_roots_only_can_be_turned_off(self, client: AsyncClient, repo: Repository, stop_worker: None):
+        """逐文件字幕是子任务: 只看链根会让「进行中」永远是 0 条."""
+        parent = await repo.create_task(task_type=TaskType.SCRAPE, payload={"number": "AD-1"})
+        assert parent.id is not None
+        await repo.claim_next_task()
+        await repo.complete_task_with_followups(
+            parent.id, None, [("fetch", TaskType.SUBTITLE_FETCH, {"number": "AD-1"}, -1)]
+        )
+
+        roots = await client.get("tasks", params={"type": ["subtitle_fetch"]})
+        everything = await client.get("tasks", params={"type": ["subtitle_fetch"], "roots_only": "false"})
+
+        # roots_only 只决定显示哪一层: 子任务的链根是那条 scrape, 所以按类型筛时返回的是父任务.
+        assert roots.json()["total"] == 1
+        assert roots.json()["items"][0]["type"] == "scrape"
+        assert everything.json()["total"] == 1
+        assert everything.json()["items"][0]["type"] == "subtitle_fetch"
+
 
 class TestSubmitTask:
     @pytest.mark.asyncio(loop_scope="function")
@@ -440,6 +459,32 @@ class TestTaskResult:
             resp = await client.get(f"tasks/{task.id}")
             assert resp.status_code == 200
             assert resp.json()["result"] is None
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_progress_snapshot_is_readable(self, client: AsyncClient, repo: Repository, stop_worker: None):
+        """进度落库: 刷新页面后仍能画出「第几份 / 共几份」."""
+        task = await repo.create_task(task_type=TaskType.SUBTITLE_FETCH, payload={"number": "AD-1"})
+        assert task.id is not None
+        await repo.claim_next_task()
+        await repo.set_task_progress(task.id, 3, 20, "AD-1")
+
+        body = (await client.get(f"tasks/{task.id}")).json()
+
+        assert (body["progress_current"], body["progress_total"], body["progress_message"]) == (3, 20, "AD-1")
+
+    @pytest.mark.asyncio(loop_scope="function")
+    async def test_progress_is_ignored_once_terminal(self, repo: Repository, stop_worker: None):
+        """终态任务不再收进度: 否则列表里跑完的任务会一直显示「3 / 20」."""
+        task = await repo.create_task(task_type=TaskType.SUBTITLE_FETCH, payload={})
+        assert task.id is not None
+        await repo.claim_next_task()
+        await repo.complete_task(task.id)
+
+        await repo.set_task_progress(task.id, 3, 20, "AD-1")
+
+        fresh = await repo.get_task(task.id)
+        assert fresh is not None
+        assert fresh.progress_total == 0
 
     @pytest.mark.asyncio(loop_scope="function")
     async def test_failed_task_keeps_result_payload(self, client: AsyncClient, repo: Repository, stop_worker: None):

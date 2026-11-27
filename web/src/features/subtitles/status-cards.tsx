@@ -188,108 +188,131 @@ export function SubtitleStatusCards() {
           value={status ? String(status.queued) : "-"}
         />
       </SimpleGrid>
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Text size="sm" c="dimmed">
-          {t("ops:subtitles.fetchScope")}
-        </Text>
-        <Group gap="sm">
-          <Badge variant="light" color={enabled ? "teal" : "gray"}>
-            {enabled ? t("ops:subtitles.enabled") : t("ops:subtitles.disabled")}
-          </Badge>
-          <Button
-            variant="default"
-            leftSection={<IconListSearch size={16} />}
-            loading={audit.isPending}
-            onClick={() => audit.mutate({ body: { type: "subtitle_audit" } })}
-          >
-            {t("ops:subtitles.audit")}
-          </Button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            loading={running}
-            disabled={!enabled}
-            onClick={() => submit.mutate({ body: { type: "subtitle_fetch" } })}
-          >
-            {t("ops:subtitles.fetch")}
-          </Button>
-        </Group>
-      </Group>
-      <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
-        <Select
-          label={t("ops:subtitles.libraryLabel")}
-          description={t("ops:subtitles.libraryHint")}
-          placeholder={t("ops:subtitles.libraryPlaceholder")}
-          data={(librariesQuery.data?.items ?? []).map((library) => ({
-            value: String(library.id),
-            label: library.name,
-          }))}
-          value={libraryId === null ? null : String(libraryId)}
-          onChange={(value) => setLibraryId(value === null ? null : Number(value))}
-          clearable
-          w={280}
-        />
-        <Group gap="sm">
-          <NumberInput
-            aria-label={t("ops:subtitles.fetchLimitLabel")}
-            description={t("ops:subtitles.fetchLimitHint")}
-            value={fetchLimit}
-            onChange={(value) =>
-              setFetchLimit(typeof value === "number" ? value : FETCH_LIMIT_DEFAULT)
-            }
-            min={1}
-            max={FETCH_LIMIT_MAX}
-            allowDecimal={false}
-            w={120}
-          />
-          <Button
-            variant="default"
-            leftSection={<IconListSearch size={16} />}
-            loading={audit.isPending}
-            disabled={libraryId === null}
-            onClick={() =>
-              audit.mutate({ body: { type: "subtitle_audit", library_id: libraryId } })
-            }
-          >
-            {t("ops:subtitles.auditLibrary")}
-          </Button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            loading={submit.isPending}
-            disabled={!enabled || libraryId === null}
-            onClick={() =>
-              submit.mutate({
-                body: { type: "subtitle_fetch", library_id: libraryId, limit: fetchLimitSafe },
-              })
-            }
-          >
-            {t("ops:subtitles.fetchLibrary")}
-          </Button>
-          <Button
-            variant="subtle"
-            leftSection={<IconPlugConnected size={16} />}
-            loading={probe.isPending}
-            onClick={() => probe.mutate({})}
-          >
-            {t("ops:subtitles.testGeneration")}
-          </Button>
-          <Button
-            variant="default"
-            leftSection={<IconMicrophone size={16} />}
-            loading={generate.isPending}
-            disabled={libraryId === null || generationEnabled !== true}
-            onClick={() =>
-              generate.mutate({ body: { type: "subtitle_generate", library_id: libraryId } })
-            }
-          >
-            {t("ops:subtitles.generateLibrary")}
-          </Button>
-          {generationEnabled === false ? (
-            <Text size="xs" c="dimmed">
-              {t("ops:subtitles.generationDisabled")}
-            </Text>
-          ) : null}
-        </Group>
-      </Group>
+      <Card withBorder padding="md">
+        <Stack gap="sm">
+          <Group gap="xs" wrap="wrap">
+            <Badge variant="light" color="blue">
+              {t("ops:subtitles.methodFetch")}
+            </Badge>
+            <Text fw={600}>{t("ops:subtitles.downloadTitle")}</Text>
+          </Group>
+          <Text size="sm" c="dimmed">
+            {t("ops:subtitles.downloadHint")}
+          </Text>
+          <Group justify="space-between" wrap="wrap" gap="sm">
+            <Group gap="sm">
+              <Badge variant="light" color={enabled ? "teal" : "gray"}>
+                {enabled ? t("ops:subtitles.enabled") : t("ops:subtitles.disabled")}
+              </Badge>
+              <Button
+                variant="default"
+                leftSection={<IconListSearch size={16} />}
+                loading={audit.isPending}
+                onClick={() => audit.mutate({ body: { type: "subtitle_audit" } })}
+              >
+                {t("ops:subtitles.audit")}
+              </Button>
+              <Button
+                leftSection={<IconDownload size={16} />}
+                loading={running}
+                disabled={!enabled}
+                onClick={() => submit.mutate({ body: { type: "subtitle_fetch" } })}
+              >
+                {t("ops:subtitles.fetch")}
+              </Button>
+            </Group>
+            <Group gap="sm" align="flex-end">
+              <Select
+                label={t("ops:subtitles.libraryLabel")}
+                description={t("ops:subtitles.libraryHint")}
+                placeholder={t("ops:subtitles.libraryPlaceholder")}
+                data={(librariesQuery.data?.items ?? []).map((library) => ({
+                  value: String(library.id),
+                  label: library.name,
+                }))}
+                value={libraryId === null ? null : String(libraryId)}
+                onChange={(value) => setLibraryId(value === null ? null : Number(value))}
+                clearable
+                w={280}
+              />
+              <NumberInput
+                aria-label={t("ops:subtitles.fetchLimitLabel")}
+                description={t("ops:subtitles.fetchLimitHint")}
+                value={fetchLimit}
+                onChange={(value) =>
+                  setFetchLimit(typeof value === "number" ? value : FETCH_LIMIT_DEFAULT)
+                }
+                min={1}
+                max={FETCH_LIMIT_MAX}
+                allowDecimal={false}
+                w={120}
+              />
+              <Button
+                variant="default"
+                leftSection={<IconListSearch size={16} />}
+                loading={audit.isPending}
+                disabled={libraryId === null}
+                onClick={() =>
+                  audit.mutate({ body: { type: "subtitle_audit", library_id: libraryId } })
+                }
+              >
+                {t("ops:subtitles.auditLibrary")}
+              </Button>
+              <Button
+                leftSection={<IconDownload size={16} />}
+                loading={submit.isPending}
+                disabled={!enabled || libraryId === null}
+                onClick={() =>
+                  submit.mutate({
+                    body: { type: "subtitle_fetch", library_id: libraryId, limit: fetchLimitSafe },
+                  })
+                }
+              >
+                {t("ops:subtitles.fetchLibrary")}
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
+      </Card>
+      <Card withBorder padding="md">
+        <Stack gap="sm">
+          <Group gap="xs" wrap="wrap">
+            <Badge variant="light" color="grape">
+              {t("ops:subtitles.methodGenerate")}
+            </Badge>
+            <Text fw={600}>{t("ops:subtitles.generateTitle")}</Text>
+          </Group>
+          <Text size="sm" c="dimmed">
+            {t("ops:subtitles.generateHint")}
+          </Text>
+          <Group gap="sm" align="flex-end" wrap="wrap">
+            <Button
+              variant="subtle"
+              leftSection={<IconPlugConnected size={16} />}
+              loading={probe.isPending}
+              onClick={() => probe.mutate({})}
+            >
+              {t("ops:subtitles.testGeneration")}
+            </Button>
+            <Button
+              variant="default"
+              leftSection={<IconMicrophone size={16} />}
+              loading={generate.isPending}
+              disabled={libraryId === null || generationEnabled !== true}
+              onClick={() =>
+                generate.mutate({ body: { type: "subtitle_generate", library_id: libraryId } })
+              }
+            >
+              {t("ops:subtitles.generateLibrary")}
+            </Button>
+            {generationEnabled === false ? (
+              <Text size="xs" c="dimmed">
+                {t("ops:subtitles.generationDisabled")}
+              </Text>
+            ) : null}
+          </Group>
+        </Stack>
+      </Card>
     </Stack>
   );
 }

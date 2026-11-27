@@ -5862,6 +5862,18 @@ export type TaskChildItem = {
      */
     finished_at?: string | null;
     /**
+     * Progress Current
+     */
+    progress_current?: number;
+    /**
+     * Progress Total
+     */
+    progress_total?: number;
+    /**
+     * Progress Message
+     */
+    progress_message?: string;
+    /**
      * Link Key
      */
     link_key: string;
@@ -5954,6 +5966,18 @@ export type TaskListItem = {
      * Finished At
      */
     finished_at?: string | null;
+    /**
+     * Progress Current
+     */
+    progress_current?: number;
+    /**
+     * Progress Total
+     */
+    progress_total?: number;
+    /**
+     * Progress Message
+     */
+    progress_message?: string;
 };
 
 /**
@@ -6065,6 +6089,18 @@ export type TaskResponse = {
      * Finished At
      */
     finished_at?: string | null;
+    /**
+     * Progress Current
+     */
+    progress_current?: number;
+    /**
+     * Progress Total
+     */
+    progress_total?: number;
+    /**
+     * Progress Message
+     */
+    progress_message?: string;
     /**
      * Payload
      */
@@ -10552,6 +10588,12 @@ export type ListTasksData = {
          * Filter to a task chain (all tasks sharing the root)
          */
         root_task_id?: number | null;
+        /**
+         * Roots Only
+         *
+         * 只返回链根; 想看子任务(如逐文件字幕)传 false
+         */
+        roots_only?: boolean;
         /**
          * Limit
          */

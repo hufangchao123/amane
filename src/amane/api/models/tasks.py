@@ -122,6 +122,10 @@ class TaskListItem(BaseModel):
     created_at: datetime | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    progress_current: int = 0
+    """上一次进度快照 (WS 事件落库的那份); 与 progress_total 一起画进度条."""
+    progress_total: int = 0
+    progress_message: str = ""
 
 
 class TaskChildItem(TaskListItem):

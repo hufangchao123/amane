@@ -48,7 +48,18 @@
     "recentSkipped": "Skipped",
     "recentVideos": "Videos",
     "recentSubtitles": "Subtitles",
-    "recentOrphans": "Orphans"
+    "recentOrphans": "Orphans",
+    "methodFetch": "Download",
+    "methodGenerate": "Transcribe",
+    "methodAudit": "Audit",
+    "downloadTitle": "Download subtitles from sites",
+    "downloadHint": "Look up existing Chinese subtitles on subtitlecat / avsubtitles by number; the limit caps how many are filled per run.",
+    "generateTitle": "Generate subtitles locally",
+    "generateHint": "Transcribe with whisper and translate when the sites have nothing; one file takes tens of minutes, so it only runs for the selected library.",
+    "progressTitle": "Subtitles in progress",
+    "progressEmpty": "No subtitle task is queued or running.",
+    "progressCount": "{{total}}",
+    "progressNumbers": "{{current}} / {{total}}"
   },
   "wash": {
     "title": "Wash",

@@ -267,6 +267,11 @@ class AsyncWorker:
                 return
 
             async def _report_progress(current_val: int, total: int, message: str = "") -> None:
+                # 落库失败不能影响任务本身: 进度只是展示面.
+                try:
+                    await self._repo.set_task_progress(task_id, current_val, total, message)
+                except Exception:
+                    logger.exception("task progress persist failed", task_id=task_id)
                 if self._event_bus:
                     await self._event_bus.emit(
                         EventType.TASK_PROGRESS,

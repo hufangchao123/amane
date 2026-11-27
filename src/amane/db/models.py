@@ -382,6 +382,10 @@ class Task(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # 上一次进度的落库快照: WS 事件只到打开的页面, 刷新后仍要看得到跑到哪了.
+    progress_current: int = Field(default=0)
+    progress_total: int = Field(default=0)
+    progress_message: str = Field(default="")
 
 
 class TaskLink(SQLModel, table=True):

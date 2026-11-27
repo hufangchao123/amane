@@ -46,7 +46,18 @@
     "recentSkipped": "跳过",
     "recentVideos": "视频数",
     "recentSubtitles": "字幕数",
-    "recentOrphans": "孤立字幕"
+    "recentOrphans": "孤立字幕",
+    "methodFetch": "网络下载",
+    "methodGenerate": "本地转录",
+    "methodAudit": "统计缺口",
+    "downloadTitle": "从站点下载字幕",
+    "downloadHint": "到 subtitlecat / avsubtitles 按番号找现成的中文字幕; 单轮份数决定这一轮最多补几份.",
+    "generateTitle": "本地转写生成字幕",
+    "generateHint": "站点都没有时用 whisper 转写并翻译; 一份要跑几十分钟, 只对选中的库发起.",
+    "progressTitle": "进行中的字幕任务",
+    "progressEmpty": "当前没有排队或运行中的字幕任务.",
+    "progressCount": "{{total}} 个",
+    "progressNumbers": "{{current}} / {{total}}"
   },
   "wash": {
     "title": "洗版",

@@ -684,5 +684,8 @@
   "worker": {
     "pause": "暂停",
     "resume": "恢复"
+  },
+  "scope": {
+    "allLibraries": "全部库"
   }
 }

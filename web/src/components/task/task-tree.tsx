@@ -18,6 +18,9 @@ import { bindExpandedPane } from "@/lib/task/focus-pane";
 import type { TaskProgress } from "@/stores/progress";
 import classes from "./task-tree.module.css";
 
+/** 标题缺省时要按范围兜底的任务: 这三种没有番号也没有库名时, 只剩类型名可看. */
+const SCOPE_LABEL_TYPES = new Set(["subtitle_fetch", "subtitle_generate", "subtitle_audit"]);
+
 const CHILD_PAGE_SIZE = 200;
 const TREE_INDENT = 28;
 const TREE_LINE_INSET = 8;
@@ -233,7 +236,11 @@ function TaskTreeNode({
           <div className={classes.title}>
             <Text size="sm" fw={500} truncate>
               {t(`filters.${task.type}`)}
-              {task.title ? `  ${task.title}` : ""}
+              {task.title
+                ? `  ${task.title}`
+                : SCOPE_LABEL_TYPES.has(task.type)
+                  ? `  ${t("scope.allLibraries" as never)}`
+                  : ""}
             </Text>
             {childCount > 0 ? (
               <Tooltip label={t("childrenCount", { count: childCount })}>

@@ -35,6 +35,7 @@ ORGANIZE 只读取范围内的 `MediaFile` 行: 缺省为该库全部索引, 显
 - **统一完成事务**: worker 成功路径调用 `Repository.complete_task_with_followups` — 一个事务内完成父任务、创建子任务 (复用 `create_task` 的入队互斥)、写 `TaskLink` 边; 父完成与子创建原子, 失败路径不产生后继. 它与 `create_task` 同一把入队锁串行化, 因此两个父任务并发派生同一互斥键时只会复用同一行. 状态迁移一律为带源状态谓词的单条 UPDATE: 认领只认 QUEUED, 完成与运行中失败只认 RUNNING, 失败接受 QUEUED / RUNNING; 命中 0 行即状态已被并发改动, 不覆盖终态也不派生后继.
 - **`TaskLink`** 是父子边真值: `(parent_task_id, key)` 唯一, `key` 须在父节点内区分后继 (fan-out 带实体 id); 完成事务对同 key 只留第一条. 删除任务时清理其边, 不删除另一端任务.
 - **链聚合**: `tasks.root_task_id` 记录链根 (根指向自己), 一棵链一次 `list_tasks_by_root` 取回. 任务列表默认只显示链根, `child_count` / `child_status` 是直接后继的数量与状态分布, 折叠节点据此显示.
+- **`roots_only` 可关**: `GET /tasks?roots_only=false` 返回子任务本身 (逐文件字幕、逐库整理这类扇出都在子层). 默认 `true` 沿用「只显示链根」, 想统计某一类任务的实时进度时必须关掉.
 - **筛选与 roots_only 正交**: `GET /tasks` 带 status / type 筛选时在 SQL 中匹配**全部**任务 (含子任务), 再 `DISTINCT COALESCE(root_task_id, id)` 还原链根行, 因此「父已 DONE、子排队中」时仍能看到父根行. 裸任务 (root 为空) 按自身 id 精确匹配.
 - **删除保护**: 待删集合里存在**不在该集合内的后裔**的节点跳过; 「清除已完成」遇到父 DONE、子有成有败时保留父节点作为链根.
 - **重试为独立再次运行**: `retry_tasks` 克隆为**无根裸任务**, 不继承原任务链归属, 完成后自成新链.
@@ -70,6 +71,8 @@ SCRAPE **没有**「缓存命中即整体跳过爬取」的快速返回 — 完�
 结果侧: 每个结果模型自带 `type` 字面量, 单条任务的结果按该字段判别 (联合定义在 `api/models/tasks.py`, 前端按 `result.type` 收窄). 结果由本进程按同一模型写入, 读不出来时不迁移也不猜字段: 详情响应里置空 (列表形状见 [api.md](api.md)). 落库前统一经 `TaskResult.as_dict` 按 JSON 模式 dump, 字段取值必须能被 JSON 模式 dump; dict 载荷不做转换, 须自带 JSON 原生值. 失败任务同样落库载荷 (`fail_task` / `fail_running_task` 都接 `result`): 刮削与演员刮削攒下站点明细后失败时带上它, 崩溃与取消由 `TaskHandler.failure_result` 补交 (含站点已上报而调度顺序尚未写入的抓取阶段); 取消落在 `handle()` 之外 (首次调度前, 或信号量等待 / `Recorder.begin` 期间 / 完成事务期间), 以及由 agent 工具与批量取消的兜底路径写入时, 都不经该钩子, 载荷为空. 新增结果模型须同时补 `tests/handlers/test_protocol.py` 的用例与 `api/models/tasks.py` 的联合 (漏了联合, 该类型的详情会静默置空).
 
 ### 进度上报
+
+进度同时落库: `tasks.progress_current` / `progress_total` / `progress_message` 三列由 `Repository.set_task_progress` 写入 (仅 RUNNING 行, 终态不再覆盖), 列表与详情接口原样带回. WS 事件只到打开着的页面, 落库是给「刷新后仍要看跑到哪」用的; 落库失败只记日志, 不影响任务本身.
 
 Worker 在 `handle()` 前注入 `report_progress` 回调, 经 EventBus 发 `task.progress` (`{task_id, current, total, message}`); 前端写 `web/src/stores/progress.ts`. **契约**: `total > 0` 时前端按 `current/total` 显示百分比, 未上报则回退 indeterminate, Handler 不调用时静默忽略. 回调存在 `handlers/protocol.py::TaskHandler.set_progress_callback` 写入的 ContextVar 里, 不是 handler 实例属性 — 同类 handler 只有一份实例, 实例属性会被后开始的任务覆盖成别人的 `task_id`; worker 在认领到的那个任务里绑定, `asyncio.gather` / `asyncio.to_thread` 派生的子任务复制上下文, 因此子任务的上报仍落在同一个任务上.
 

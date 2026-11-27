@@ -15,8 +15,9 @@ from ..repo_types import _TASK_SORT_COLUMNS, _order_clause, _utcnow
 from .base import RepositoryMixinBase, chunks
 
 _ACTIVE_STATUSES = (TaskStatus.QUEUED, TaskStatus.RUNNING)
-# 单条 INSERT 的行数: 每行至多 8 个绑定变量, 100 行合 800, 仍在 SQLite 旧默认的 999 变量上限内.
-_INSERT_CHUNK_SIZE = 100
+# 单条 INSERT 的行数: 每行 11 个绑定变量 (含进度三列), 80 行合 880, 仍在 SQLite 旧默认的 999 变量上限内.
+# 加列时记得同步这个数字, 否则批量建任务会报 "too many SQL variables".
+_INSERT_CHUNK_SIZE = 80
 # 互斥键在 payload 里; 同键已有 queued/running 则复用, 不另建行.
 # 其余类型每次新建; 同库串行由 handler 内的锁保证.
 _EXCLUSIVE_FIELDS: dict[TaskType, str] = {
@@ -331,6 +332,16 @@ class TasksRepoMixin(RepositoryMixinBase):
             task = await session.get(Task, candidate)
             await session.commit()
             return task
+
+    async def set_task_progress(self, task_id: int, current: int, total: int, message: str = "") -> None:
+        """记录进度快照. 只写还在跑的行: 终态任务留着过期的进度会让人以为它还在动."""
+        async with self._session() as session:
+            await session.exec(
+                update(Task)
+                .where(col(Task.id) == task_id, col(Task.status) == TaskStatus.RUNNING)
+                .values(progress_current=current, progress_total=total, progress_message=message)
+            )
+            await session.commit()
 
     async def complete_task(self, task_id: int, result: dict[str, object] | None = None) -> bool:
         """仅 ``RUNNING → DONE``, 返回是否命中. 已进入终态的行不被覆盖."""

@@ -5088,6 +5088,18 @@
             "description": "Filter to a task chain (all tasks sharing the root)"
           },
           {
+            "name": "roots_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "只返回链根; 想看子任务(如逐文件字幕)传 false",
+              "default": true,
+              "title": "Roots Only"
+            },
+            "description": "只返回链根; 想看子任务(如逐文件字幕)传 false"
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -17533,6 +17545,21 @@
             ],
             "title": "Finished At"
           },
+          "progress_current": {
+            "type": "integer",
+            "title": "Progress Current",
+            "default": 0
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total",
+            "default": 0
+          },
+          "progress_message": {
+            "type": "string",
+            "title": "Progress Message",
+            "default": ""
+          },
           "link_key": {
             "type": "string",
             "title": "Link Key"
@@ -17693,6 +17720,21 @@
               }
             ],
             "title": "Finished At"
+          },
+          "progress_current": {
+            "type": "integer",
+            "title": "Progress Current",
+            "default": 0
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total",
+            "default": 0
+          },
+          "progress_message": {
+            "type": "string",
+            "title": "Progress Message",
+            "default": ""
           }
         },
         "type": "object",
@@ -17884,6 +17926,21 @@
               }
             ],
             "title": "Finished At"
+          },
+          "progress_current": {
+            "type": "integer",
+            "title": "Progress Current",
+            "default": 0
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total",
+            "default": 0
+          },
+          "progress_message": {
+            "type": "string",
+            "title": "Progress Message",
+            "default": ""
           },
           "payload": {
             "additionalProperties": true,
