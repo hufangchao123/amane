@@ -48,6 +48,8 @@ class AgentTraceResponse(BaseModel):
     events: list[UiRow]
     turn_running: bool = False
     last_seq: int = 0
+    truncated: bool = False
+    """是否只返回了最近若干行 (长会话的早期行没有发)."""
 
 
 class AgentCancelResponse(BaseModel):

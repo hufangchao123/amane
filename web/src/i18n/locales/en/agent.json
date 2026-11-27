@@ -51,5 +51,9 @@
     "medium": "Medium",
     "high": "High",
     "xhigh": "Max"
-  }
+  },
+  "jsonTruncated": "Truncated — {{total}} characters in total",
+  "jsonExpand": "Show all",
+  "jsonCollapse": "Collapse",
+  "traceTruncated": "This session is long — only the latest {{rows}} detail rows are replayed; earlier ones are folded into the messages above."
 }

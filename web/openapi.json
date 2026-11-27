@@ -6271,6 +6271,7 @@
           "agent"
         ],
         "summary": "Get Agent Trace",
+        "description": "整段回放; `limit` 只取最近若干行 (`0` 表示不限, 供排查与导出).",
         "operationId": "get_agent_trace",
         "parameters": [
           {
@@ -6280,6 +6281,18 @@
             "schema": {
               "type": "integer",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 0,
+              "default": 2000,
+              "title": "Limit"
             }
           }
         ],
@@ -8610,6 +8623,11 @@
             "type": "integer",
             "title": "Last Seq",
             "default": 0
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
           }
         },
         "type": "object",

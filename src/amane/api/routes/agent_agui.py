@@ -97,6 +97,21 @@ def _history_user_texts(history: Sequence[ModelMessage]) -> list[str]:
     return texts
 
 
+def _collapse_repeats(texts: Sequence[str]) -> list[str]:
+    """把连续重复的同一句话折叠成一条.
+
+    客户端回放的份数可能多于服务端历史 (历史里同一句话只存一份), 不折叠就会把重复的回放当成新输入
+    并再次入库, 下一回合客户端回放得更多 —— 实测一条会话 50 个回合滚到 9.8 万行用户消息, 整段回放
+    19 MB, 浏览器直接内存不足. 代价是「连续两次发完全相同的一句话」只算一次, 这是可接受的取舍.
+    """
+    collapsed: list[str] = []
+    for text in texts:
+        if collapsed and collapsed[-1] == text:
+            continue
+        collapsed.append(text)
+    return collapsed
+
+
 def _new_messages(client: Sequence[Message], history: Sequence[ModelMessage]) -> list[Message]:
     """客户端本次要送的新内容.
 
@@ -106,7 +121,7 @@ def _new_messages(client: Sequence[Message], history: Sequence[ModelMessage]) ->
     不能逐条比对全部消息: 一个回合里的工具调用在服务端是「一次模型请求一条消息」, 在客户端回放里是
     合并后的一个助手气泡, 两侧分组不同, 逐条比对必然错位并把旧内容重新送给模型.
     """
-    replayed = _history_user_texts(history)
+    replayed = _collapse_repeats(_history_user_texts(history))
     matched = 0
     for index, message in enumerate(client):
         if not isinstance(message, UserMessage):
@@ -117,15 +132,18 @@ def _new_messages(client: Sequence[Message], history: Sequence[ModelMessage]) ->
         if matched < len(replayed) and replayed[matched] == text:
             matched += 1
             continue
+        # 客户端多带的重复份数: 与上一条已匹配的输入相同即视为重复回放, 不再算新内容
+        if matched > 0 and replayed[matched - 1] == text:
+            continue
         return list(client[index:])
     return []
 
 
 def _new_user_texts(messages: Sequence[Message]) -> list[str]:
     """本轮客户端新发的用户文本 (重放部分已裁掉)."""
-    return [
-        text for message in messages if isinstance(message, UserMessage) and (text := _content_text(message.content))
-    ]
+    return _collapse_repeats(
+        [text for message in messages if isinstance(message, UserMessage) and (text := _content_text(message.content))]
+    )
 
 
 def _maybe_json(value: str) -> JsonValue:

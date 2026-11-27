@@ -16,6 +16,7 @@ import {
 } from "@assistant-ui/react-ag-ui";
 import {
   Alert,
+  Anchor,
   Badge,
   Box,
   Button,
@@ -95,11 +96,39 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** 一条回执展开成文本的上限: 大结果 (整表查询、长清单) 全量渲染会吃满内存并卡住页面. */
+const JSON_PREVIEW_CHARS = 4000;
+
+/** 整段回放一次取多少行: 与服务端默认上限一致, 更早的行由折叠后的消息承载. */
+const TRACE_ROW_LIMIT = 2000;
+
 function JsonBlock({ value }: { value: unknown }) {
+  const { t } = useTranslation("agent");
+  const [expanded, setExpanded] = useState(false);
+  const text = useMemo(() => JSON.stringify(value ?? null, null, 2) ?? "", [value]);
+  const clipped = text.length > JSON_PREVIEW_CHARS && !expanded;
+  const shown = clipped ? `${text.slice(0, JSON_PREVIEW_CHARS)}\n…` : text;
   return (
-    <Code block style={{ fontSize: 11, maxHeight: 200, overflow: "auto" }}>
-      {JSON.stringify(value ?? null, null, 2)}
-    </Code>
+    <>
+      <Code block style={{ fontSize: 11, maxHeight: 200, overflow: "auto" }}>
+        {shown}
+      </Code>
+      {text.length > JSON_PREVIEW_CHARS && (
+        <Group justify="space-between" gap="xs">
+          <Text size="xs" c="dimmed">
+            {t("jsonTruncated", { total: text.length })}
+          </Text>
+          <Anchor
+            component="button"
+            type="button"
+            size="xs"
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {expanded ? t("jsonCollapse") : t("jsonExpand")}
+          </Anchor>
+        </Group>
+      )}
+    </>
   );
 }
 
@@ -780,6 +809,8 @@ function AgUiThread({
   const [pending, setPending] = useState<Pending | null>(null);
   /** 回放行攒到哪算到哪; 展示与运行时话题本都以它为准. */
   const rowsRef = useRef<TraceRow[]>([]);
+  /** 服务端是否只发了最近的若干行 (长会话), 是则在顶部提示. */
+  const [truncated, setTruncated] = useState(false);
   /** 进行中的跟随订阅; 同一时刻只允许一个. */
   const followRef = useRef<AbortController | null>(null);
   const pendingRef = useRef<Pending | null>(null);
@@ -828,10 +859,14 @@ function AgUiThread({
 
   /** 取整段回放行: 重建展示, 并把运行时话题本与待批态对齐过去; 失败抛错, 由调用处决定出路. */
   const snapshot = useCallback(async () => {
-    const { data, error } = await getAgentTrace({ path: { session_id: sessionId } });
+    const { data, error } = await getAgentTrace({
+      path: { session_id: sessionId },
+      query: { limit: TRACE_ROW_LIMIT },
+    });
     // hey-api 客户端把 HTTP / 网络失败都收进 error 字段而不抛错, 这里统一转成异常
     if (!data) throw error;
     rowsRef.current = data.events;
+    setTruncated(data.truncated === true);
     applyRows(data.events, true);
   }, [applyRows, sessionId]);
 
@@ -969,6 +1004,11 @@ function AgUiThread({
                 padding: "var(--mantine-spacing-md)",
               }}
             >
+              {truncated && !loadingHistory && (
+                <Alert color="gray" variant="light" mb="sm">
+                  <Text size="xs">{t("traceTruncated", { rows: TRACE_ROW_LIMIT })}</Text>
+                </Alert>
+              )}
               {loadingHistory ? (
                 <Group gap="xs">
                   <Loader size="sm" />

@@ -2522,6 +2522,8 @@ export const getAgentTraceQueryKey = (options: Options<GetAgentTraceData>) => cr
 
 /**
  * Get Agent Trace
+ *
+ * 整段回放; `limit` 只取最近若干行 (`0` 表示不限, 供排查与导出).
  */
 export const getAgentTraceOptions = (options: Options<GetAgentTraceData>) => queryOptions<GetAgentTraceResponse, GetAgentTraceError, GetAgentTraceResponse, ReturnType<typeof getAgentTraceQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

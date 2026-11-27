@@ -11,7 +11,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from amane.agent.naming import fallback_title
-from amane.agent.rows import ApprovalsRow, CancelledRow
+from amane.agent.rows import ApprovalsRow, CancelledRow, UserMessageRow
 from amane.agent.service import AgentService
 from amane.db.models import SavedQueryEntity
 from amane.db.repository import Repository
@@ -208,3 +208,29 @@ async def test_cancel_writes_terminal_rows_without_task(app: FastAPI, client: As
     rows = store.read_events()
     assert any(isinstance(row, CancelledRow) for row in rows)
     assert [row.interrupts for row in rows if isinstance(row, ApprovalsRow)] == [[]]
+
+
+@pytest.mark.asyncio
+async def test_trace_limit_returns_only_the_tail(app: FastAPI, client: AsyncClient) -> None:
+    """长会话只发末尾若干行: 十几万行整段发给页面会把浏览器内存吃满, 而页面要的是末尾.
+
+    截断时保留的必须是**最后**几行 (seq 最大的一批), 跟随逻辑据此接上进度.
+    """
+    service = app.state.runtime.agent_service
+    assert isinstance(service, AgentService)
+    session = await service.create_session(title="长会话")
+    assert session.id is not None
+    store = service.store_for(session.id)
+    for index in range(50):
+        await store.append_row(UserMessageRow(type="user_message", text=f"第{index}行"))
+
+    r = await client.get(f"/agent/sessions/{session.id}/trace", params={"limit": 10})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["events"]) == 10
+    assert body["truncated"] is True
+    assert body["events"][-1]["text"] == "第49行"
+
+    whole = (await client.get(f"/agent/sessions/{session.id}/trace", params={"limit": 0})).json()
+    assert len(whole["events"]) == 50
+    assert whole["truncated"] is False

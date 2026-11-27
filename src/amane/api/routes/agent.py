@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
 
 from ...agent import AgentService
 from ...db.models import DEFAULT_SESSION_TITLE, AgentSession
@@ -82,15 +84,28 @@ async def delete_agent_session(session_id: int, service: AgentDep) -> None:
         raise HTTPException(404, detail="会话不存在")
 
 
+TRACE_DEFAULT_LIMIT = 2000
+"""整段回放的默认行数上限. 十几万行的会话整段发给页面会让浏览器内存吃满, 而页面要的是末尾."""
+
+
 @router.get("/agent/sessions/{session_id}/trace")
-async def get_agent_trace(session_id: int, service: AgentDep, repo: RepoDep) -> AgentTraceResponse:
+async def get_agent_trace(
+    session_id: int,
+    service: AgentDep,
+    repo: RepoDep,
+    limit: Annotated[int, Query(ge=0, le=20000)] = TRACE_DEFAULT_LIMIT,
+) -> AgentTraceResponse:
+    """整段回放; `limit` 只取最近若干行 (`0` 表示不限, 供排查与导出)."""
     session = await repo.get_agent_session(session_id)
     if session is None:
         raise HTTPException(404, detail="会话不存在")
     store = service.store_for(session_id)
+    total = len(store.ui_events())
+    rows = store.ui_events(None if limit == 0 else limit)
     return AgentTraceResponse(
         meta=store.read_meta(),
-        events=store.ui_events(),
+        events=rows,
         turn_running=service.is_turn_running(session_id),
         last_seq=store.last_seq,
+        truncated=len(rows) < total,
     )

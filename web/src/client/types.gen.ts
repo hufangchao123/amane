@@ -576,6 +576,10 @@ export type AgentTraceResponse = {
      * Last Seq
      */
     last_seq?: number;
+    /**
+     * Truncated
+     */
+    truncated?: boolean;
 };
 
 /**
@@ -11252,7 +11256,12 @@ export type GetAgentTraceData = {
          */
         session_id: number;
     };
-    query?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
     url: '/api/agent/sessions/{session_id}/trace';
 };
 

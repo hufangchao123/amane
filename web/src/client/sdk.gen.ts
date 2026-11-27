@@ -1045,6 +1045,8 @@ export const generateAgentSessionTitle = <ThrowOnError extends boolean = false>(
 
 /**
  * Get Agent Trace
+ *
+ * 整段回放; `limit` 只取最近若干行 (`0` 表示不限, 供排查与导出).
  */
 export const getAgentTrace = <ThrowOnError extends boolean = false>(options: Options<GetAgentTraceData, ThrowOnError>): RequestResult<GetAgentTraceResponses, GetAgentTraceErrors, ThrowOnError> => (options.client ?? client).get<GetAgentTraceResponses, GetAgentTraceErrors, ThrowOnError>({ url: '/api/agent/sessions/{session_id}/trace', ...options });
 

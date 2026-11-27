@@ -151,9 +151,16 @@ class SessionStore:
         """`after` 之后的行; 缓存内的行按 `seq` 递增, 缺 `seq` 的行 (手改文件的产物) 不参与跟随."""
         return [row for row in self.read_events() if (row.seq or 0) > after]
 
-    def ui_events(self) -> list[UiRow]:
-        """页面契约的行; 协议透传行只在 `POST .../agui` 通道分发, 不发给页面."""
-        return [row for row in self.read_events() if not isinstance(row, AguiEventRow)]
+    def ui_events(self, limit: int | None = None) -> list[UiRow]:
+        """页面契约的行; 协议透传行只在 `POST .../agui` 通道分发, 不发给页面.
+
+        `limit` 只取最近若干行: 长会话的行数可以到十几万, 整段发给页面会把浏览器拖死,
+        而页面真正要看的是末尾; 前面的历史由折叠后的消息数组承载, 不需要逐行回放.
+        """
+        rows = [row for row in self.read_events() if not isinstance(row, AguiEventRow)]
+        if limit is not None and len(rows) > limit:
+            return rows[-limit:]
+        return rows
 
     def _write_row(self, row: TraceRow) -> TraceRow:
         with self._seq_lock:

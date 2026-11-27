@@ -133,6 +133,16 @@ export function foldTrace(rows: readonly TraceRow[]): AgentMessage[] {
     switch (row.type) {
       case "user_message": {
         flush();
+        // 连续重复的同一句话只显示一条: 早期版本的重复回放缺陷会把同一句反复入库,
+        // 不折叠会长出一屏一模一样的用户气泡 (服务端已修, 这里兜住历史会话).
+        const previous = messages.at(-1);
+        if (
+          previous?.role === "user" &&
+          previous.content[0]?.type === "text" &&
+          previous.content[0].text === row.text
+        ) {
+          break;
+        }
         messages.push({
           id: `trace-u-${messages.length}`,
           role: "user",

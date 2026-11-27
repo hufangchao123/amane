@@ -1025,6 +1025,11 @@ export const AgentTraceResponseSchema = {
             type: 'integer',
             title: 'Last Seq',
             default: 0
+        },
+        truncated: {
+            type: 'boolean',
+            title: 'Truncated',
+            default: false
         }
     },
     type: 'object',
