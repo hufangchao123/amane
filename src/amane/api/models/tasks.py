@@ -16,6 +16,8 @@ from ...handlers import (
     CacheKind,
     CleanupPayload,
     CleanupResult,
+    DbVacuumPayload,
+    DbVacuumResult,
     DeletePayload,
     DeleteResult,
     MediaPurgePayload,
@@ -76,6 +78,7 @@ TaskResultPayload = Annotated[
     | ScrapeResult
     | ScrapeTransferResult
     | CleanupResult
+    | DbVacuumResult
     | UpscaleResult
     | R18ImportResult
     | ActorScrapeResult
@@ -285,6 +288,10 @@ class UpscaleSubmission(UpscalePayload):
     type: Literal["upscale"]
 
 
+class DbVacuumSubmission(DbVacuumPayload):
+    type: Literal["db_vacuum"]
+
+
 class R18ImportSubmission(R18ImportPayload):
     type: Literal["r18_import"]
 
@@ -387,6 +394,7 @@ TaskSubmission = Annotated[
     | ScrapeTransferSubmission
     | CleanupSubmission
     | UpscaleSubmission
+    | DbVacuumSubmission
     | R18ImportSubmission
     | ActorScrapeSubmission
     | ActorPushSubmission
@@ -425,6 +433,12 @@ class MediaRefreshRoutine(BaseModel):
     type: Literal["media_refresh"] = "media_refresh"
 
 
+class DbVacuumRoutine(BaseModel):
+    """数据库整理的例行; 参数为空, 整理范围是主库文件本身."""
+
+    type: Literal["db_vacuum"] = "db_vacuum"
+
+
 class SubtitleAuditRoutine(BaseModel):
     """字幕巡检的例行; 指定库时巡检后会自动排一轮补全, 不指定则只统计全部库."""
 
@@ -440,6 +454,7 @@ RoutineSubmission = Annotated[
     | SemanticIndexSubmission
     | WashScanSubmission
     | WashPurgeRoutine
+    | DbVacuumRoutine
     | SubtitleAuditRoutine
     | NotifyDigestRoutine
     | MediaRefreshRoutine,

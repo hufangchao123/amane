@@ -84,7 +84,8 @@
     "avatar_check": "头像校验",
     "scrape_transfer": "刮削后转移",
     "subtitle_generate": "转写生成字幕",
-    "media_purge": "删除条目与文件"
+    "media_purge": "删除条目与文件",
+    "db_vacuum": "数据库整理"
   },
   "loadMoreChildren": "加载更多 ({{count}})",
   "logView": {
@@ -142,6 +143,11 @@
       },
       "conflictsTruncated": "另有 {{count}} 条未列出, 见任务日志",
       "untracked": "库外索引保留 {{count}}"
+    },
+    "db_vacuum": {
+      "size": "体积",
+      "pages": "页数",
+      "duration": "耗时"
     },
     "detailTruncated": "已截断",
     "loadFailed": "详情加载失败",
@@ -238,7 +244,8 @@
       "notify": "通知",
       "scrape_transfer": "刮削后转移",
       "subtitle_generate": "转写生成字幕",
-      "media_purge": "删除条目与文件"
+      "media_purge": "删除条目与文件",
+      "db_vacuum": "数据库整理"
     },
     "cleanup": {
       "remove_missing_files": {

@@ -57,6 +57,8 @@ class TaskType(StrEnum):
     WASH_SCAN = "wash_scan"
     WASH_APPLY = "wash_apply"
     MEDIA_REFRESH = "media_refresh"
+    DB_VACUUM = "db_vacuum"
+    """VACUUM 重写数据库文件; 消除 SQLite 小页随机写在 btrfs 上造成的碎片."""
 
 
 class RoutineType(StrEnum):
@@ -70,6 +72,7 @@ class RoutineType(StrEnum):
     SUBTITLE_AUDIT = "subtitle_audit"
     MEDIA_REFRESH = "media_refresh"
     NOTIFY_DIGEST = "notify_digest"
+    DB_VACUUM = "db_vacuum"
 
 
 class TaskStatus(StrEnum):

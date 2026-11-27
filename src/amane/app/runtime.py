@@ -24,6 +24,7 @@ from ..handlers import (
     ActorScrapeHandler,
     AvatarCheckHandler,
     CleanupHandler,
+    DbVacuumHandler,
     DeleteHandler,
     LibraryTaskLocks,
     MediaPurgeHandler,
@@ -380,6 +381,7 @@ class AppRuntime:
                 self.plugin_manager,
                 library_locks=self.library_locks,
                 inventory_store=self.inventory_store,
+                db_path=self.config.cold.db_path,
                 semantic=self.semantic,
             ),
             concurrency=hot.worker.concurrency,
@@ -665,6 +667,7 @@ def build_handlers(
     semantic: SemanticService,
     library_locks: LibraryTaskLocks | None = None,
     inventory_store: InventoryStore | None = None,
+    db_path: Path | None = None,
 ) -> dict[TaskType, TaskHandler[Any, Any]]:
     # 未启用/缺密钥时 translator 为 None, ScrapeHandler 跳过翻译.
     # 经 _rebuild() 热重载; 代理沿用 network.proxy.
@@ -730,6 +733,10 @@ def build_handlers(
     handlers[TaskType.WASH_SCAN] = WashScanHandler(repo, hot)
     handlers[TaskType.WASH_APPLY] = WashApplyHandler(repo, hot, library_locks)
     handlers[TaskType.MEDIA_REFRESH] = MediaRefreshHandler(hot)
+    # state_dir 缺省回退 cwd/data (精简构造场景), 与库文件位置保持同一约定.
+    handlers[TaskType.DB_VACUUM] = DbVacuumHandler(
+        db_path if db_path is not None else (state_dir if state_dir is not None else Path("./data")) / "amane.db"
+    )
     # state_dir 缺省回退 cwd/data (精简构造场景).
     handlers[TaskType.R18_IMPORT] = R18ImportHandler(
         config=hot.r18, web_client=web_client, state_dir=state_dir if state_dir is not None else Path("./data")

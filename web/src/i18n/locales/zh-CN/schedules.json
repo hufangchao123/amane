@@ -101,6 +101,11 @@
       "summary": "巡检字幕缺口; 指定库时巡检后会排一轮补全",
       "scope": "巡检范围",
       "wholeServer": "全部媒体库"
+    },
+    "db_vacuum": {
+      "summary": "把整个数据库文件重写成连续布局, 消除碎片",
+      "scope": "整理范围",
+      "wholeFile": "整个数据库文件"
     }
   },
   "labels": {

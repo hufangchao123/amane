@@ -143,6 +143,8 @@ function summaryParts(payload: SchedulePayload, t: Translate): string[] {
       return [t("schedules:payload.media_refresh.summary")];
     case "notify_digest":
       return [t("schedules:payload.notify_digest.summary")];
+    case "db_vacuum":
+      return [t("schedules:payload.db_vacuum.summary")];
     default:
       return assertNever(payload, "SchedulePayload");
   }
@@ -272,6 +274,13 @@ function factRows(payload: SchedulePayload, t: Translate): { label: string; valu
         {
           label: t("schedules:payload.notify_digest.scope"),
           value: t("schedules:payload.notify_digest.wholeServer"),
+        },
+      ];
+    case "db_vacuum":
+      return [
+        {
+          label: t("schedules:payload.db_vacuum.scope"),
+          value: t("schedules:payload.db_vacuum.wholeFile"),
         },
       ];
     default:

@@ -25,6 +25,18 @@
 - 后继任务只经 `TaskResult.followups` 进入完成事务, 不直接写队列; 任务判失败或崩溃时仍要排的后继走 `TaskHandler.failure_followups`, 由 worker 单独入队 (它们不属于失败任务的子任务)。
 - `wash_apply` 与 `delete` / `organize` 争用同一库路径, 必须共享 `LibraryTaskLocks`。
 
+## 数据库文件的整理
+
+`db_vacuum` 用 SQLite 的 `VACUUM` 把 `amane.db` 重写成连续文件 (`handlers/db_vacuum.py`)。
+
+起因: SQLite 按 4 KB 页往表尾随机写, btrfs 又是写时复制, 运行一两个月后库文件会碎成大量小 extent;
+机械盘上冷读掉到 3 MB/s 量级, 表现为「重启后第一次打开页面卡一两秒」, 而页缓存热了以后同一条查询只要 8 ms.
+空闲页为 0 也可能仍需要整理 —— 目的是消除碎片, 不是腾空间.
+
+`VACUUM` 需要短暂独占写锁 (`BUSY_TIMEOUT_MS = 30_000`), 拿不到就判任务失败并在错误里说明原因, 由下个周期再跑;
+因此只经例行任务在低峰期触发, 不放在请求线程里. 结果记 `before_bytes` / `after_bytes` / `pages_before` /
+`pages_after` / `free_pages_before` / `duration_ms` / `wal_checkpointed`, 页数与空闲页用来判断这一轮有没有效果.
+
 ## 数据与备份
 
 **不做数据备份**: 全部状态都在 `data_dir` (容器里的 `/data`), 由部署方用宿主快照或自己拷该目录负责; 应用只保留迁移前的 `amane.db.pre-migrate-*.bak` (`db/sqlite_migrate.py`)。运行中直接 `cp amane.db` 不安全 (WAL 未合并), 手工备份须用 online backup 接口。
@@ -215,6 +227,8 @@
 | `wash_purge` | `TaskType.WASH_APPLY` | `WashApplyPayload(purge_ids=到期记录 id)` |
 
 `wash_scan` 只入队只读扫描: 洗版是破坏性动作, 定时任务只产出候选, 由人决定何时执行 `wash_apply`。
+
+`db_vacuum` 的例行 (`RoutineType.DB_VACUUM` → `TaskType.DB_VACUUM`) 没有载荷, 建议排成每月一次的低峰任务。
 
 `media_refresh` 的例行有独立分支 (`RoutineType.MEDIA_REFRESH` → `TaskType.MEDIA_REFRESH`), 只让媒体服务器重扫, 不触碰库文件, 因此不列在上表。
 

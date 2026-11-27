@@ -17,6 +17,8 @@ from ..api.models.tasks import (
     ActorScrapeSubmission,
     AvatarCheckSubmission,
     CleanupSubmission,
+    DbVacuumRoutine,
+    DbVacuumSubmission,
     MediaRefreshRoutine,
     MediaRefreshSubmission,
     NfoPatchSubmission,
@@ -47,6 +49,7 @@ TaskSubmissionType = Literal[
     "scrape",
     "scrape_transfer",
     "cleanup",
+    "db_vacuum",
     "upscale",
     "r18_import",
     "actor_scrape",
@@ -62,6 +65,7 @@ TaskSubmissionType = Literal[
 ]
 RoutineSubmissionType = Literal[
     "cleanup",
+    "db_vacuum",
     "upscale",
     "r18_import",
     "rescrape",
@@ -91,6 +95,7 @@ _TASK_MEMBERS: dict[str, type[BaseModel]] = {
     "notify": NotifySubmission,
     "avatar_check": AvatarCheckSubmission,
     "media_refresh": MediaRefreshSubmission,
+    "db_vacuum": DbVacuumSubmission,
 }
 _ROUTINE_MEMBERS: dict[str, type[BaseModel]] = {
     "cleanup": CleanupSubmission,
@@ -102,6 +107,7 @@ _ROUTINE_MEMBERS: dict[str, type[BaseModel]] = {
     "subtitle_audit": SubtitleAuditRoutine,
     "notify_digest": NotifyDigestRoutine,
     "media_refresh": MediaRefreshRoutine,
+    "db_vacuum": DbVacuumRoutine,
 }
 
 

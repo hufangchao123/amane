@@ -152,6 +152,10 @@ class TestSubmitTask:
         upscale = await client.post("tasks", json={"type": "upscale", "limit": 10})
         assert upscale.status_code == 202
         assert upscale.json()["payload"]["limit"] == 10
+        vacuum = await client.post("tasks", json={"type": "db_vacuum"})
+        assert vacuum.status_code == 202
+        assert vacuum.json()["payload"] == {}
+        assert vacuum.json()["type"] == "db_vacuum"
 
         assert (await client.post("tasks", json={"type": "unknown"})).status_code == 422
         assert (await client.post("tasks", json={"library_id": 1})).status_code == 422

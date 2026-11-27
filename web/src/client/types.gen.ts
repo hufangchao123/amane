@@ -1161,6 +1161,68 @@ export type CropPosterRequest = {
 };
 
 /**
+ * DbVacuumResult
+ *
+ * ``free_pages_before`` 为 0 也可能仍需要整理: 目的是把碎片重写为连续布局, 不是腾空间.
+ */
+export type DbVacuumResult = {
+    /**
+     * Type
+     */
+    type?: 'db_vacuum';
+    /**
+     * Before Bytes
+     */
+    before_bytes?: number;
+    /**
+     * After Bytes
+     */
+    after_bytes?: number;
+    /**
+     * Pages Before
+     */
+    pages_before?: number;
+    /**
+     * Pages After
+     */
+    pages_after?: number;
+    /**
+     * Free Pages Before
+     */
+    free_pages_before?: number;
+    /**
+     * Duration Ms
+     */
+    duration_ms?: number;
+    /**
+     * Wal Checkpointed
+     */
+    wal_checkpointed?: boolean;
+};
+
+/**
+ * DbVacuumRoutine
+ *
+ * 数据库整理的例行; 参数为空, 整理范围是主库文件本身.
+ */
+export type DbVacuumRoutine = {
+    /**
+     * Type
+     */
+    type?: 'db_vacuum';
+};
+
+/**
+ * DbVacuumSubmission
+ */
+export type DbVacuumSubmission = {
+    /**
+     * Type
+     */
+    type: 'db_vacuum';
+};
+
+/**
  * DeleteResult
  */
 export type DeleteResult = {
@@ -4401,7 +4463,7 @@ export type RescrapeTarget = 'metadata' | 'actor';
 /**
  * RoutineType
  */
-export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'wash_scan' | 'wash_purge' | 'subtitle_audit' | 'media_refresh' | 'notify_digest';
+export type RoutineType = 'cleanup' | 'upscale' | 'r18_import' | 'rescrape' | 'semantic_index' | 'wash_scan' | 'wash_purge' | 'subtitle_audit' | 'media_refresh' | 'notify_digest' | 'db_vacuum';
 
 /**
  * RuntimePaths
@@ -4712,6 +4774,8 @@ export type ScheduleCreateRequest = {
     } & WashScanSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'db_vacuum';
+    } & DbVacuumRoutine) | ({
         type: 'subtitle_audit';
     } & SubtitleAuditRoutine) | ({
         type: 'notify_digest';
@@ -4769,6 +4833,8 @@ export type ScheduleResponse = {
     } & WashScanSubmission) | ({
         type: 'wash_purge';
     } & WashPurgeRoutine) | ({
+        type: 'db_vacuum';
+    } & DbVacuumRoutine) | ({
         type: 'subtitle_audit';
     } & SubtitleAuditRoutine) | ({
         type: 'notify_digest';
@@ -5719,7 +5785,7 @@ export type TaskBatchSubmitRequest = {
     /**
      * Submissions
      */
-    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | SubtitleGenerateSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | MediaPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
+    submissions: Array<RefreshSubmission | OrganizeSubmission | ScanInvalidSubmission | DeleteSubmission | ScrapeSubmission | ScrapeTransferSubmission | CleanupSubmission | UpscaleSubmission | DbVacuumSubmission | R18ImportSubmission | ActorScrapeSubmission | ActorPushSubmission | RescrapeSubmission | SemanticIndexSubmission | SemanticBenchmarkSubmission | SubtitleAuditSubmission | SubtitleFetchSubmission | SubtitleGenerateSubmission | WashScanSubmission | WashApplySubmission | MediaRefreshSubmission | MediaPurgeSubmission | NfoPatchSubmission | NotifySubmission | AvatarCheckSubmission>;
 };
 
 /**
@@ -6021,6 +6087,8 @@ export type TaskResponse = {
     } & ScrapeTransferResult) | ({
         type: 'cleanup';
     } & CleanupResult) | ({
+        type: 'db_vacuum';
+    } & DbVacuumResult) | ({
         type: 'upscale';
     } & UpscaleResult) | ({
         type: 'r18_import';
@@ -6068,7 +6136,7 @@ export type TaskStatus = 'queued' | 'running' | 'done' | 'failed';
 /**
  * TaskType
  */
-export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'media_purge' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'subtitle_generate' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh';
+export type TaskType = 'scrape' | 'scrape_transfer' | 'organize' | 'refresh' | 'cleanup' | 'upscale' | 'r18_import' | 'actor_scrape' | 'rescrape' | 'scan_invalid' | 'delete' | 'media_purge' | 'semantic_index' | 'semantic_benchmark' | 'actor_push' | 'subtitle_fetch' | 'subtitle_audit' | 'subtitle_generate' | 'nfo_patch' | 'notify' | 'avatar_check' | 'wash_scan' | 'wash_apply' | 'media_refresh' | 'db_vacuum';
 
 /**
  * TaskWorkerResponse
@@ -10539,6 +10607,8 @@ export type SubmitTaskData = {
     } & CleanupSubmission) | ({
         type: 'upscale';
     } & UpscaleSubmission) | ({
+        type: 'db_vacuum';
+    } & DbVacuumSubmission) | ({
         type: 'r18_import';
     } & R18ImportSubmission) | ({
         type: 'actor_scrape';

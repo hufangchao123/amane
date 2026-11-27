@@ -518,6 +518,23 @@ class SubtitleGenerateResult(BaseModel):
     failed: int = 0
 
 
+class DbVacuumPayload(BaseModel):
+    """数据库整理; 没有参数, 由例行任务在低峰期触发."""
+
+
+class DbVacuumResult(BaseModel):
+    """``free_pages_before`` 为 0 也可能仍需要整理: 目的是把碎片重写为连续布局, 不是腾空间."""
+
+    type: Literal[TaskType.DB_VACUUM] = TaskType.DB_VACUUM
+    before_bytes: int = 0
+    after_bytes: int = 0
+    pages_before: int = 0
+    pages_after: int = 0
+    free_pages_before: int = 0
+    duration_ms: int = 0
+    wal_checkpointed: bool = False
+
+
 class SubtitleAuditPayload(BaseModel):
     """巡检范围; 空表示全部媒体库."""
 

@@ -15,6 +15,7 @@ from ..config import HotSettings
 from ..db import RoutineType, TaskType
 from ..handlers import (
     CleanupPayload,
+    DbVacuumPayload,
     MediaRefreshPayload,
     NotifyPayload,
     R18ImportPayload,
@@ -123,6 +124,8 @@ class CronScheduler:
 
     async def _execute_task(self, schedule_id: int, task_type: RoutineType, payload: dict) -> None:
         match task_type:
+            case RoutineType.DB_VACUUM:
+                await self._enqueue(TaskType.DB_VACUUM, DbVacuumPayload())
             case RoutineType.CLEANUP:
                 await self._enqueue(
                     TaskType.CLEANUP,

@@ -18,6 +18,7 @@ from amane.handlers.models import (
     ActorScrapeResult,
     AvatarCheckResult,
     CleanupResult,
+    DbVacuumResult,
     DeleteResult,
     MediaPurgeResult,
     MediaRefreshResult,
@@ -181,6 +182,18 @@ RESULT_CASES = [
     pytest.param(MediaRefreshResult(kind="emby", url="http://emby.local:8096"), id="media_refresh"),
     pytest.param(AvatarCheckResult(checked=2, ok=1, broken=1), id="avatar_check"),
     pytest.param(NotifyResult(kind="digest", channel="webhook", ok=True, status=200), id="notify"),
+    pytest.param(
+        DbVacuumResult(
+            before_bytes=19_763_200,
+            after_bytes=19_005_440,
+            pages_before=4825,
+            pages_after=4640,
+            free_pages_before=0,
+            duration_ms=5140,
+            wal_checkpointed=True,
+        ),
+        id="db_vacuum",
+    ),
 ]
 
 

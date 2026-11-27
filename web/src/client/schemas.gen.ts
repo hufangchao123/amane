@@ -1913,6 +1913,84 @@ export const CropPosterRequestSchema = {
     description: '从封面图按像素框裁切海报 (相对 thumb 当前本地文件像素; 含就地超分后尺寸).'
 } as const;
 
+export const DbVacuumResultSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'db_vacuum',
+            title: 'Type',
+            default: 'db_vacuum'
+        },
+        before_bytes: {
+            type: 'integer',
+            title: 'Before Bytes',
+            default: 0
+        },
+        after_bytes: {
+            type: 'integer',
+            title: 'After Bytes',
+            default: 0
+        },
+        pages_before: {
+            type: 'integer',
+            title: 'Pages Before',
+            default: 0
+        },
+        pages_after: {
+            type: 'integer',
+            title: 'Pages After',
+            default: 0
+        },
+        free_pages_before: {
+            type: 'integer',
+            title: 'Free Pages Before',
+            default: 0
+        },
+        duration_ms: {
+            type: 'integer',
+            title: 'Duration Ms',
+            default: 0
+        },
+        wal_checkpointed: {
+            type: 'boolean',
+            title: 'Wal Checkpointed',
+            default: false
+        }
+    },
+    type: 'object',
+    title: 'DbVacuumResult',
+    description: '``free_pages_before`` 为 0 也可能仍需要整理: 目的是把碎片重写为连续布局, 不是腾空间.'
+} as const;
+
+export const DbVacuumRoutineSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'db_vacuum',
+            title: 'Type',
+            default: 'db_vacuum'
+        }
+    },
+    type: 'object',
+    title: 'DbVacuumRoutine',
+    description: '数据库整理的例行; 参数为空, 整理范围是主库文件本身.'
+} as const;
+
+export const DbVacuumSubmissionSchema = {
+    properties: {
+        type: {
+            type: 'string',
+            const: 'db_vacuum',
+            title: 'Type'
+        }
+    },
+    type: 'object',
+    required: [
+        'type'
+    ],
+    title: 'DbVacuumSubmission'
+} as const;
+
 export const DeleteResultSchema = {
     properties: {
         type: {
@@ -7621,7 +7699,8 @@ export const RoutineTypeSchema = {
         'wash_purge',
         'subtitle_audit',
         'media_refresh',
-        'notify_digest'
+        'notify_digest',
+        'db_vacuum'
     ],
     title: 'RoutineType'
 } as const;
@@ -8105,6 +8184,9 @@ export const ScheduleCreateRequestSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/DbVacuumRoutine'
+                },
+                {
                     $ref: '#/components/schemas/SubtitleAuditRoutine'
                 },
                 {
@@ -8119,6 +8201,7 @@ export const ScheduleCreateRequestSchema = {
                 propertyName: 'type',
                 mapping: {
                     cleanup: '#/components/schemas/CleanupSubmission',
+                    db_vacuum: '#/components/schemas/DbVacuumRoutine',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     notify_digest: '#/components/schemas/NotifyDigestRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
@@ -8210,6 +8293,9 @@ export const ScheduleResponseSchema = {
                     $ref: '#/components/schemas/WashPurgeRoutine'
                 },
                 {
+                    $ref: '#/components/schemas/DbVacuumRoutine'
+                },
+                {
                     $ref: '#/components/schemas/SubtitleAuditRoutine'
                 },
                 {
@@ -8224,6 +8310,7 @@ export const ScheduleResponseSchema = {
                 propertyName: 'type',
                 mapping: {
                     cleanup: '#/components/schemas/CleanupSubmission',
+                    db_vacuum: '#/components/schemas/DbVacuumRoutine',
                     media_refresh: '#/components/schemas/MediaRefreshRoutine',
                     notify_digest: '#/components/schemas/NotifyDigestRoutine',
                     r18_import: '#/components/schemas/R18ImportSubmission',
@@ -9767,6 +9854,9 @@ export const TaskBatchSubmitRequestSchema = {
                         $ref: '#/components/schemas/UpscaleSubmission'
                     },
                     {
+                        $ref: '#/components/schemas/DbVacuumSubmission'
+                    },
+                    {
                         $ref: '#/components/schemas/R18ImportSubmission'
                     },
                     {
@@ -9822,6 +9912,7 @@ export const TaskBatchSubmitRequestSchema = {
                         actor_scrape: '#/components/schemas/ActorScrapeSubmission',
                         avatar_check: '#/components/schemas/AvatarCheckSubmission',
                         cleanup: '#/components/schemas/CleanupSubmission',
+                        db_vacuum: '#/components/schemas/DbVacuumSubmission',
                         delete: '#/components/schemas/DeleteSubmission',
                         media_purge: '#/components/schemas/MediaPurgeSubmission',
                         media_refresh: '#/components/schemas/MediaRefreshSubmission',
@@ -10383,6 +10474,9 @@ export const TaskResponseSchema = {
                             $ref: '#/components/schemas/CleanupResult'
                         },
                         {
+                            $ref: '#/components/schemas/DbVacuumResult'
+                        },
+                        {
                             $ref: '#/components/schemas/UpscaleResult'
                         },
                         {
@@ -10438,6 +10532,7 @@ export const TaskResponseSchema = {
                             actor_scrape: '#/components/schemas/ActorScrapeResult',
                             avatar_check: '#/components/schemas/AvatarCheckResult',
                             cleanup: '#/components/schemas/CleanupResult',
+                            db_vacuum: '#/components/schemas/DbVacuumResult',
                             delete: '#/components/schemas/DeleteResult',
                             media_purge: '#/components/schemas/MediaPurgeResult',
                             media_refresh: '#/components/schemas/MediaRefreshResult',
@@ -10528,7 +10623,8 @@ export const TaskTypeSchema = {
         'avatar_check',
         'wash_scan',
         'wash_apply',
-        'media_refresh'
+        'media_refresh',
+        'db_vacuum'
     ],
     title: 'TaskType'
 } as const;

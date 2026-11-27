@@ -199,6 +199,30 @@ function ResultBranch({ result, failed }: { result: TaskResult; failed: boolean 
           ]}
         />
       );
+    case "db_vacuum":
+      // VACUUM 前后各量一次: 页数变小才是真把碎片重写掉了, 体积可能只微降.
+      return (
+        <CountBadges
+          failed={failed}
+          entries={[
+            {
+              label: t("result.db_vacuum.size"),
+              value: `${formatFileSize(result.before_bytes)} → ${formatFileSize(result.after_bytes)}`,
+              tone: "blue",
+            },
+            {
+              label: t("result.db_vacuum.pages"),
+              value: `${result.pages_before ?? 0} → ${result.pages_after ?? 0}`,
+              tone: "gray",
+            },
+            {
+              label: t("result.db_vacuum.duration"),
+              value: formatMillis(result.duration_ms),
+              tone: "gray",
+            },
+          ]}
+        />
+      );
     case "media_refresh": {
       // 后端给的是 emby / jellyfin 这类枚举值, 展示成品牌名.
       const kind = result.kind ?? "";
@@ -313,6 +337,14 @@ function CountBadges({ entries, failed }: { entries: CountEntry[]; failed: boole
 function isZero(value: number | string): boolean {
   if (typeof value === "number") return value === 0;
   return /^0(?:\.0+)?\s*[A-Za-z]*$/.test(value.trim());
+}
+
+/** 毫秒 → 「5.1s」; 与 `formatDuration` 的单位写法一致, 一分钟以上带分钟. */
+function formatMillis(ms: number | undefined): string {
+  const seconds = Math.max(0, ms ?? 0) / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const m = Math.floor(seconds / 60);
+  return `${m}m ${Math.round(seconds % 60)}s`;
 }
 
 function SemanticCounts({ result }: { result: Extract<TaskResult, { type: "semantic_index" }> }) {

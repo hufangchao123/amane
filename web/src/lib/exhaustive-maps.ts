@@ -126,6 +126,7 @@ export const TASK_TYPES = exhaustiveTuple<TaskType>()(
   "nfo_patch",
   "notify",
   "avatar_check",
+  "db_vacuum",
 );
 
 export const DOWNLOADABLE_RESOURCES = exhaustiveTuple<DownloadableResource>()(
@@ -168,6 +169,7 @@ export const ROUTINE_TYPES = exhaustiveTuple<RoutineType>()(
   "subtitle_audit",
   "media_refresh",
   "notify_digest",
+  "db_vacuum",
 );
 
 export const FACET_KINDS = exhaustiveTuple<FacetKind>()(
@@ -229,6 +231,7 @@ export const MANUAL_TASK_TYPES = exhaustiveTuple<ManualTaskType>()(
   "semantic_index",
   "actor_push",
   "media_refresh",
+  "db_vacuum",
 );
 
 /** 刮削站点结果分组顺序. */

@@ -8,6 +8,7 @@ from ...handlers import (
     ActorScrapePayload,
     AvatarCheckPayload,
     CleanupPayload,
+    DbVacuumPayload,
     DeletePayload,
     MediaPurgePayload,
     MediaRefreshPayload,
@@ -34,6 +35,7 @@ from ..models import (
     ActorScrapeSubmission,
     AvatarCheckSubmission,
     CleanupSubmission,
+    DbVacuumSubmission,
     DeleteSubmission,
     MediaPurgeSubmission,
     MediaRefreshSubmission,
@@ -69,6 +71,7 @@ ResolvedPayload = (
     | MediaPurgePayload
     | OrganizePayload
     | CleanupPayload
+    | DbVacuumPayload
     | UpscalePayload
     | R18ImportPayload
     | ActorScrapePayload
@@ -111,6 +114,8 @@ async def resolve_submission(req: TaskSubmission, repo: Repository) -> tuple[Tas
                 remove_unreferenced_resources=req.remove_unreferenced_resources,
                 remove_orphan_metadata=req.remove_orphan_metadata,
             )
+        case DbVacuumSubmission():
+            return TaskType.DB_VACUUM, DbVacuumPayload()
         case UpscaleSubmission():
             return TaskType.UPSCALE, UpscalePayload(
                 max_dim_threshold=req.max_dim_threshold, max_bytes_threshold=req.max_bytes_threshold, limit=req.limit

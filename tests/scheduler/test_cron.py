@@ -152,6 +152,23 @@ async def test_due_subtitle_audit_schedule_enqueues_audit_task(repo: Repository)
 
 
 @pytest.mark.asyncio
+async def test_due_db_vacuum_schedule_enqueues_vacuum_task(repo: Repository) -> None:
+    """数据库整理例行没有参数, 只入队一次整理任务."""
+    await repo.create_schedule(
+        cron="40 4 1 * *",
+        task_type=RoutineType.DB_VACUUM,
+        payload={"type": "db_vacuum"},
+        next_run=datetime.now(UTC) - timedelta(minutes=1),
+    )
+
+    await CronScheduler(repo)._tick()
+
+    tasks = await repo.list_tasks(task_types=[TaskType.DB_VACUUM])
+    assert len(tasks) == 1
+    assert tasks[0].payload == {}
+
+
+@pytest.mark.asyncio
 async def test_due_notify_digest_schedule_enqueues_digest_task(repo: Repository) -> None:
     """周报例行只入队 digest 任务, 摘要由任务现算."""
     await repo.create_schedule(

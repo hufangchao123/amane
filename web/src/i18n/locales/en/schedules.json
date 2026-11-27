@@ -101,6 +101,11 @@
       "summary": "Audits subtitle gaps; a chosen library chains one fill run",
       "scope": "Scope",
       "wholeServer": "Every library"
+    },
+    "db_vacuum": {
+      "summary": "Rewrites the whole database file into a contiguous layout",
+      "scope": "Scope",
+      "wholeFile": "The whole database file"
     }
   },
   "labels": {

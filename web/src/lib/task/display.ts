@@ -9,6 +9,7 @@ import {
   IconArrowsExchange,
   IconCloudUpload,
   IconDatabase,
+  IconDatabaseCog,
   IconEraser,
   IconFolder,
   IconGauge,
@@ -61,6 +62,7 @@ export const TASK_ICONS: Record<TaskType, Icon> = exhaustiveRecord<TaskType>()({
   nfo_patch: IconFileText,
   notify: IconBell,
   avatar_check: IconUserCheck,
+  db_vacuum: IconDatabaseCog,
 });
 
 const EMPTY_CHILD_STATUS: Required<TaskChildStatusCounts> = {

@@ -38,6 +38,7 @@ _TYPE_LABELS: dict[TaskType, str] = {
     TaskType.DELETE: "删除",
     TaskType.SEMANTIC_INDEX: "语义索引",
     TaskType.SEMANTIC_BENCHMARK: "语义基准",
+    TaskType.DB_VACUUM: "数据库整理",
     TaskType.ACTOR_PUSH: "演员回写",
     TaskType.SUBTITLE_FETCH: "字幕补全",
     TaskType.SUBTITLE_AUDIT: "字幕巡检",

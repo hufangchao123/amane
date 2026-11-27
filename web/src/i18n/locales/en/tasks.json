@@ -96,7 +96,8 @@
     "avatar_check": "Avatar check",
     "scrape_transfer": "Transfer after scrape",
     "subtitle_generate": "Generate subtitles",
-    "media_purge": "Delete entry and files"
+    "media_purge": "Delete entry and files",
+    "db_vacuum": "Database vacuum"
   },
   "loadMoreChildren": "Load more ({{count}})",
   "loadMoreChildren_one": "Load more ({{count}})",
@@ -169,6 +170,11 @@
       "untracked": "Kept {{count}} rows outside the library",
       "untracked_one": "Kept {{count}} row outside the library",
       "untracked_other": "Kept {{count}} rows outside the library"
+    },
+    "db_vacuum": {
+      "size": "Size",
+      "pages": "Pages",
+      "duration": "Time"
     },
     "detailTruncated": "Truncated",
     "loadFailed": "Failed to load details",
@@ -272,7 +278,8 @@
       "notify": "Notify",
       "scrape_transfer": "Post-scrape transfer",
       "subtitle_generate": "Generate subtitles",
-      "media_purge": "Delete entry and files"
+      "media_purge": "Delete entry and files",
+      "db_vacuum": "Database vacuum"
     },
     "cleanup": {
       "remove_missing_files": {
