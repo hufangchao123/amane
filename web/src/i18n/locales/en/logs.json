@@ -16,5 +16,8 @@
   },
   "queryHelp": {
     "fallback": "Plain text input falls back to fuzzy search"
-  }
+  },
+  "loadingHistory": "Loading earlier log entries…",
+  "historyTruncated": "Older entries not shown (last {{limit}} loaded)",
+  "historyFailed": "Failed to load history; showing live entries only"
 }

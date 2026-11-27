@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconAlertCircle, IconInfoCircle, IconSearch, IconTrash } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import type { ParseKeys } from "i18next";
 import { filter, LiqeError, parse } from "liqe";
@@ -19,6 +20,7 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { APP_SHELL_MAIN_HEIGHT } from "@/components/layout/app-shell-metrics";
 import { exhaustiveRecord } from "@/lib/exhaustive";
 import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
+import { getLogsOptions } from "@/client/@tanstack/react-query.gen";
 import { LogKvPairs } from "@/components/log/log-kv";
 import { LogTimestamp } from "@/components/log/log-timestamp";
 import {
@@ -28,6 +30,7 @@ import {
   logLevelMantineColor,
   useLogStore,
 } from "@/stores/logs";
+import { LOG_HISTORY_LIMIT, mergeTaskLogEntries } from "@/lib/task/log";
 import { useUIStore } from "@/stores/ui";
 
 export const Route = createFileRoute("/logs")({ component: LogsPage });
@@ -157,7 +160,20 @@ function LogsPage() {
   const setLevelFilter = useUIStore((s) => s.setLogLevelFilter);
 
   const [query, setQuery] = useState("");
+  /** 点过「清空」之后只看更新的条目; 历史回填不再进入视图, 直到刷新页面. */
+  const [clearedAt, setClearedAt] = useState<number | null>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  // 实时条目只在浏览器内存里, 刷新就空了; 打开页面时向服务端取 app.log 尾部回填.
+  const historyQuery = useQuery(getLogsOptions({ query: { limit: LOG_HISTORY_LIMIT } }));
+  const merged = useMemo(() => {
+    const live = clearedAt === null ? entries : entries.filter((e) => e.timestamp > clearedAt);
+    const history = clearedAt === null ? (historyQuery.data?.entries ?? []) : [];
+    return mergeTaskLogEntries(history, live);
+  }, [clearedAt, entries, historyQuery.data]);
+  const entriesToRender = merged.entries;
+  const truncated =
+    clearedAt === null && (merged.truncated || Boolean(historyQuery.data?.truncated));
 
   function toggleLevel(level: LogLevel) {
     setLevelFilter(
@@ -169,7 +185,9 @@ function LogsPage() {
 
   const { items: filtered, error: queryError } = useMemo(() => {
     const byLevel =
-      levelFilter.length === 0 ? entries : entries.filter((e) => levelFilter.includes(e.level));
+      levelFilter.length === 0
+        ? entriesToRender
+        : entriesToRender.filter((e) => levelFilter.includes(e.level));
     const q = query.trim();
     if (!q) return { items: byLevel, error: null };
     try {
@@ -181,7 +199,7 @@ function LogsPage() {
       };
     }
     return { items: byLevel.filter((e) => matchesText(e, q)), error: null };
-  }, [entries, levelFilter, query, t]);
+  }, [entriesToRender, levelFilter, query, t]);
 
   function handleAutoScrollChange(checked: boolean) {
     setAutoScroll(checked);
@@ -203,7 +221,10 @@ function LogsPage() {
             variant="light"
             color="red"
             leftSection={<IconTrash size={14} />}
-            onClick={clear}
+            onClick={() => {
+              clear();
+              setClearedAt(Date.now());
+            }}
           >
             {t("actions.clear")}
           </Button>
@@ -240,6 +261,17 @@ function LogsPage() {
         ))}
       </Group>
 
+      {truncated ? (
+        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+          {t("historyTruncated", { limit: LOG_HISTORY_LIMIT })}
+        </Text>
+      ) : null}
+      {historyQuery.isError ? (
+        <Text size="xs" c="red" style={{ flexShrink: 0 }}>
+          {t("historyFailed")}
+        </Text>
+      ) : null}
+
       <div
         style={{
           flex: 1,
@@ -252,7 +284,11 @@ function LogsPage() {
           <Group justify="center" py="xl">
             <IconAlertCircle size={16} style={{ opacity: 0.5 }} />
             <Text c="dimmed" size="sm">
-              {entries.length === 0 ? t("empty") : t("noMatch")}
+              {entriesToRender.length > 0
+                ? t("noMatch")
+                : historyQuery.isPending
+                  ? t("loadingHistory")
+                  : t("empty")}
             </Text>
           </Group>
         ) : (

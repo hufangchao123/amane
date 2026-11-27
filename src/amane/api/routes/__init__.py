@@ -14,6 +14,7 @@ from .feeds import router as feeds_router
 from .files import router as files_router
 from .health import router as health_router
 from .libraries import router as libraries_router
+from .logs import router as logs_router
 from .media import router as media_router
 from .metadata import router as metadata_router
 from .network import router as network_router
@@ -68,3 +69,4 @@ router.include_router(nfo_router)
 router.include_router(notify_router)
 router.include_router(audit_router)
 router.include_router(env_router)
+router.include_router(logs_router)

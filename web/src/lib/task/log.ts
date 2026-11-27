@@ -4,6 +4,9 @@ import { type LogEntry, normalizeLogEntry } from "@/stores/logs";
 /** 与 WebSocket 日志 store 的窗口一致; 更早的历史不在界面里展示. */
 export const TASK_LOG_LIMIT = 5000;
 
+/** 日志页打开时向服务端回填多少条历史 (app.log 尾部, 跨轮转文件). */
+export const LOG_HISTORY_LIMIT = 2000;
+
 export interface MergedTaskLog {
   entries: LogEntry[];
   truncated: boolean;

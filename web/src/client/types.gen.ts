@@ -12162,3 +12162,35 @@ export type PutEnvResponses = {
 };
 
 export type PutEnvResponse = PutEnvResponses[keyof PutEnvResponses];
+
+export type GetLogsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         *
+         * Max entries from the end of app.log
+         */
+        limit?: number;
+    };
+    url: '/api/logs';
+};
+
+export type GetLogsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetLogsError = GetLogsErrors[keyof GetLogsErrors];
+
+export type GetLogsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TaskLogPage;
+};
+
+export type GetLogsResponse = GetLogsResponses[keyof GetLogsResponses];

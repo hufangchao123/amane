@@ -1,3 +1,4 @@
+from .app_log import read_app_log
 from .export import build_record_zip
 from .logging import WSEventLogHandler, setup_logging
 from .models import (
@@ -58,6 +59,7 @@ __all__ = [
     "invoke_source",
     "load_http_index",
     "needs_secrets_file",
+    "read_app_log",
     "read_task_log",
     "redact_dsn",
     "redact_hot",

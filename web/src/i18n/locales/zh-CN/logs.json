@@ -16,5 +16,8 @@
   },
   "queryHelp": {
     "fallback": "纯文本输入将回退为模糊搜索"
-  }
+  },
+  "loadingHistory": "正在载入历史日志…",
+  "historyTruncated": "更早的日志未显示 (只载入最近 {{limit}} 条)",
+  "historyFailed": "历史日志载入失败, 只显示实时日志"
 }
